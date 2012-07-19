@@ -1,0 +1,8 @@
+
+Edit the Makefile, particularly the ARM_GCC_BASE define (at the top)
+
+The Makefile is set up for a cross-compile environment, make sure the arm
+GCC compiler executables are in your path.
+
+Type 'make' to build the static and shared lib, and the example program.
+

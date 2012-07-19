@@ -1,0 +1,50 @@
+#
+# Shine_Fixed StrongARM GCC Linux port Makefile (using crosstools-ezx toolchain)
+#
+
+#adjust this path to your dev-ezx install
+ARM_GCC_BASE=/devel/ROKR_E2/dev-ezx-0.2.0
+
+
+XPREFIX=arm-linux-
+CXX=$(XPREFIX)g++
+CC=$(XPREFIX)gcc
+STRIP=$(XPREFIX)strip
+AR=$(XPREFIX)ar
+CFLAGS=-fno-exceptions -mcpu=iwmmxt -march=iwmmxt  -D__STRONGARM__ -Wall -O2 -D__ROKR_E2__ -fsigned-char
+INCLUDE=-I. -I$(ARM_GCC_BASE)/include/
+LIBS=-lm
+LIBDIRS=-L$(ARM_GCC_BASE)/lib -L$(ARM_GCC_BASE)/lib/ezx/lib
+
+APPNAME=shineenc-ezx
+STNAME=libshine-fxp.la
+SONAME=libshine-fxp.so.1
+LIBNAME=$(SONAME).0.0
+
+C_SRCS=$(shell ls *.c)
+OBJFILES=$(C_SRCS:.c=.o)
+
+#don''t need wav or main in library
+LIBOBJS=$(shell echo $(OBJFILES) | sed -e "s/Main.o//" -e "s/wave.o//")
+
+.c.o:
+	$(CC) $(CFLAGS) $(INCLUDE) -c $<
+
+default: $(OBJFILES) $(APPNAME) library
+
+library: $(LIBOJBS)
+	$(CC) -shared -Wl,-soname,$(SONAME) -o $(LIBNAME) $(LIBOBJS) $(LIBDIRS) -lc -lm
+	$(AR) rcs $(STNAME) $(LIBOBJS)
+
+$(APPNAME): $(OBJFILES) library
+	$(CC) $(CFLAGS) $(INCLUDE) -o $(APPNAME) $(OBJFILES) $(LIBDIRS) $(LIBS) $(STNAME)
+
+release:
+	$(STRIP) -s $(APPNAME)
+	$(STRIP) -s $(LIBNAME)
+
+cleanobj:
+	rm -f $(OBJFILES)
+
+clean: cleanobj
+	rm -f *.la *.so* $(APPNAME)
