@@ -5,7 +5,7 @@
 CC = gcc
 STRIP = strip
 AR = ar
-M32 = yes
+M32 =
 CFLAGS = -fno-exceptions -g -Wall -O2 -fsigned-char $(if $(M32),-m32)
 INCLUDE = -I.
 LIBS = -lm
