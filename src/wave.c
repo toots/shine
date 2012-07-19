@@ -5,6 +5,7 @@
  * note. both Acorn/RISC OS and PC/DOS are little endian.
  */
 
+#include <stdint.h>
 #include "g_includes.h"
 #include "wave.h"
 
@@ -35,18 +36,18 @@ void wave_open(config_t *config)
   struct wave_header
   {
     char riff[4];             /* "RIFF" */
-    unsigned long size;       /* length of rest of file = size of rest of header(36) + data length */
+    uint32_t size;    /* length of rest of file = size of rest of header(36) + data length */
     char wave[4];             /* "WAVE" */
     char fmt[4];              /* "fmt " */
-    unsigned long fmt_len;    /* length of rest of fmt chunk = 16 */
-    unsigned short tag;       /* MS PCM = 1 */
-    unsigned short channels;  /* channels, mono = 1, stereo = 2 */
-    unsigned long samp_rate;  /* samples per second = 44100 */
-    unsigned long byte_rate;  /* bytes per second = samp_rate * byte_samp = 176400 */
-    unsigned short byte_samp; /* block align (bytes per sample) = channels * bits_per_sample / 8 = 4 */
-    unsigned short bit_samp;  /* bits per sample = 16 for MS PCM (format specific) */
+    uint32_t fmt_len;    /* length of rest of fmt chunk = 16 */
+    uint16_t tag;       /* MS PCM = 1 */
+    uint16_t channels;  /* channels, mono = 1, stereo = 2 */
+    uint32_t samp_rate;  /* samples per second = 44100 */
+    uint32_t byte_rate;  /* bytes per second = samp_rate * byte_samp = 176400 */
+    uint16_t byte_samp; /* block align (bytes per sample) = channels * bits_per_sample / 8 = 4 */
+    uint16_t bit_samp;  /* bits per sample = 16 for MS PCM (format specific) */
     char data[4];             /* "data" */
-    unsigned long length;     /* data length (bytes) */
+    uint32_t length;     /* data length (bytes) */
   } header;
 
   if (!strcmp(config->infile, "-"))
@@ -73,9 +74,9 @@ void wave_open(config_t *config)
   config->wave.length        = header.length / header.byte_rate;
 
   if (!config->quiet)
-    printf("%s, %s %ldHz %dbit, Length: %2ld:%2ld:%2ld\n",
-           "WAV PCM DATA", channel_mappings[header.channels], header.samp_rate, header.bit_samp,
-           config->wave.length/3600, (config->wave.length/60)%60, config->wave.length%60);
+    printf("%s, %s %ldHz %ldbit, Length: %2ld:%2ld:%2ld\n",
+           "WAV PCM DATA", channel_mappings[header.channels], (long)header.samp_rate, (long)header.bit_samp,
+           (long)config->wave.length/3600, (long)(config->wave.length/60)%60, (long)config->wave.length%60);
 }
 
 /*
