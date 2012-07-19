@@ -5,7 +5,8 @@
 CC = gcc
 STRIP = strip
 AR = ar
-CFLAGS = -fno-exceptions -g -Wall -O2 -fsigned-char -m32
+M32 = yes
+CFLAGS = -fno-exceptions -g -Wall -O2 -fsigned-char $(if $(M32),-m32)
 INCLUDE = -I.
 LIBS = -lm
 LIBDIRS =
