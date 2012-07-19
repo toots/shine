@@ -50,19 +50,22 @@ void wave_open(config_t *config)
     unsigned long length;     /* data length (bytes) */
   } header;
 
-  if((config->wave.file = fopen(config->infile,"rb")) == NULL)
-    error("Unable to open file");
+  if (!strcmp(config->infile, "-"))
+    config->wave.file = stdin;
+  else
+    config->wave.file = fopen(config->infile, "rb");
 
-    if (fread(&header, sizeof(header), 1, config->wave.file) != 1)
-      error("Invalid Header");
-    if(strncmp(header.riff,"RIFF",4) != 0) error("Not a MS-RIFF file");
-    if(strncmp(header.wave,"WAVE",4) != 0) error("Not a WAVE audio");
-    if(strncmp(header.fmt, "fmt ",4) != 0) error("Can't find format chunk");
-    if(header.tag != 1)                    error("Unknown WAVE format");
-    if(header.channels > 2)                error("More than 2 channels");
-    if(header.bit_samp != 16)              error("Not 16 bit");
-    if(strncmp(header.data,"data",4) != 0) error("Can't find data chunk");
-    i = 0;
+  if (!config->wave.file) error("Unable to open file");
+
+  if (fread(&header, sizeof(header), 1, config->wave.file) != 1) error("Invalid Header");
+  if (strncmp(header.riff,"RIFF", 4) != 0) error("Not a MS-RIFF file");
+  if (strncmp(header.wave,"WAVE", 4) != 0) error("Not a WAVE audio");
+  if (strncmp(header.fmt, "fmt ", 4) != 0) error("Can't find format chunk");
+  if (header.tag != 1)                     error("Unknown WAVE format");
+  if (header.channels > 2)                 error("More than 2 channels");
+  if (header.bit_samp != 16)               error("Not 16 bit");
+  if (strncmp(header.data,"data", 4) != 0) error("Can't find data chunk");
+  i = 0;
 
 
 

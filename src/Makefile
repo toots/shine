@@ -13,7 +13,7 @@ LIBS=-lm
 LIBDIRS=
 
 
-APPNAME=shineenc-gen
+APPNAME=shineenc
 STNAME=libshine-fxp.la
 SONAME=libshine-fxp.so.1
 LIBNAME=$(SONAME).0.0

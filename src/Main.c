@@ -26,11 +26,9 @@
 extern int wave_get(short buffer[2][samp_per_frame], void *config_in);
 
 /* Routine we tell libshine-fxp to call to write out the MP3 file */
-int  write_mp3(long bytes, void *buffer, void *config_in) {
-
+int write_mp3(long bytes, void *buffer, void *config_in) {
     config_t *config=(config_t *)config_in;
     return fwrite(buffer, sizeof(unsigned char), bytes, config->mpeg.file);
-
 }
 
 
@@ -64,9 +62,7 @@ static void print_usage()
 static void set_defaults(config_t *config)
 {
   L3_set_config_mpeg_defaults(&config->mpeg);
-
-    /* Could set overrides here, if any - see Layer3.c */
-
+  /* Could set overrides here, if any - see Layer3.c */
 }
 
 /*
@@ -79,9 +75,9 @@ static bool parse_command(int argc, char** argv, config_t *config)
 
   if(argc<3) return false;
 
-  while(argv[++i][0]=='-')
-    switch(argv[i][1])
-    {
+  while (argv[++i][0] == '-' && argv[i][1] != '\000' && argv[i][1] != ' ')
+    switch (argv[i][1])
+      {
       case 'b':
         config->mpeg.bitr = atoi(argv[++i]);
         break;
@@ -93,10 +89,10 @@ static bool parse_command(int argc, char** argv, config_t *config)
       case 'h':
       default :
         return false;
-    }
+      }
 
-  if((argc-i)!=2) return false;
-  config->infile  = argv[i++];
+  if (argc - i != 2) return false;
+  config->infile = argv[i++];
   config->outfile = argv[i];
   return true;
 }
@@ -115,17 +111,17 @@ static void check_config(config_t *config)
   static char *demp_names[4]    = { "none", "50/15us", "", "CITT" };
 
   printf("%s layer %s, %s  Psychoacoustic Model: %s\n",
-           version_names[config->mpeg.type],
-           layer_names[config->mpeg.layr],
-           mode_names[config->mpeg.mode],
-           psy_names[config->mpeg.psyc]);
+         version_names[config->mpeg.type],
+         layer_names[config->mpeg.layr],
+         mode_names[config->mpeg.mode],
+         psy_names[config->mpeg.psyc]);
   printf("Bitrate=%d kbps  ",config->mpeg.bitr );
   printf("De-emphasis: %s   %s %s\n",
-          demp_names[config->mpeg.emph],
-          ((config->mpeg.original)?"Original":""),
-          ((config->mpeg.copyright)?"(C)":""));
+         demp_names[config->mpeg.emph],
+         ((config->mpeg.original)?"Original":""),
+         ((config->mpeg.copyright)?"(C)":""));
 
-    printf("Encoding \"%s\" to \"%s\"\n", config->infile, config->outfile);
+  printf("Encoding \"%s\" to \"%s\"\n", config->infile, config->outfile);
 }
 
 /*
@@ -137,43 +133,46 @@ int main(int argc, char **argv)
   config_t config;
   time_t end_time;
 
-
   time(&config.start_time);
-  printf("shineenc v1.01 2007-01-02\n");
+  printf("shineenc - Liquidsoap version\n");
 
   /* Set the default MPEG encoding paramters - basically init the struct */
   set_defaults(&config);
 
-  if(!parse_command(argc,argv, &config))
-  {
-    print_usage();
-    exit(1);
-  }
+  if (!parse_command(argc, argv, &config))
+    {
+      print_usage();
+      exit(1);
+    }
 
   /* Open the input file and fill the config wave_t header */
   wave_open(&config);
 
   /* Set the MP3 sample rate index plus see if it's valid */
   config.mpeg.samplerate_index = L3_find_samplerate_index(config.wave.samplerate);
-  if(config.mpeg.samplerate_index < 0) error("invalid samplerate");
+  if (config.mpeg.samplerate_index < 0) error("invalid samplerate");
 
   /* Set the MP3 bit rate index plus see if it's valid */
-  config.mpeg.bitrate_index    = L3_find_bitrate_index(config.mpeg.bitr);
-  if(config.mpeg.bitrate_index < 0) error("invalid bitrate");
+  config.mpeg.bitrate_index = L3_find_bitrate_index(config.mpeg.bitr);
+  if (config.mpeg.bitrate_index < 0) error("invalid bitrate");
 
   /* open the output file */
-  if ((config.mpeg.file = fopen(config.outfile, "wb")) == NULL) {
+  if (!strcmp(config.outfile, "-"))
+    config.mpeg.file = stdout;
+  else
+    config.mpeg.file = fopen(config.outfile, "wb");
+  if (!config.mpeg.file)
+    {
       printf("Could not create \"%s\".\n", config.outfile);
       exit(1);
-   }
+    }
 
   /* Print some info about the file about to be created (optional) */
   check_config(&config);
 
   /* set up the read PCM stream and write MP3 stream functions */
-  config.get_pcm=&wave_get;
-  config.write_mp3=&write_mp3;
-
+  config.get_pcm = &wave_get;
+  config.write_mp3 = &write_mp3;
 
   /* All the magic happens here */
   L3_compress(&config);
@@ -187,7 +186,6 @@ int main(int argc, char **argv)
   time(&end_time);
   end_time -= config.start_time;
   printf(" Finished in %2ld:%2ld:%2ld\n",
-            end_time/3600,(end_time/60)%60,end_time%60);
+         end_time/3600,(end_time/60)%60,end_time%60);
   exit(0);
 }
-
