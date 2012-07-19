@@ -12,7 +12,7 @@
     #else
     #include "mult_noarch_gcc.h"
     #endif
-    
+
 #endif
 
 #define close_bit_stream(a) close_bit_stream_r(a)

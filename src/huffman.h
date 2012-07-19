@@ -1,9 +1,9 @@
 #define HUFFBITS unsigned long int
 #define HTN     34
 #define MXOFF   250
- 
+
 struct huffcodetab {
-  unsigned int xlen;    /*max. x-index+                         */ 
+  unsigned int xlen;    /*max. x-index+                         */
   unsigned int ylen;    /*max. y-index+                         */
   unsigned int linbits; /*number of linbits                     */
   unsigned int linmax;  /*max number to be stored in linbits    */

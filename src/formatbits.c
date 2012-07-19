@@ -258,7 +258,7 @@ int store_side_info( BF_FrameData *info )
         for ( gr = 0; gr < info->nGranules; gr++ )
             for ( ch = 0; ch < info->nChannels; ch++ )
                 l->side_info.spectrumSIPH[gr][ch] = BF_newPartHolder( info->spectrumSI[gr][ch]->nrEntries );
-        
+
     }
     else
     { /* remove from the free list */
@@ -310,14 +310,14 @@ MYSideInfo* get_side_info()
 {
     side_info_link *f = side_queue_free;
     side_info_link *l = side_queue_head;
-    
+
     /*
       If we stop here it means you didn't provide enough
       headers to support the amount of main data that was
       written.
     */
 /*    assert( l );*/
-    
+
     /* update queue head */
     side_queue_head = l->next;
 
@@ -396,7 +396,7 @@ BF_PartHolder *BF_resizePartHolder( BF_PartHolder *oldPH, int max_elements )
 
     /* free old holder */
     BF_freePartHolder( oldPH );
-    
+
     return newPH;
 }
 

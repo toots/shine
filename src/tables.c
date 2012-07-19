@@ -1,7 +1,7 @@
 /* tables.c
  *
  * Here are MPEG1 Table B.8 and MPEG2 Table B.1 -- Layer III scalefactor bands.
- * Index into this using a method such as: 
+ * Index into this using a method such as:
  *    idx  = fr_ps->header->sampling_frequency + (fr_ps->header->version * 3)
  */
 

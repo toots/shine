@@ -4,7 +4,7 @@
  * work on 'little endian' machines. 09/02/01 P.Everett
  * note. both Acorn/RISC OS and PC/DOS are little endian.
  */
- 
+
 #include "g_includes.h"
 #include "wave.h"
 
@@ -29,7 +29,6 @@ void wave_close(config_t *config)
  */
 void wave_open(config_t *config)
 {
-
   static char *channel_mappings[] = {NULL,"mono","stereo"};
   int i=0;
 
@@ -65,7 +64,7 @@ void wave_open(config_t *config)
     if(strncmp(header.data,"data",4) != 0) error("Can't find data chunk");
     i = 0;
 
-  
+
 
   config->wave.type          = WAVE_RIFF_PCM;
   config->wave.channels      = header.channels;
@@ -74,7 +73,7 @@ void wave_open(config_t *config)
   config->wave.total_samples = header.length / header.byte_samp;
   config->wave.length        = header.length / header.byte_rate;
 
-  printf("%s, %s %ldHz %dbit, Length: %2ld:%2ld:%2ld\n", 
+  printf("%s, %s %ldHz %dbit, Length: %2ld:%2ld:%2ld\n",
           "WAV PCM DATA",channel_mappings[header.channels],header.samp_rate,header.bit_samp,
           config->wave.length/3600,(config->wave.length/60)%60,config->wave.length%60);
 }
@@ -91,7 +90,7 @@ int read_samples(short *sample_buffer, int frame_size, config_t *config)
   {
     case WAVE_RIFF_PCM :
       samples_read = fread(sample_buffer,sizeof(short),frame_size, config->wave.file);
-  
+
       if(samples_read<frame_size && samples_read>0) /* Pad sample with zero's */
         while(samples_read<frame_size) sample_buffer[samples_read++] = 0;
       break;
@@ -114,7 +113,7 @@ int wave_get(short buffer[2][samp_per_frame], void *config_in)
   int          samples_read;
   int          j;
   config_t *config=config_in;
-    
+
   switch(config->mpeg.mode)
   {
     case MODE_MONO  :
@@ -125,7 +124,7 @@ int wave_get(short buffer[2][samp_per_frame], void *config_in)
         buffer[1][j] = 0;
       }
       break;
-      
+
     default: /* stereo */
       samples_read = read_samples(temp_buf,(int)config->mpeg.samples_per_frame<<1, config);
       for(j=0;j<samp_per_frame;j++)
@@ -136,4 +135,4 @@ int wave_get(short buffer[2][samp_per_frame], void *config_in)
   }
   return samples_read;
 }
- 
+

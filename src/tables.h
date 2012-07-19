@@ -7,8 +7,7 @@ struct scalefac_struct
    int s[14];
 };
 
-
-extern struct scalefac_struct sfBandIndex[6]; 
+extern struct scalefac_struct sfBandIndex[6];
 extern double enwindow[];
 
 #endif

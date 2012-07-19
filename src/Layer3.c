@@ -1,12 +1,12 @@
 /* layer3.c */
- 
+
 #include "g_includes.h"
-#include "Layer3.h"
-#include "L3subband.h"
-#include "L3mdct.h"
-#include "L3loop.h"
+#include "layer3.h"
+#include "l3subband.h"
+#include "l3mdct.h"
+#include "l3loop.h"
 #include "bitstream.h"
-#include "L3bitstrea.h"
+#include "l3bitstream.h"
 
 /*
  * update_status:
@@ -15,9 +15,9 @@
  #ifdef DEBUG
 static void update_status(int frames_processed, config_t *config)
 {
-  printf("\015[Frame %6d of %6ld] (%2.2f%%)", 
+  printf("\015[Frame %6d of %6ld] (%2.2f%%)",
             frames_processed,config->mpeg.total_frames,
-            (double)((double)frames_processed/config->mpeg.total_frames)*100); 
+            (double)((double)frames_processed/config->mpeg.total_frames)*100);
   fflush(stdout);
 }
 #else
@@ -32,7 +32,7 @@ void L3_set_config_mpeg_defaults(mpeg_t *mpeg) {
   mpeg->mode = 2;
   mpeg->bitr = 128;
   mpeg->psyc = 2;
-  mpeg->emph = 0; 
+  mpeg->emph = 0;
   mpeg->crc  = 0;
   mpeg->ext  = 0;
   mpeg->mode_ext  = 0;
@@ -96,13 +96,13 @@ void L3_compress(config_t *config)
   static bitstream_t     bs;
 
   open_bit_stream_w(&bs, config->outfile, BUFFER_SIZE);
-  
+
   memset((char *)&side_info,0,sizeof(L3_side_info_t));
 
   L3_subband_initialise();
   L3_mdct_initialise();
   L3_loop_initialise();
-  
+
   config->mpeg.samples_per_frame = samp_per_frame;
   config->mpeg.total_frames      = config->wave.total_samples/config->mpeg.samples_per_frame;
   config->mpeg.bits_per_slot     = 8;
@@ -110,7 +110,7 @@ void L3_compress(config_t *config)
   sideinfo_len = (config->wave.channels==1) ? 168 : 288;
 
   /* Figure average number of 'slots' per frame. */
-  avg_slots_per_frame   = ((double)config->mpeg.samples_per_frame / 
+  avg_slots_per_frame   = ((double)config->mpeg.samples_per_frame /
                            ((double)config->wave.samplerate/1000)) *
                           ((double)config->mpeg.bitr /
                            (double)config->mpeg.bits_per_slot);
@@ -134,13 +134,13 @@ void L3_compress(config_t *config)
         slot_lag    -= frac_slots_per_frame;
         config->mpeg.padding = 0;
       }
-      else 
+      else
       { /* Padding for this frame  */
         slot_lag    += (1-frac_slots_per_frame);
         config->mpeg.padding = 1;
       }
     }
-    
+
     config->mpeg.bits_per_frame = 8*(whole_slots_per_frame + config->mpeg.padding);
     mean_bits = (config->mpeg.bits_per_frame - sideinfo_len)>>1;
 
@@ -159,8 +159,7 @@ void L3_compress(config_t *config)
     /* write the frame to the bitstream */
     L3_format_bitstream(l3_enc,&side_info,&scalefactor, &bs,mdct_freq,NULL,0, config);
 
-  }    
+  }
   close_bit_stream(&bs);
 }
-
 

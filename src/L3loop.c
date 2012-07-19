@@ -1,13 +1,13 @@
 /* l3loop.c */
- 
+
 #define __INLINE_ASM
 #include "g_includes.h"
 #include "tables.h"
-#include "Layer3.h"
-#include "L3loop.h"
+#include "layer3.h"
+#include "l3loop.h"
 #include "huffman.h"
 #include "bitstream.h"
-#include "L3bitstrea.h"
+#include "l3bitstream.h"
 #include "reservoir.h"
 
 int *scalefac_band_long  = &sfBandIndex[3].l[0];
@@ -35,7 +35,7 @@ static long
   xrsq[samp_per_frame2],  /* xr squared */
   xrabs[samp_per_frame2], /* xr absolute */
   xrmax;                  /* maximum of xrabs array */
-    
+
 /*extern long mulr(long x, long y); */ /* inlined in header file */
 /*extern long mulsr(long x, long y);*/ /* inlined in header file */
 
@@ -45,7 +45,7 @@ static long
  * The code selects the best quantizerStepSize for a particular set
  * of scalefacs.
  */
-static int inner_loop(int ix[samp_per_frame2], 
+static int inner_loop(int ix[samp_per_frame2],
                       int max_bits, gr_info *cod_info, int gr, int ch )
 {
   int bits, c1bits, bvbits;
@@ -100,13 +100,13 @@ static int outer_loop( int max_bits,
  * L3_iteration_loop:
  * ------------------
  */
-void L3_iteration_loop(double          pe[][2], 
-                       long            mdct_freq_org[2][2][samp_per_frame2], 
+void L3_iteration_loop(double          pe[][2],
+                       long            mdct_freq_org[2][2][samp_per_frame2],
                        L3_psy_ratio_t *ratio,
-                       L3_side_info_t *side_info, 
+                       L3_side_info_t *side_info,
                        int             l3_enc[2][2][samp_per_frame2],
-                       int             mean_bits, 
-                       L3_scalefac_t  *scalefactor, config_t *config) 
+                       int             mean_bits,
+                       L3_scalefac_t  *scalefactor, config_t *config)
 {
   L3_psy_xmin_t l3_xmin;
   gr_info *cod_info;
@@ -144,7 +144,7 @@ void L3_iteration_loop(double          pe[][2],
         if(xrabs[i]>xrmax)
           xrmax=xrabs[i];
       }
-    
+
       cod_info = (gr_info *) &(side_info->gr[gr].ch[ch]);
       cod_info->sfb_lmax = SFB_LMAX - 1; /* gr_deco */
 
@@ -154,7 +154,7 @@ void L3_iteration_loop(double          pe[][2],
 
       /* calculation of number of available bit( per granule ) */
       max_bits = ResvMaxBits(side_info,&pe[gr][ch],mean_bits, config);
-            
+
       /* reset of iteration variables */
       memset(scalefactor->l[gr][ch],0,22);
       memset(scalefactor->s[gr][ch],0,14);
@@ -175,7 +175,7 @@ void L3_iteration_loop(double          pe[][2],
       cod_info->preflag           = 0;
       cod_info->scalefac_scale    = 0;
       cod_info->count1table_select= 0;
-            
+
       /* all spectral values zero ? */
       if(xrmax)
         cod_info->part2_3_length = outer_loop(max_bits,&l3_xmin,ix,
@@ -193,7 +193,7 @@ void L3_iteration_loop(double          pe[][2],
 
 /*
  * calc_scfsi:
- * ----------- 
+ * -----------
  * calculation of the scalefactor select information ( scfsi ).
  */
 void calc_scfsi( L3_side_info_t *l3_side,
@@ -223,7 +223,7 @@ void calc_scfsi( L3_side_info_t *l3_side,
 /*
  note. it goes quite a bit faster if you uncomment the next bit and exit
        early from scfsi, but you then loose the advantage of common scale factors.
-       
+
       for(scfsi_band=0;scfsi_band<4;scfsi_band++)
          l3_side->scfsi[ch][scfsi_band] = 0;
       return;
@@ -232,7 +232,7 @@ void calc_scfsi( L3_side_info_t *l3_side,
   xrmaxl[gr] = xrmax;
   scfsi_set = 0;
 
-  /* the total energy of the granule */    
+  /* the total energy of the granule */
   for ( temp = 0, i =samp_per_frame2; i--;  )
     temp += xrsq[i]>>10; /* a bit of scaling to avoid overflow, (not very good) */
   if ( temp )
@@ -260,7 +260,7 @@ void calc_scfsi( L3_side_info_t *l3_side,
     else
       xm[gr][sfb] = 0;
   }
-  
+
   if(gr==1)
   {
     int gr2, tp;
@@ -275,9 +275,9 @@ void calc_scfsi( L3_side_info_t *l3_side,
     }
     if(abs(en_tot[0]-en_tot[1]) < en_tot_krit)
       condition++;
-    for(tp=0,sfb=21; sfb--; ) 
+    for(tp=0,sfb=21; sfb--; )
       tp += abs(en[0][sfb]-en[1][sfb]);
-    if (tp < en_dif_krit) 
+    if (tp < en_dif_krit)
       condition++;
 
     if(condition==6)
@@ -289,7 +289,7 @@ void calc_scfsi( L3_side_info_t *l3_side,
         start = scfsi_band_long[scfsi_band];
         end   = scfsi_band_long[scfsi_band+1];
         for ( sfb = start; sfb < end; sfb++ )
-        { 
+        {
           sum0 += abs( en[0][sfb] - en[1][sfb] );
           sum1 += abs( xm[0][sfb] - xm[1][sfb] );
         }
@@ -307,7 +307,7 @@ void calc_scfsi( L3_side_info_t *l3_side,
       for(scfsi_band=0;scfsi_band<4;scfsi_band++)
          l3_side->scfsi[ch][scfsi_band] = 0;
   } /* if gr == 1 */
-  
+
 }
 
 /* these used in next two functions */
@@ -320,8 +320,8 @@ static int slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
  * calculates the number of bits needed to encode the scalefacs in the
  * main data block.
  */
-int part2_length(L3_scalefac_t *scalefac, 
-                 int gr, int ch, 
+int part2_length(L3_scalefac_t *scalefac,
+                 int gr, int ch,
                  L3_side_info_t *si)
 {
   int slen1, slen2, bits;
@@ -332,7 +332,7 @@ int part2_length(L3_scalefac_t *scalefac,
   {
     slen1 = slen1_tab[ gi->scalefac_compress ];
     slen2 = slen2_tab[ gi->scalefac_compress ];
-        
+
     if ( !gr || !(si->scfsi[ch][0]) )
       bits += (6 * slen1);
 
@@ -352,8 +352,8 @@ int part2_length(L3_scalefac_t *scalefac,
  * scale_bitcount:
  * ---------------
  * Also calculates the number of bits necessary to code the scalefactors.
- */ 
-int scale_bitcount(L3_scalefac_t *scalefac, 
+ */
+int scale_bitcount(L3_scalefac_t *scalefac,
                    gr_info *cod_info,
                    int gr, int ch )
 {
@@ -371,10 +371,10 @@ int scale_bitcount(L3_scalefac_t *scalefac,
 
   for ( k = 0; k < 16; k++ )
     if ( (max_slen1 < pow2[slen1_tab[k]]) && (max_slen2 < pow2[slen2_tab[k]]) )
-    { 
+    {
       ep = 0;
       break;
-    } 
+    }
 
   if ( !ep )
     cod_info->scalefac_compress = k;
@@ -389,7 +389,7 @@ int scale_bitcount(L3_scalefac_t *scalefac,
  * xmin(sb) = ratio(sb) * en(sb) / bw(sb)
  */
 void calc_xmin(L3_psy_ratio_t *ratio,
-               gr_info *cod_info, 
+               gr_info *cod_info,
                L3_psy_xmin_t *l3_xmin,
                int gr, int ch )
 {
@@ -426,7 +426,7 @@ static long int2idx[10000]; /* x**(3/4)   for x = 0..9999 */
 void L3_loop_initialise(void)
 {
   int i;
-  
+
   /* quantize: stepsize conversion, fourth root of 2 table.
    * The table is inverted (negative power) from the equation given
    * in the spec because it is quicker to do x*y than x/y.
@@ -444,7 +444,7 @@ void L3_loop_initialise(void)
        */
       steptabi[i] = (long)((steptab[i]*2) + 0.5);
   }
-    
+
   /* quantize: vector conversion, three quarter power table.
    * The 0.5 is for rounding, the .0946 comes from the spec.
    */
@@ -492,7 +492,7 @@ int quantize(int ix[samp_per_frame2], int stepsize )
       if(max < ix[i])
         max = ix[i];
     }
-    
+
   return max;
  }
 
@@ -521,14 +521,14 @@ int ix_max( int ix[samp_per_frame2], unsigned int begin, unsigned int end )
 void calc_runlen( int ix[samp_per_frame2], gr_info *cod_info )
 {
   int i;
-  int rzero = 0; 
+  int rzero = 0;
 
   for ( i = samp_per_frame2; i > 1; i -= 2 )
     if ( !ix[i-1] && !ix[i-2] )
       rzero++;
     else
       break;
-        
+
   cod_info->count1 = 0 ;
   for ( ; i > 3; i -= 4 )
     if (   ix[i-1] <= 1
@@ -538,7 +538,7 @@ void calc_runlen( int ix[samp_per_frame2], gr_info *cod_info )
       cod_info->count1++;
     else
       break;
-        
+
     cod_info->big_values = i>>1;
 }
 
@@ -562,7 +562,7 @@ int count1_bitcount(int ix[samp_per_frame2], gr_info *cod_info)
     y = ix[i+3];
 
     p = v + (w<<1) + (x<<2) + (y<<3);
-        
+
     signbits = 0;
     if(v!=0) signbits++;
     if(w!=0) signbits++;
@@ -628,7 +628,7 @@ void subdivide(gr_info *cod_info)
 
   int scfb_anz = 0;
   int bigvalues_region;
-    
+
   if ( !cod_info->big_values)
   { /* no big_values region */
     cod_info->region0_count = 0;
@@ -637,7 +637,7 @@ void subdivide(gr_info *cod_info)
   else
   {
     bigvalues_region = 2 * cod_info->big_values;
-    { 
+    {
       int thiscount, index;
       /* Calculate scfb_anz */
       while ( scalefac_band_long[scfb_anz] < bigvalues_region )
@@ -680,7 +680,7 @@ void bigv_tab_select( int ix[samp_per_frame2], gr_info *cod_info )
   cod_info->table_select[0] = 0;
   cod_info->table_select[1] = 0;
   cod_info->table_select[2] = 0;
-    
+
   {
     if ( cod_info->address1 > 0 )
       cod_info->table_select[0] = new_choose_table( ix, 0, cod_info->address1 );
@@ -776,7 +776,7 @@ int new_choose_table( int ix[samp_per_frame2], unsigned int begin, unsigned int 
   {
     /* try tables with linbits */
     max -= 15;
-        
+
     for(i=15;i<24;i++)
       if(ht[i].linmax>=max)
       {
@@ -790,7 +790,7 @@ int new_choose_table( int ix[samp_per_frame2], unsigned int begin, unsigned int 
         choice[1] = i;
         break;
       }
-        
+
     sum[0] = count_bit(ix,begin,end,choice[0]);
     sum[1] = count_bit(ix,begin,end,choice[1]);
     if (sum[1]<sum[0])
@@ -808,12 +808,12 @@ int bigv_bitcount(int ix[samp_per_frame2], gr_info *gi)
 {
   int bits = 0;
   unsigned int table;
-        
-  if( (table=gi->table_select[0]))  /* region0 */ 
+
+  if( (table=gi->table_select[0]))  /* region0 */
     bits += count_bit(ix, 0, gi->address1, table );
-  if( (table=gi->table_select[1]))  /* region1 */ 
+  if( (table=gi->table_select[1]))  /* region1 */
     bits += count_bit(ix, gi->address1, gi->address2, table );
-  if( (table=gi->table_select[2]))  /* region2 */ 
+  if( (table=gi->table_select[2]))  /* region2 */
     bits += count_bit(ix, gi->address2, gi->address3, table );
   return bits;
 }
@@ -823,8 +823,8 @@ int bigv_bitcount(int ix[samp_per_frame2], gr_info *gi)
  * ----------
  * Function: Count the number of bits necessary to code the subregion.
  */
-int count_bit(int ix[samp_per_frame2], 
-              unsigned int start, 
+int count_bit(int ix[samp_per_frame2],
+              unsigned int start,
               unsigned int end,
               unsigned int table )
 {
@@ -929,5 +929,4 @@ int bin_search_StepSize(int desired_rate, int ix[samp_per_frame2],
   while((bit!=desired_rate) && abs(last-next)>1);
   return next;
 }
-
 

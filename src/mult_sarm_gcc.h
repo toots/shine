@@ -1,7 +1,6 @@
 /*
-
   ASM functions:
-  
+
     mul     Fractional multiply.
     muls    Fractional multiply with single bit left shift.
     mulr    Fractional multiply with rounding.
@@ -10,7 +9,7 @@
 */
 
 /* Fractional multiply */
-static inline long mul(long x,long y) { 
+static inline long mul(long x,long y) {
     register long result;
     asm ("smull r3, %0, %2, %1" : "=r" (result) : "r" (x), "r" (y) : "r3" );
     return result;
@@ -34,7 +33,7 @@ static inline long mulr(long x, long y) {
         "smull r3, %0, %2, %1\n\t"
         "adds r3, r3, #0x80000000\n\t"
         "adc %0, %0, #0"
-        : "=r" (result) : "r" (x), "r" (y) : "r3"    
+        : "=r" (result) : "r" (x), "r" (y) : "r3"
     );
     return result;
 }
@@ -48,7 +47,7 @@ static inline long mulsr(long x, long y) {
         "adc r0, r0, r0\n\t"
         "adds r3, r3, #0x80000000\n\t"
         "adc %0, r0, #0"
-        : "=r" (result) : "r" (x), "r" (y) : "r0", "r3" , "r12"   
+        : "=r" (result) : "r" (x), "r" (y) : "r0", "r3" , "r12"
     );
     return result;
 }

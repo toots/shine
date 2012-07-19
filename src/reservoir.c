@@ -1,13 +1,13 @@
 /* reservoir.c
  * Layer3 bit reservoir: Described in C.1.5.4.2.2 of the IS
  */
- 
+
 #include "types.h"
-#include "Layer3.h"
-#include "L3loop.h"
+#include "layer3.h"
+#include "l3loop.h"
 #include "huffman.h"
 #include "bitstream.h"
-#include "L3bitstrea.h"
+#include "l3bitstream.h"
 #include "reservoir.h"
 
 static int ResvSize = 0; /* in bits */
@@ -38,7 +38,7 @@ void ResvFrameBegin(L3_side_info_t *l3_side, int mean_bits, int frameLength )
   /* determine maximum size of reservoir: ResvMax + frameLength <= 7680; */
   if(frameLength>7680)
     ResvMax = 0;
-  else 
+  else
     ResvMax = 7680 - frameLength;
 
   /*
@@ -125,7 +125,7 @@ void ResvFrameEnd(L3_side_info_t *l3_side, int mean_bits, config_t *config )
   over_bits = ResvSize - ResvMax;
   if(over_bits<0)
     over_bits = 0;
-  
+
   ResvSize -= over_bits;
   stuffingBits = over_bits + ancillary_pad;
 
@@ -143,8 +143,8 @@ void ResvFrameEnd(L3_side_info_t *l3_side, int mean_bits, config_t *config )
      * This was preferred by someone designing a
      * real-time decoder...
      */
-    gi = (gr_info *) &(l3_side->gr[0].ch[0]);       
-    
+    gi = (gr_info *) &(l3_side->gr[0].ch[0]);
+
     if ( gi->part2_3_length + stuffingBits < 4095 )
       gi->part2_3_length += stuffingBits;
     else

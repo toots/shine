@@ -2,12 +2,12 @@
 
 #define __INLINE_ASM
 #include "g_includes.h"
-#include "Layer3.h"
-#include "L3mdct.h"
+#include "layer3.h"
+#include "l3mdct.h"
 
 /*extern long mul(long x, long y); */ /* inlined in header file */
 /*extern long muls(long x, long y); */ /* inlined in header file */
- 
+
 /* This is table B.9: coefficients for aliasing reduction */
 static double c[8] = { -0.6,-0.535,-0.33,-0.185,-0.095,-0.041,-0.0142, -0.0037 };
 
@@ -46,31 +46,31 @@ void L3_mdct_initialise(void)
  * L3_mdct_sub:
  * ------------
  */
-void L3_mdct_sub(long sb_sample[2][3][18][SBLIMIT], 
+void L3_mdct_sub(long sb_sample[2][3][18][SBLIMIT],
                  long mdct_freq[2][2][samp_per_frame2], config_t *config)
 {
   /* note. we wish to access the array 'mdct_freq[2][2][576]' as
    * [2][2][32][18]. (32*18=576),
    */
   long (*mdct_enc)[18];
-  
+
   int  ch,gr,band,j,k;
   long mdct_in[36];
   long bu,bd,*m;
-    
+
   for(gr=0; gr<2; gr++)
     for(ch=config->wave.channels; ch--; )
     {
       /* set up pointer to the part of mdct_freq we're using */
       mdct_enc = (long (*)[18]) mdct_freq[gr][ch];
-      
+
       /* Compensate for inversion in the analysis filter
        * (every odd index of band AND k)
        */
       for(band=1; band<=31; band+=2 )
         for(k=1; k<=17; k+=2 )
           sb_sample[ch][gr+1][k][band] *= -1;
-            
+
       /* Perform imdct of 18 previous subband samples + 18 current subband samples */
       for(band=32; band--; )
       {
@@ -79,7 +79,7 @@ void L3_mdct_sub(long sb_sample[2][3][18][SBLIMIT],
           mdct_in[k]    = sb_sample[ch][ gr ][k][band];
           mdct_in[k+18] = sb_sample[ch][gr+1][k][band];
         }
-                
+
         /* Calculation of the MDCT
          * In the case of long blocks ( block_type 0,1,3 ) there are
          * 36 coefficients in the time domain and 18 in the frequency
@@ -106,13 +106,11 @@ void L3_mdct_sub(long sb_sample[2][3][18][SBLIMIT],
           mdct_enc[band+1][k]  = bd;
         }
     }
-    
+
   /* Save latest granule's subband samples to be used in the next mdct call */
   for(ch=config->wave.channels ;ch--; )
     for(j=18; j--; )
       for(band=32; band--; )
         sb_sample[ch][0][j][band] = sb_sample[ch][2][j][band];
 }
-
- 
 

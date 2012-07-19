@@ -18,11 +18,13 @@ STNAME=libshine-fxp.la
 SONAME=libshine-fxp.so.1
 LIBNAME=$(SONAME).0.0
 
-C_SRCS=$(shell ls *.c)
+C_SRCS=$(wildcard *.c)
 OBJFILES=$(C_SRCS:.c=.o)
 
 #don''t need wav or main in library
 LIBOBJS=$(shell echo $(OBJFILES) | sed -e "s/Main.o//" -e "s/wave.o//")
+
+all: default
 
 .c.o:
 	$(CC) $(CFLAGS) $(INCLUDE) -c $<

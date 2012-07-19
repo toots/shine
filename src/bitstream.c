@@ -82,7 +82,7 @@ void putbits(bitstream_t *bs, unsigned long int val, unsigned int N, config_t *c
   if (N > MAX_LENGTH)
     printf("Cannot read or write more than %d bits at a time.\n", MAX_LENGTH);
   #endif
-  
+
   bs->totbit += N;
   while (j > 0)
   {

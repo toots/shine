@@ -12,7 +12,7 @@ typedef struct  bit_stream_struc {
     int         eob;            /* end of buffer index */
     int         eobs;           /* end of bit stream flag */
     char        format;
-    
+
     /* format of file in rd mode (BINARY/ASCII) */
 } bitstream_t;
 
