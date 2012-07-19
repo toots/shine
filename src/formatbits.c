@@ -318,14 +318,14 @@ MYSideInfo* get_side_info()
 }
 
 /* Allocate a new holder of a given size */
-BF_PartHolder *BF_newPartHolder( unsigned long int max_elements )
+BF_PartHolder *BF_newPartHolder(unsigned long int max_elements)
 {
-  BF_PartHolder *newPH    = calloc( 1, sizeof(BF_PartHolder) );
+  BF_PartHolder *newPH = calloc(1, sizeof(BF_PartHolder));
   /* assert( newPH ); */
-  newPH->max_elements  = max_elements;
-  newPH->part          = calloc( 1, sizeof(BF_BitstreamPart) );
+  newPH->max_elements = max_elements;
+  newPH->part = calloc(1, sizeof(BF_BitstreamPart));
   /* assert( newPH->part ); */
-  newPH->part->element = calloc( (int)max_elements, sizeof(BF_BitstreamElement) );
+  newPH->part->element = calloc((int)max_elements, sizeof(BF_BitstreamElement));
   /* assert( newPH->part->element ); */
   newPH->part->nrEntries = 0;
   return newPH;
