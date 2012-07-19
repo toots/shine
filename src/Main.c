@@ -59,7 +59,6 @@ static void print_usage()
   printf(" -b <bitrate>  set the bitrate [32-320], default 128kbit\n");
   printf(" -c            set copyright flag, default off\n");
   printf(" -q            quiet mode\n");
-  printf("\n");
 }
 
 /*

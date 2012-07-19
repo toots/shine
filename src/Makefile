@@ -2,16 +2,13 @@
 # Shine_Fixed GENERIC PLATFORM GCC port Makefile
 #
 
-XPREFIX=
-CXX = $(XPREFIX)g++
-CC = $(XPREFIX)gcc
-STRIP = $(XPREFIX)strip
-AR = $(XPREFIX)ar
-CFLAGS = -fno-exceptions -Wall -O2 -fsigned-char -m32
+CC = gcc
+STRIP = strip
+AR = ar
+CFLAGS = -fno-exceptions -g -Wall -O2 -fsigned-char -m32
 INCLUDE = -I.
 LIBS = -lm
 LIBDIRS =
-
 
 APPNAME = shineenc
 STNAME = libshine-fxp.la

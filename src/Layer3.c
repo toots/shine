@@ -16,8 +16,8 @@
 static void update_status(int frames_processed, config_t *config)
 {
   printf("\015[Frame %6d of %6ld] (%2.2f%%)",
-            frames_processed,config->mpeg.total_frames,
-            (double)((double)frames_processed/config->mpeg.total_frames)*100);
+         frames_processed,config->mpeg.total_frames,
+         (double)((double)frames_processed/config->mpeg.total_frames)*100);
   fflush(stdout);
 }
 #else
@@ -25,8 +25,8 @@ static void update_status(int frames_processed, config_t *config)
 #endif
 
 /* Set default values for important vars */
-void L3_set_config_mpeg_defaults(mpeg_t *mpeg) {
-
+void L3_set_config_mpeg_defaults(mpeg_t *mpeg)
+{
   mpeg->type = 1;
   mpeg->layr = 2;
   mpeg->mode = 2;
@@ -38,9 +38,7 @@ void L3_set_config_mpeg_defaults(mpeg_t *mpeg) {
   mpeg->mode_ext  = 0;
   mpeg->copyright = 0;
   mpeg->original  = 1;
-
 }
-
 
 int L3_find_samplerate_index(long freq)
 {
@@ -53,7 +51,6 @@ int L3_find_samplerate_index(long freq)
   return -1; /* error - not a valid samplerate for encoder */
 }
 
-
 int L3_find_bitrate_index(int bitr)
 {
   static long mpeg1[15] = {0,32,40,48,56,64,80,96,112,128,160,192,224,256,320};
@@ -65,13 +62,6 @@ int L3_find_bitrate_index(int bitr)
   return -1; /* error - not a valid samplerate for encoder */
 }
 
-
-
-
-/*
- * L3_compress:
- * ------------
- */
 void L3_compress(config_t *config)
 {
   int             frames_processed;
