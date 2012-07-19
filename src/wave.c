@@ -30,7 +30,6 @@ void wave_close(config_t *config)
 void wave_open(config_t *config)
 {
   static char *channel_mappings[] = {NULL,"mono","stereo"};
-  int i=0;
 
   /* Wave file headers can vary from this, but we're only intereseted in this format */
   struct wave_header
@@ -65,9 +64,6 @@ void wave_open(config_t *config)
   if (header.channels > 2)                 error("More than 2 channels");
   if (header.bit_samp != 16)               error("Not 16 bit");
   if (strncmp(header.data,"data", 4) != 0) error("Can't find data chunk");
-  i = 0;
-
-
 
   config->wave.type          = WAVE_RIFF_PCM;
   config->wave.channels      = header.channels;
@@ -76,9 +72,10 @@ void wave_open(config_t *config)
   config->wave.total_samples = header.length / header.byte_samp;
   config->wave.length        = header.length / header.byte_rate;
 
-  printf("%s, %s %ldHz %dbit, Length: %2ld:%2ld:%2ld\n",
-          "WAV PCM DATA",channel_mappings[header.channels],header.samp_rate,header.bit_samp,
-          config->wave.length/3600,(config->wave.length/60)%60,config->wave.length%60);
+  if (!config->quiet)
+    printf("%s, %s %ldHz %dbit, Length: %2ld:%2ld:%2ld\n",
+           "WAV PCM DATA", channel_mappings[header.channels], header.samp_rate, header.bit_samp,
+           config->wave.length/3600, (config->wave.length/60)%60, config->wave.length%60);
 }
 
 /*

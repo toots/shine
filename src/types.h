@@ -40,7 +40,7 @@ typedef struct {
     FILE *file;
     int  type;
     int  channels;      /* + */
-    int  bits; 
+    int  bits;
     long samplerate;    /* + */
     long total_samples; /* + */
     long length;
@@ -48,7 +48,7 @@ typedef struct {
 
 
 
-/* In the mpeg_t struct below, values marked with a '+' 
+/* In the mpeg_t struct below, values marked with a '+'
    actually control something the calling app might want
    to change.  The rest are internal values.  See set_defaults()
    in shineenc Main.c for example init.
@@ -59,7 +59,7 @@ typedef struct {
 typedef struct {
     FILE *file;
     int  type;
-    int  layr;      
+    int  layr;
     int  mode;      /* + */ /* Stereo mode */
     int  bitr;      /* + */ /* Must conform to known bitrate - see Main.c */
     int  psyc;      /* + */ /* Which psy model - see Main.c */
@@ -80,23 +80,23 @@ typedef struct {
 
 
 typedef struct {
-    time_t start_time;
+  time_t start_time;
 
-    char* infile;   /* For calling app's convenience */
-    wave_t wave;
+  char* infile;   /* For calling app's convenience */
+  wave_t wave;
 
-    char* outfile;  /* For calling app's convenience */
-    mpeg_t mpeg;
-    
-    /* These two app-supplied routines are used to read and write data */
-    int  (*get_pcm)(short buffer[2][samp_per_frame], void *config_in);
-    int  (*write_mp3)(long bytes, void *buffer, void *config_in); 
-    
-    void *user; /* For the calling app's convenience */
-    
+  char* outfile;  /* For calling app's convenience */
+  mpeg_t mpeg;
+
+  /* These two app-supplied routines are used to read and write data */
+  int  (*get_pcm)(short buffer[2][samp_per_frame], void *config_in);
+  int  (*write_mp3)(long bytes, void *buffer, void *config_in);
+
+  /* Don't display anything on stdout */
+  int quiet;
+
+  void *user; /* For the calling app's convenience */
 } config_t;
-
-
 
 #ifndef bool
 typedef unsigned char bool;

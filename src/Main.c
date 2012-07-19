@@ -38,8 +38,13 @@ int write_mp3(long bytes, void *buffer, void *config_in) {
  */
 void error(char *s)
 {
-  printf("[ERROR] %s\n",s);
+  fprintf(stderr, "[ERROR] %s\n",s);
   exit(1);
+}
+
+static void print_name()
+{
+  printf("shineenc (Liquidsoap version)\n");
 }
 
 /*
@@ -48,10 +53,12 @@ void error(char *s)
  */
 static void print_usage()
 {
-  printf("USAGE   :  shineenc [options] <infile> <outfile>\n");
-  printf("options : -h            this help message\n");
-  printf("          -b <bitrate>  set the bitrate [32-320], default 128kbit\n");
-  printf("          -c            set copyright flag, default off\n");
+  printf("Usage: shineenc [options] <infile> <outfile>\n\n");
+  printf("Options:\n");
+  printf(" -h            this help message\n");
+  printf(" -b <bitrate>  set the bitrate [32-320], default 128kbit\n");
+  printf(" -c            set copyright flag, default off\n");
+  printf(" -q            quiet mode\n");
   printf("\n");
 }
 
@@ -84,6 +91,10 @@ static bool parse_command(int argc, char** argv, config_t *config)
 
       case 'c':
         config->mpeg.copyright = 1;
+        break;
+
+      case 'q':
+        config->quiet = 1;
         break;
 
       case 'h':
@@ -133,8 +144,8 @@ int main(int argc, char **argv)
   config_t config;
   time_t end_time;
 
+  config.quiet = 0;
   time(&config.start_time);
-  printf("shineenc - Liquidsoap version\n");
 
   /* Set the default MPEG encoding paramters - basically init the struct */
   set_defaults(&config);
@@ -144,6 +155,9 @@ int main(int argc, char **argv)
       print_usage();
       exit(1);
     }
+  config.quiet = config.quiet || !strcmp(config.outfile, "-");
+
+  if (!config.quiet) print_name();
 
   /* Open the input file and fill the config wave_t header */
   wave_open(&config);
@@ -163,12 +177,12 @@ int main(int argc, char **argv)
     config.mpeg.file = fopen(config.outfile, "wb");
   if (!config.mpeg.file)
     {
-      printf("Could not create \"%s\".\n", config.outfile);
+      fprintf(stderr, "Could not create \"%s\".\n", config.outfile);
       exit(1);
     }
 
   /* Print some info about the file about to be created (optional) */
-  check_config(&config);
+  if (!config.quiet) check_config(&config);
 
   /* set up the read PCM stream and write MP3 stream functions */
   config.get_pcm = &wave_get;
@@ -185,7 +199,7 @@ int main(int argc, char **argv)
 
   time(&end_time);
   end_time -= config.start_time;
-  printf(" Finished in %2ld:%2ld:%2ld\n",
-         end_time/3600,(end_time/60)%60,end_time%60);
+  if (!config.quiet)
+    printf(" Finished in %2ld:%2ld:%2ld\n", end_time/3600, (end_time/60)%60, end_time%60);
   exit(0);
 }
