@@ -14,9 +14,12 @@
  *
  */
 
-#include "g_includes.h"
-#include "wave.h"
+/* Required headers from libshine. */
+#include "types.h"
 #include "layer3.h"
+
+/* Local header */
+#include "wave.h"
 
 
 /* RISC OS specifics */

@@ -5,8 +5,11 @@
  * note. both Acorn/RISC OS and PC/DOS are little endian.
  */
 
+/* Required headers from libshine. */
+#include "types.h"
+
+/* Local header */
 #include <stdint.h>
-#include "g_includes.h"
 #include "wave.h"
 
 /* RISC OS specifics */

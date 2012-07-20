@@ -15,6 +15,9 @@
 
 /* #define DEBUG if you want the library to dump info to stdout */
 
+#define false 0
+#define true 1
+
 #define samp_per_frame  1152
 #define samp_per_frame2  576
 

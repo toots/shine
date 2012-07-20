@@ -1,9 +1,4 @@
 #include "types.h"
-#include <stdio.h>
-#include <stdlib.h>
-
-#define false 0
-#define true 1
 
 #ifdef __INLINE_ASM
 
