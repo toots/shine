@@ -13,3 +13,4 @@ bin_PROGRAMS     = shineenc
 shineenc_SOURCES = src/bin/main.c src/bin/wave.c
 shineenc_LDADD   = libshine.la
 shineenc_CFLAGS  = -Isrc/lib
+shineenc_LDFLAGS = -lm
