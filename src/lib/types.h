@@ -44,7 +44,6 @@
 /* This is the struct used to tell the encoder about the input PCM */
 
 typedef struct {
-    FILE *file;
     int  type;
     int  channels;      /* + */
     int  bits;
@@ -64,7 +63,6 @@ typedef struct {
 /* This is the struct the encoder uses to hold informationn about the output MP3 */
 
 typedef struct {
-    FILE *file;
     int  type;
     int  layr;
     int  mode;      /* + */ /* Stereo mode */
@@ -86,20 +84,20 @@ typedef struct {
 } mpeg_t;
 
 typedef struct {
-  time_t start_time;
-
-  char* infile;   /* For calling app's convenience */
   wave_t wave;
-
-  char* outfile;  /* For calling app's convenience */
   mpeg_t mpeg;
+  /* TODO: move this to callback_t. */
+  int  (*write_mp3)(long bytes, void *buffer, void *config_in);
+} config_t;
+
+typedef struct {
+  config_t config;
 
   /* These two app-supplied routines are used to read and write data */
   int  (*get_pcm)(short buffer[2][samp_per_frame], void *config_in);
-  int  (*write_mp3)(long bytes, void *buffer, void *config_in);
 
   void *user; /* For the calling app's convenience */
-} config_t;
+} callback_t;
 
 #ifndef bool
 typedef unsigned char bool;

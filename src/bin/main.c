@@ -29,12 +29,13 @@
 extern int wave_get(short buffer[2][samp_per_frame], void *config_in);
 
 /* Some global vars. */
+char *infname, *outfname;
+FILE *infile, *outfile;
 int quiet = false;
 
 /* Routine we tell libshine-fxp to call to write out the MP3 file */
-int write_mp3(long bytes, void *buffer, void *config_in) {
-    config_t *config=(config_t *)config_in;
-    return fwrite(buffer, sizeof(unsigned char), bytes, config->mpeg.file);
+int write_mp3(long bytes, void *buffer, void *config) {
+    return fwrite(buffer, sizeof(unsigned char), bytes, outfile);
 }
 
 
@@ -108,8 +109,8 @@ static bool parse_command(int argc, char** argv, config_t *config)
       }
 
   if (argc - i != 2) return false;
-  config->infile = argv[i++];
-  config->outfile = argv[i];
+  infname = argv[i++];
+  outfname = argv[i];
   return true;
 }
 
@@ -137,7 +138,7 @@ static void check_config(config_t *config)
          ((config->mpeg.original)?"Original":""),
          ((config->mpeg.copyright)?"(C)":""));
 
-  printf("Encoding \"%s\" to \"%s\"\n", config->infile, config->outfile);
+  printf("Encoding \"%s\" to \"%s\"\n", infname, outfname);
 }
 
 /*
@@ -146,63 +147,64 @@ static void check_config(config_t *config)
  */
 int main(int argc, char **argv)
 {
-  config_t config;
-  time_t end_time;
+  callback_t callback;
+  time_t start_time, end_time;
 
-  time(&config.start_time);
+  time(&start_time);
 
   /* Set the default MPEG encoding paramters - basically init the struct */
-  set_defaults(&config);
+  set_defaults(&callback.config);
 
-  if (!parse_command(argc, argv, &config))
+  if (!parse_command(argc, argv, &callback.config))
     {
       print_usage();
       exit(1);
     }
-  quiet = quiet || !strcmp(config.outfile, "-");
+  quiet = quiet || !strcmp(outfname, "-");
 
   if (!quiet) print_name();
 
   /* Open the input file and fill the config wave_t header */
-  wave_open(&config, quiet);
+  infile = callback.user = wave_open(infname, &callback.config, quiet);
 
   /* Set the MP3 sample rate index plus see if it's valid */
-  config.mpeg.samplerate_index = L3_find_samplerate_index(config.wave.samplerate);
-  if (config.mpeg.samplerate_index < 0) error("invalid samplerate");
+  callback.config.mpeg.samplerate_index = L3_find_samplerate_index(callback.config.wave.samplerate);
+  if (callback.config.mpeg.samplerate_index < 0) error("invalid samplerate");
 
   /* Set the MP3 bit rate index plus see if it's valid */
-  config.mpeg.bitrate_index = L3_find_bitrate_index(config.mpeg.bitr);
-  if (config.mpeg.bitrate_index < 0) error("invalid bitrate");
+  callback.config.mpeg.bitrate_index = L3_find_bitrate_index(callback.config.mpeg.bitr);
+  if (callback.config.mpeg.bitrate_index < 0) error("invalid bitrate");
 
   /* open the output file */
-  if (!strcmp(config.outfile, "-"))
-    config.mpeg.file = stdout;
+  if (!strcmp(outfname, "-"))
+    outfile = stdout;
   else
-    config.mpeg.file = fopen(config.outfile, "wb");
-  if (!config.mpeg.file)
+    outfile = fopen(outfname, "wb");
+  if (!outfile)
     {
-      fprintf(stderr, "Could not create \"%s\".\n", config.outfile);
+      fprintf(stderr, "Could not create \"%s\".\n", outfname);
       exit(1);
     }
 
   /* Print some info about the file about to be created (optional) */
-  if (!quiet) check_config(&config);
+  if (!quiet) check_config(&callback.config);
 
   /* set up the read PCM stream and write MP3 stream functions */
-  config.get_pcm = &wave_get;
-  config.write_mp3 = &write_mp3;
+  callback.get_pcm = &wave_get;
+  /* TODO: move that to callback.. */
+  callback.config.write_mp3 = &write_mp3;
 
   /* All the magic happens here */
-  L3_compress(&config);
+  L3_compress(&callback, outfname);
 
   /* Close the wave file (using the wav reader) */
-  wave_close(&config);
+  wave_close(infile);
 
   /* Close the MP3 file */
-  fclose(config.mpeg.file);
+  fclose(outfile);
 
   time(&end_time);
-  end_time -= config.start_time;
+  end_time -= start_time;
   if (!quiet)
     printf(" Finished in %2ld:%2ld:%2ld\n", end_time/3600, (end_time/60)%60, end_time%60);
   exit(0);

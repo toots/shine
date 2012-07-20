@@ -20,9 +20,9 @@
  * wave_close:
  * -----------
  */
-void wave_close(config_t *config)
+void wave_close(FILE *file)
 {
-  fclose(config->wave.file);
+  fclose(file);
 }
 
 /*
@@ -31,9 +31,10 @@ void wave_close(config_t *config)
  * Opens and verifies the header of the Input Wave file. The file pointer is
  * left pointing to the start of the samples.
  */
-void wave_open(config_t *config, int quiet)
+FILE *wave_open(const char *fname, config_t *config, int quiet)
 {
   static char *channel_mappings[] = {NULL,"mono","stereo"};
+  FILE *file;
 
   /* Wave file headers can vary from this, but we're only intereseted in this format */
   struct wave_header
@@ -53,14 +54,14 @@ void wave_open(config_t *config, int quiet)
     uint32_t length;     /* data length (bytes) */
   } header;
 
-  if (!strcmp(config->infile, "-"))
-    config->wave.file = stdin;
+  if (!strcmp(fname, "-"))
+    file = stdin;
   else
-    config->wave.file = fopen(config->infile, "rb");
+    file = fopen(fname, "rb");
 
-  if (!config->wave.file) error("Unable to open file");
+  if (!file) error("Unable to open file");
 
-  if (fread(&header, sizeof(header), 1, config->wave.file) != 1) error("Invalid Header");
+  if (fread(&header, sizeof(header), 1, file) != 1) error("Invalid Header");
   if (strncmp(header.riff,"RIFF", 4) != 0) error("Not a MS-RIFF file");
   if (strncmp(header.wave,"WAVE", 4) != 0) error("Not a WAVE audio");
   if (strncmp(header.fmt, "fmt ", 4) != 0) error("Can't find format chunk");
@@ -80,20 +81,22 @@ void wave_open(config_t *config, int quiet)
     printf("%s, %s %ldHz %ldbit, Length: %2ld:%2ld:%2ld\n",
            "WAV PCM DATA", channel_mappings[header.channels], (long)header.samp_rate, (long)header.bit_samp,
            (long)config->wave.length/3600, (long)(config->wave.length/60)%60, (long)config->wave.length%60);
+
+  return file;
 }
 
 /*
  * read_samples:
  * -------------
  */
-int read_samples(short *sample_buffer, int frame_size, config_t *config)
+int read_samples(short *sample_buffer, int frame_size, callback_t *callback)
 {
   int samples_read=0;
 
-  switch(config->wave.type)
+  switch(callback->config.wave.type)
   {
     case WAVE_RIFF_PCM :
-      samples_read = fread(sample_buffer,sizeof(short),frame_size, config->wave.file);
+      samples_read = fread(sample_buffer,sizeof(short),frame_size, callback->user);
 
       if(samples_read<frame_size && samples_read>0) /* Pad sample with zero's */
         while(samples_read<frame_size) sample_buffer[samples_read++] = 0;
@@ -111,17 +114,17 @@ int read_samples(short *sample_buffer, int frame_size, config_t *config)
  * Expects an interleaved 16bit pcm stream from read_samples, which it
  * de-interleaves into buffer.
  */
-int wave_get(short buffer[2][samp_per_frame], void *config_in)
+int wave_get(short buffer[2][samp_per_frame], void *callback_in)
 {
   static short temp_buf[2304];
   int          samples_read;
   int          j;
-  config_t *config=config_in;
+  callback_t *callback=callback_in;
 
-  switch(config->mpeg.mode)
+  switch(callback->config.mpeg.mode)
   {
     case MODE_MONO  :
-      samples_read = read_samples(temp_buf,(int)config->mpeg.samples_per_frame, config);
+      samples_read = read_samples(temp_buf,(int)callback->config.mpeg.samples_per_frame, callback);
       for(j=0;j<samp_per_frame;j++)
       {
         buffer[0][j] = temp_buf[j];
@@ -130,7 +133,7 @@ int wave_get(short buffer[2][samp_per_frame], void *config_in)
       break;
 
     default: /* stereo */
-      samples_read = read_samples(temp_buf,(int)config->mpeg.samples_per_frame<<1, config);
+      samples_read = read_samples(temp_buf,(int)callback->config.mpeg.samples_per_frame<<1, callback);
       for(j=0;j<samp_per_frame;j++)
       {
         buffer[0][j] = temp_buf[2*j];

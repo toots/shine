@@ -62,7 +62,8 @@ int L3_find_bitrate_index(int bitr)
   return -1; /* error - not a valid samplerate for encoder */
 }
 
-void L3_compress(config_t *config)
+/* TODO: get rid of outfname! */
+void L3_compress(callback_t *callback, const char *outfname)
 {
   int             frames_processed;
   int             channel;
@@ -85,7 +86,7 @@ void L3_compress(config_t *config)
   static L3_scalefac_t   scalefactor;
   static bitstream_t     bs;
 
-  open_bit_stream_w(&bs, config->outfile, BUFFER_SIZE);
+  open_bit_stream_w(&bs, outfname, BUFFER_SIZE);
 
   memset((char *)&side_info,0,sizeof(L3_side_info_t));
 
@@ -93,24 +94,24 @@ void L3_compress(config_t *config)
   L3_mdct_initialise();
   L3_loop_initialise();
 
-  config->mpeg.samples_per_frame = samp_per_frame;
-  config->mpeg.total_frames      = config->wave.total_samples/config->mpeg.samples_per_frame;
-  config->mpeg.bits_per_slot     = 8;
+  callback->config.mpeg.samples_per_frame = samp_per_frame;
+  callback->config.mpeg.total_frames      = callback->config.wave.total_samples/callback->config.mpeg.samples_per_frame;
+  callback->config.mpeg.bits_per_slot     = 8;
   frames_processed              = 0;
-  sideinfo_len = (config->wave.channels==1) ? 168 : 288;
+  sideinfo_len = (callback->config.wave.channels==1) ? 168 : 288;
 
   /* Figure average number of 'slots' per frame. */
-  avg_slots_per_frame   = ((double)config->mpeg.samples_per_frame /
-                           ((double)config->wave.samplerate/1000)) *
-                          ((double)config->mpeg.bitr /
-                           (double)config->mpeg.bits_per_slot);
+  avg_slots_per_frame   = ((double)callback->config.mpeg.samples_per_frame /
+                           ((double)callback->config.wave.samplerate/1000)) *
+                          ((double)callback->config.mpeg.bitr /
+                           (double)callback->config.mpeg.bits_per_slot);
   whole_slots_per_frame = (int)avg_slots_per_frame;
   frac_slots_per_frame  = avg_slots_per_frame - (double)whole_slots_per_frame;
   slot_lag              = -frac_slots_per_frame;
   if(frac_slots_per_frame==0)
-    config->mpeg.padding = 0;
+    callback->config.mpeg.padding = 0;
 
-  while(config->get_pcm(buffer, config))
+  while(callback->get_pcm(buffer, callback))
   {
     update_status(++frames_processed, config);
 
@@ -122,32 +123,32 @@ void L3_compress(config_t *config)
       if(slot_lag>(frac_slots_per_frame-1.0))
       { /* No padding for this frame */
         slot_lag    -= frac_slots_per_frame;
-        config->mpeg.padding = 0;
+        callback->config.mpeg.padding = 0;
       }
       else
       { /* Padding for this frame  */
         slot_lag    += (1-frac_slots_per_frame);
-        config->mpeg.padding = 1;
+        callback->config.mpeg.padding = 1;
       }
     }
 
-    config->mpeg.bits_per_frame = 8*(whole_slots_per_frame + config->mpeg.padding);
-    mean_bits = (config->mpeg.bits_per_frame - sideinfo_len)>>1;
+    callback->config.mpeg.bits_per_frame = 8*(whole_slots_per_frame + callback->config.mpeg.padding);
+    mean_bits = (callback->config.mpeg.bits_per_frame - sideinfo_len)>>1;
 
     /* polyphase filtering */
     for(gr=0;gr<2;gr++)
-      for(channel=config->wave.channels; channel--; )
+      for(channel=callback->config.wave.channels; channel--; )
         for(i=0;i<18;i++)
           L3_window_filter_subband(&buffer_window[channel], &l3_sb_sample[channel][gr+1][i][0] ,channel);
 
     /* apply mdct to the polyphase output */
-    L3_mdct_sub(l3_sb_sample, mdct_freq, config);
+    L3_mdct_sub(l3_sb_sample, mdct_freq, &callback->config);
 
     /* bit and noise allocation */
-    L3_iteration_loop(pe,mdct_freq,&ratio,&side_info, l3_enc, mean_bits,&scalefactor, config);
+    L3_iteration_loop(pe,mdct_freq,&ratio,&side_info, l3_enc, mean_bits,&scalefactor, &callback->config);
 
     /* write the frame to the bitstream */
-    L3_format_bitstream(l3_enc,&side_info,&scalefactor, &bs,mdct_freq,NULL,0, config);
+    L3_format_bitstream(l3_enc,&side_info,&scalefactor, &bs,mdct_freq,NULL,0, &callback->config);
 
   }
   close_bit_stream(&bs);
