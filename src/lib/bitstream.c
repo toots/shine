@@ -34,33 +34,21 @@ void empty_buffer(bitstream_t *bs, int minimum, config_t *config)
 }
 
 /* open the device to write the bit stream into it */
-void open_bit_stream_w(bs, bs_filenam, size)
-bitstream_t *bs;   /* bit stream structure */
-char *bs_filenam;       /* name of the bit stream file */
-int size;               /* size of the buffer */
+void open_bit_stream(bitstream_t *bs, const char *bs_filenam, int size)
 {
-/* NO LONGER DONE HERE
-    if ((bs->pt = fopen(bs_filenam, "wb")) == NULL) {
-      #ifdef DEBUG
-      printf("Could not create \"%s\".\n", bs_filenam);
-      #endif
-      exit(1);
-   }
-*/
-   bs->buf = (unsigned char *)malloc(size*sizeof(unsigned char));
-   bs->buf_size = size;
-   bs->buf_byte_idx = size-1;
-   bs->buf_bit_idx=8;
-   bs->totbit=0;
-   bs->mode = WRITE_MODE;
-   bs->eob = false;
-   bs->eobs = false;
+  bs->buf = (unsigned char *)malloc(size*sizeof(unsigned char));
+  bs->buf_size = size;
+  bs->buf_byte_idx = size-1;
+  bs->buf_bit_idx=8;
+  bs->totbit=0;
+  bs->mode = WRITE_MODE;
+  bs->eob = false;
+  bs->eobs = false;
 }
 
 /*close the device containing the bit stream */
 void close_bit_stream(bitstream_t *bs)
 {
-  /* fclose(bs->pt); */ /* NO LONGER DONE HERE */
   free(bs->buf);
 }
 

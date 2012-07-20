@@ -86,7 +86,7 @@ void L3_compress(callback_t *callback, const char *outfname)
   static L3_scalefac_t   scalefactor;
   static bitstream_t     bs;
 
-  open_bit_stream_w(&bs, outfname, BUFFER_SIZE);
+  open_bit_stream(&bs, outfname, BUFFER_SIZE);
 
   memset((char *)&side_info,0,sizeof(L3_side_info_t));
 

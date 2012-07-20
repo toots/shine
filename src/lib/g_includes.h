@@ -9,5 +9,3 @@
     #endif
 
 #endif
-
-#define close_bit_stream(a) close_bit_stream_r(a)
