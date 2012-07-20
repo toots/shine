@@ -39,7 +39,7 @@ typedef struct  bit_stream_struc {
 
 int refill_buffer(bitstream_t *bs);
 void empty_buffer(bitstream_t *bs,int minimum, config_t *config);
-void open_bit_stream(bitstream_t *bs,const char *bs_filenam,int size);
+void open_bit_stream(bitstream_t *bs,const int size);
 void close_bit_stream(bitstream_t *bs);
 void alloc_buffer(bitstream_t *bs,int size);
 void desalloc_buffer(bitstream_t *bs);

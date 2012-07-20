@@ -195,7 +195,7 @@ int main(int argc, char **argv)
   callback.config.write_mp3 = &write_mp3;
 
   /* All the magic happens here */
-  L3_compress(&callback, outfname);
+  L3_compress(&callback);
 
   /* Close the wave file (using the wav reader) */
   wave_close(infile);

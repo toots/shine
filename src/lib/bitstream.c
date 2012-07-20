@@ -34,7 +34,7 @@ void empty_buffer(bitstream_t *bs, int minimum, config_t *config)
 }
 
 /* open the device to write the bit stream into it */
-void open_bit_stream(bitstream_t *bs, const char *bs_filenam, int size)
+void open_bit_stream(bitstream_t *bs, int size)
 {
   bs->buf = (unsigned char *)malloc(size*sizeof(unsigned char));
   bs->buf_size = size;

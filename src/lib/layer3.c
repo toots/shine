@@ -62,8 +62,7 @@ int L3_find_bitrate_index(int bitr)
   return -1; /* error - not a valid samplerate for encoder */
 }
 
-/* TODO: get rid of outfname! */
-void L3_compress(callback_t *callback, const char *outfname)
+void L3_compress(callback_t *callback)
 {
   int             frames_processed;
   int             channel;
@@ -86,7 +85,7 @@ void L3_compress(callback_t *callback, const char *outfname)
   static L3_scalefac_t   scalefactor;
   static bitstream_t     bs;
 
-  open_bit_stream(&bs, outfname, BUFFER_SIZE);
+  open_bit_stream(&bs, BUFFER_SIZE);
 
   memset((char *)&side_info,0,sizeof(L3_side_info_t));
 

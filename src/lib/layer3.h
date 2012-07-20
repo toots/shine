@@ -54,7 +54,6 @@ void L3_set_config_mpeg_defaults(mpeg_t *mpeg);
 int L3_find_bitrate_index(int bitr);
 int L3_find_samplerate_index(long freq);
 
-/* TODO: get rid of outfname! */
-void L3_compress(callback_t *callback, const char *outfname);
+void L3_compress(callback_t *callback);
 
 #endif
