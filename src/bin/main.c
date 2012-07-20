@@ -28,6 +28,9 @@
 /* The routine we tell libshine-fxp to use to read PCM data */
 extern int wave_get(short buffer[2][samp_per_frame], void *config_in);
 
+/* Some global vars. */
+int quiet = false;
+
 /* Routine we tell libshine-fxp to call to write out the MP3 file */
 int write_mp3(long bytes, void *buffer, void *config_in) {
     config_t *config=(config_t *)config_in;
@@ -96,7 +99,7 @@ static bool parse_command(int argc, char** argv, config_t *config)
         break;
 
       case 'q':
-        config->quiet = 1;
+        quiet = true;
         break;
 
       case 'h':
@@ -146,7 +149,6 @@ int main(int argc, char **argv)
   config_t config;
   time_t end_time;
 
-  config.quiet = 0;
   time(&config.start_time);
 
   /* Set the default MPEG encoding paramters - basically init the struct */
@@ -157,12 +159,12 @@ int main(int argc, char **argv)
       print_usage();
       exit(1);
     }
-  config.quiet = config.quiet || !strcmp(config.outfile, "-");
+  quiet = quiet || !strcmp(config.outfile, "-");
 
-  if (!config.quiet) print_name();
+  if (!quiet) print_name();
 
   /* Open the input file and fill the config wave_t header */
-  wave_open(&config);
+  wave_open(&config, quiet);
 
   /* Set the MP3 sample rate index plus see if it's valid */
   config.mpeg.samplerate_index = L3_find_samplerate_index(config.wave.samplerate);
@@ -184,7 +186,7 @@ int main(int argc, char **argv)
     }
 
   /* Print some info about the file about to be created (optional) */
-  if (!config.quiet) check_config(&config);
+  if (!quiet) check_config(&config);
 
   /* set up the read PCM stream and write MP3 stream functions */
   config.get_pcm = &wave_get;
@@ -201,7 +203,7 @@ int main(int argc, char **argv)
 
   time(&end_time);
   end_time -= config.start_time;
-  if (!config.quiet)
+  if (!quiet)
     printf(" Finished in %2ld:%2ld:%2ld\n", end_time/3600, (end_time/60)%60, end_time%60);
   exit(0);
 }

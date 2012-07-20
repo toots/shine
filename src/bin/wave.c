@@ -31,7 +31,7 @@ void wave_close(config_t *config)
  * Opens and verifies the header of the Input Wave file. The file pointer is
  * left pointing to the start of the samples.
  */
-void wave_open(config_t *config)
+void wave_open(config_t *config, int quiet)
 {
   static char *channel_mappings[] = {NULL,"mono","stereo"};
 
@@ -76,7 +76,7 @@ void wave_open(config_t *config)
   config->wave.total_samples = header.length / header.byte_samp;
   config->wave.length        = header.length / header.byte_rate;
 
-  if (!config->quiet)
+  if (!quiet)
     printf("%s, %s %ldHz %ldbit, Length: %2ld:%2ld:%2ld\n",
            "WAV PCM DATA", channel_mappings[header.channels], (long)header.samp_rate, (long)header.bit_samp,
            (long)config->wave.length/3600, (long)(config->wave.length/60)%60, (long)config->wave.length%60);

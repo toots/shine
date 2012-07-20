@@ -85,7 +85,6 @@ typedef struct {
     int original;   /* + */
 } mpeg_t;
 
-
 typedef struct {
   time_t start_time;
 
@@ -98,9 +97,6 @@ typedef struct {
   /* These two app-supplied routines are used to read and write data */
   int  (*get_pcm)(short buffer[2][samp_per_frame], void *config_in);
   int  (*write_mp3)(long bytes, void *buffer, void *config_in);
-
-  /* Don't display anything on stdout */
-  int quiet;
 
   void *user; /* For the calling app's convenience */
 } config_t;
