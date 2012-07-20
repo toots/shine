@@ -6,7 +6,11 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+
+#if !defined(__APPLE__)
 #include <malloc.h>
+#endif
+
 #include <math.h>
 
 /* #define DEBUG if you want the library to dump info to stdout */
