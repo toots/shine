@@ -74,7 +74,6 @@ FILE *wave_open(const char *fname, config_t *config, int quiet)
   config->wave.channels      = header.channels;
   config->wave.samplerate    = header.samp_rate;
   config->wave.bits          = header.bit_samp;
-  config->wave.total_samples = header.length / header.byte_samp;
   config->wave.length        = header.length / header.byte_rate;
 
   if (!quiet)

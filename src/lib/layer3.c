@@ -8,22 +8,6 @@
 #include "bitstream.h"
 #include "l3bitstream.h"
 
-/*
- * update_status:
- * --------------
- */
- #ifdef DEBUG
-static void update_status(int frames_processed, config_t *config)
-{
-  printf("\015[Frame %6d of %6ld] (%2.2f%%)",
-         frames_processed,config->mpeg.total_frames,
-         (double)((double)frames_processed/config->mpeg.total_frames)*100);
-  fflush(stdout);
-}
-#else
-#define update_status(a,b)
-#endif
-
 /* Set default values for important vars */
 void L3_set_config_mpeg_defaults(mpeg_t *mpeg)
 {
@@ -64,7 +48,6 @@ int L3_find_bitrate_index(int bitr)
 
 void L3_compress(callback_t *callback)
 {
-  int             frames_processed;
   int             channel;
   int             i;
   int             gr;
@@ -94,9 +77,7 @@ void L3_compress(callback_t *callback)
   L3_loop_initialise();
 
   callback->config.mpeg.samples_per_frame = samp_per_frame;
-  callback->config.mpeg.total_frames      = callback->config.wave.total_samples/callback->config.mpeg.samples_per_frame;
   callback->config.mpeg.bits_per_slot     = 8;
-  frames_processed              = 0;
   sideinfo_len = (callback->config.wave.channels==1) ? 168 : 288;
 
   /* Figure average number of 'slots' per frame. */
@@ -112,8 +93,6 @@ void L3_compress(callback_t *callback)
 
   while(callback->get_pcm(buffer, callback))
   {
-    update_status(++frames_processed, config);
-
     buffer_window[0] = buffer[0];
     buffer_window[1] = buffer[1];
 

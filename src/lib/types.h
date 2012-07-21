@@ -48,7 +48,6 @@ typedef struct {
     int  channels;      /* + */
     int  bits;
     long samplerate;    /* + */
-    long total_samples; /* + */
     long length;
 } wave_t;
 
@@ -73,7 +72,6 @@ typedef struct {
     long samples_per_frame;
     long bits_per_frame;
     long bits_per_slot;
-    long total_frames;
     int  bitrate_index;     /* + */ /* See Main.c and Layer3.c */
     int  samplerate_index;  /* + */ /* See Main.c and Layer3.c */
     int crc;
