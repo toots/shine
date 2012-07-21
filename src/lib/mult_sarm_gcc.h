@@ -8,16 +8,18 @@
 
 */
 
+#include <stdint.h>
+
 /* Fractional multiply */
-static inline long mul(long x,long y) {
-    register long result;
+static inline int32_t mul(int32_t x,int32_t y) {
+    register int32_t result;
     asm ("smull r3, %0, %2, %1" : "=r" (result) : "r" (x), "r" (y) : "r3" );
     return result;
 }
 
 /* Fractional multiply with single bit left shift. */
-static inline long muls(long x, long y) {
-    long result;
+static inline int32_t muls(int32_t x, int32_t y) {
+    int32_t result;
     asm (
         "smull r3, %0, %2, %1\n\t"
         "movs r3, r3, lsl #1\n\t"
@@ -27,8 +29,8 @@ static inline long muls(long x, long y) {
     return result;
 }
 
-static inline long mulr(long x, long y) {
-    long result;
+static inline int32_t mulr(int32_t x, int32_t y) {
+    int32_t result;
     asm (
         "smull r3, %0, %2, %1\n\t"
         "adds r3, r3, #0x80000000\n\t"
@@ -38,8 +40,8 @@ static inline long mulr(long x, long y) {
     return result;
 }
 
-static inline long mulsr(long x, long y) {
-    long result;
+static inline int32_t mulsr(int32_t x, int32_t y) {
+    int32_t result;
     asm (
         "mov r12, %2\n\t"
         "smull r3, r0, %1, r12\n\t"
