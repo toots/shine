@@ -5,6 +5,7 @@
 #include "tables.h"
 #include "l3subband.h"
 
+static int off[2] = {0,0};
 static long fl[SBLIMIT][64];
 static long x[2][HAN_SIZE];
 static long z[2][HAN_SIZE];
@@ -63,7 +64,6 @@ void L3_window_filter_subband(short **buffer, long s[SBLIMIT] , int k)
 {
   long y[64];
   int i,j;
-  int off[2] = {0,0};
 
   /* replace 32 oldest samples with 32 new samples */
   for (i=31;i>=0;i--)

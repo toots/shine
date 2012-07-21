@@ -149,6 +149,11 @@ void L3_compress(callback_t *callback)
     /* write the frame to the bitstream */
     L3_format_bitstream(l3_enc,&side_info,&scalefactor, &bs,mdct_freq,NULL,0, &callback->config);
 
+    /* Write data to disk. */
+    if (bs.data_position)
+      callback->write_mp3(sizeof(unsigned char)*bs.data_position, bs.data, &callback->config);
+    
+    bs.data_position = 0;
   }
   close_bit_stream(&bs);
 }

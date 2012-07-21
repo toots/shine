@@ -86,8 +86,6 @@ typedef struct {
 typedef struct {
   wave_t wave;
   mpeg_t mpeg;
-  /* TODO: move this to callback_t. */
-  int  (*write_mp3)(long bytes, void *buffer, void *config_in);
 } config_t;
 
 typedef struct {
@@ -95,6 +93,7 @@ typedef struct {
 
   /* These two app-supplied routines are used to read and write data */
   int  (*get_pcm)(short buffer[2][samp_per_frame], void *config_in);
+  int  (*write_mp3)(long bytes, void *buffer, void *config_in);
 
   void *user; /* For the calling app's convenience */
 } callback_t;

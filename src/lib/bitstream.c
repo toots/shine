@@ -17,16 +17,20 @@
  */
 void empty_buffer(bitstream_t *bs, int minimum, config_t *config)
 {
-  register int i;
+  int total = bs->buf_size-minimum;
+  int i;
 
-  for (i=bs->buf_size-1;i>=minimum;i--)
-    config->write_mp3(sizeof(unsigned char), &bs->buf[i], config);
+  if (bs->data_size-bs->data_position < total) {
+    bs->data = realloc(bs->data, sizeof(unsigned char)*(total+bs->data_position));
+    bs->data_size = total+bs->data_position; 
+  }
+ 
+  for (i=minimum;i<bs->buf_size;i++)
+    bs->data[bs->data_position+bs->buf_size-1-i] = bs->buf[i];
 
-//  fwrite(&bs->buf[i], sizeof(unsigned char), 1, bs->pt);
+  bs->data_position += total; 
 
-/*  fflush(bs->pt);*/ /* NEW SS to assist in debugging*/
-
-  for (i=minimum-1; i>=0; i--)
+  for (i=0;i<minimum; i++)
     bs->buf[bs->buf_size - minimum + i] = bs->buf[i];
 
   bs->buf_byte_idx = bs->buf_size -1 - minimum;
@@ -36,6 +40,9 @@ void empty_buffer(bitstream_t *bs, int minimum, config_t *config)
 /* open the device to write the bit stream into it */
 void open_bit_stream(bitstream_t *bs, int size)
 {
+  bs->data = NULL;
+  bs->data_size = 0;
+  bs->data_position = 0;
   bs->buf = (unsigned char *)malloc(size*sizeof(unsigned char));
   bs->buf_size = size;
   bs->buf_byte_idx = size-1;
@@ -49,6 +56,7 @@ void open_bit_stream(bitstream_t *bs, int size)
 /*close the device containing the bit stream */
 void close_bit_stream(bitstream_t *bs)
 {
+  if (bs->data) free(bs->data);
   free(bs->buf);
 }
 

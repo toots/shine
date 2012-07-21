@@ -192,7 +192,7 @@ int main(int argc, char **argv)
   /* set up the read PCM stream and write MP3 stream functions */
   callback.get_pcm = &wave_get;
   /* TODO: move that to callback.. */
-  callback.config.write_mp3 = &write_mp3;
+  callback.write_mp3 = &write_mp3;
 
   /* All the magic happens here */
   L3_compress(&callback);

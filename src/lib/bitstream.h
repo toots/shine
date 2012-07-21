@@ -2,7 +2,9 @@
 #define BITSTREAM_H
 
 typedef struct  bit_stream_struc {
-    FILE        *pt;            /* pointer to bit stream device */
+    unsigned char *data;        /* Processed data */
+    int         data_size;      /* Total data size */
+    int         data_position;  /* Data position */
     unsigned char *buf;         /* bit stream buffer */
     int         buf_size;       /* size of buffer (in number of bytes) */
     long        totbit;         /* bit counter of bit stream */
