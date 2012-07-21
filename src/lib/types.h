@@ -1,37 +1,14 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#define WAVE_RIFF_PCM 0
+#define WAVE_PCM_LOHI 1
+#define WAVE_PCM_HILO 2
+#define WAVE_PCM_AIFF 3
 
-#include <math.h>
-
-#include "bitstream.h"
-
-/* #define DEBUG if you want the library to dump info to stdout */
-
-#define false 0
-#define true 1
+#define MODE_MONO     3
 
 #define samp_per_frame  1152
-#define samp_per_frame2  576
-
-#define PI          3.14159265358979
-#define PI4         0.78539816339745
-#define PI12        0.26179938779915
-#define PI36        0.087266462599717
-#define PI64        0.049087385212
-#define SQRT2       1.41421356237
-#define LN2         0.69314718
-#define LN_TO_LOG10 0.2302585093
-#define BLKSIZE     1024
-#define HAN_SIZE    512
-#define SCALE_BLOCK 12
-#define SCALE_RANGE 64
-#define SCALE       32768
-#define SBLIMIT     32
-
 
 /* In the wave_t struct below, values marked with a '+' are necessary.
    Everything else is optional and for the calling apps read
@@ -46,8 +23,6 @@ typedef struct {
     long samplerate;    /* + */
     long length;
 } wave_t;
-
-
 
 /* In the mpeg_t struct below, values marked with a '+'
    actually control something the calling app might want
@@ -85,6 +60,7 @@ typedef struct {
   mpeg_t mpeg;
 } config_t;
 
+// TODO: remove!
 typedef struct {
   config_t config;
 
@@ -94,18 +70,5 @@ typedef struct {
 
   void *user; /* For the calling app's convenience */
 } callback_t;
-
-#ifndef bool
-typedef unsigned char bool;
-#endif
-
-#define WAVE_RIFF_PCM 0
-#define WAVE_PCM_LOHI 1
-#define WAVE_PCM_HILO 2
-#define WAVE_PCM_AIFF 3
-
-#define MODE_MONO     3
-
-void error(char* s);
 
 #endif

@@ -2,7 +2,7 @@
  * Layer3 bit reservoir: Described in C.1.5.4.2.2 of the IS
  */
 
-#include "types.h"
+#include "priv_types.h"
 #include "layer3.h"
 #include "l3loop.h"
 #include "huffman.h"

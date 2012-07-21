@@ -15,6 +15,8 @@
  */
 
 /* Global headers. */
+#include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
 /* Required headers from libshine. */
@@ -33,7 +35,7 @@ extern int wave_get(short buffer[2][samp_per_frame], void *config_in);
 /* Some global vars. */
 char *infname, *outfname;
 FILE *infile, *outfile;
-int quiet = false;
+int quiet = 0;
 
 /* Routine we tell libshine-fxp to call to write out the MP3 file */
 int write_mp3(long bytes, void *buffer, void *config) {
@@ -84,11 +86,11 @@ static void set_defaults(config_t *config)
  * parse_command line arguments
  * --------------
  */
-static bool parse_command(int argc, char** argv, config_t *config)
+static int parse_command(int argc, char** argv, config_t *config)
 {
   int i = 0;
 
-  if(argc<3) return false;
+  if(argc<3) return 0;
 
   while (argv[++i][0] == '-' && argv[i][1] != '\000' && argv[i][1] != ' ')
     switch (argv[i][1])
@@ -102,18 +104,18 @@ static bool parse_command(int argc, char** argv, config_t *config)
         break;
 
       case 'q':
-        quiet = true;
+        quiet = 1;
         break;
 
       case 'h':
       default :
-        return false;
+        return 0;
       }
 
-  if (argc - i != 2) return false;
+  if (argc - i != 2) return 0;
   infname = argv[i++];
   outfname = argv[i];
-  return true;
+  return 1;
 }
 
 
