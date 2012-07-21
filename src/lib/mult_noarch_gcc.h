@@ -1,15 +1,12 @@
 #warning NO MULT FILE FOR ARCHITECTURE - USING GENERIC MATH
 
-/*finish this later */
+#include <stdint.h>
 
-#define __s64 long long
-#define __s32 long
+#define mul(a,b)   (int32_t)  ( (     ((int64_t) a) * ((int64_t) b) ) >>32 )
 
-#define mul(a,b)  (__s32) ( ((__s64)(a) * (__s64)(b)) >>32 )
+#define muls(a,b)  (int32_t)  ( ( 2 * ((int64_t) a) * ((int64_t) b) ) >>32 )
 
-#define muls(a,b) (__s32) ( ((__s64)(a) * (__s64)(b)) >>32 )
+#define mulr(a,b)  (int32_t)  ( ( (    ((int64_t) a) * ((int64_t) b)) + 0x80000000 ) >>32 )
 
-#define mulr(a,b) (__s32) ( ( (__s64)((__s64)(a) * (__s64)(b)) +0x80000000 )>>32 )
-
-#define mulsr(a,b) (__s32) ( ( (__s64)((__s64)(a) * (__s64)(b)) +0x80000000 )>>32 )
+#define mulsr(a,b) (int32_t)  ( ( ( 2* ((int64_t) a) * ((int64_t) b)) + 0x80000000 ) >>32 )
 
