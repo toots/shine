@@ -10,6 +10,10 @@
 #include "g_includes.h"
 #include "bitstream.h"
 
+#if !defined(__APPLE__)
+#include <malloc.h>
+#endif
+
 /*
  * empty_buffer
  * ------------

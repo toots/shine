@@ -2,14 +2,8 @@
 #define TYPES_H
 
 #include <stdio.h>
-#include <time.h>
 #include <string.h>
-#include <ctype.h>
 #include <stdlib.h>
-
-#if !defined(__APPLE__)
-#include <malloc.h>
-#endif
 
 #include <math.h>
 

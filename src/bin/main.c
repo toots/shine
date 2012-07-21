@@ -14,13 +14,15 @@
  *
  */
 
+/* Global headers. */
+#include <time.h>
+
 /* Required headers from libshine. */
 #include "types.h"
 #include "layer3.h"
 
 /* Local header */
 #include "wave.h"
-
 
 /* RISC OS specifics */
 #define WAVE  0xfb1      /* Wave filetype */
