@@ -1,4 +1,5 @@
 AUTOMAKE_OPTIONS = foreign
+ACLOCAL_AMFLAGS  = -I m4
 
 lib_LTLIBRARIES      = libshine.la
 libshine_la_SOURCES  = src/lib/bitstream.c src/lib/formatbits.c src/lib/huffman.c \
