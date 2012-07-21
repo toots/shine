@@ -22,6 +22,33 @@ void L3_set_config_mpeg_defaults(mpeg_t *mpeg)
   mpeg->mode_ext  = 0;
   mpeg->copyright = 0;
   mpeg->original  = 1;
+
+  mpeg->bits_per_slot     = 8;
+  mpeg->samples_per_frame = samp_per_frame;
+}
+
+/* Compute default encoding values. */
+void L3_initialise(config_t *config)
+{
+  double avg_slots_per_frame;
+
+  L3_subband_initialise();
+  L3_mdct_initialise();
+  L3_loop_initialise();
+
+  /* Figure average number of 'slots' per frame. */
+  avg_slots_per_frame = ((double)config->mpeg.samples_per_frame /
+                        ((double)config->wave.samplerate/1000)) *
+                        ((double)config->mpeg.bitr /
+                         (double)config->mpeg.bits_per_slot);
+
+  config->mpeg.whole_slots_per_frame  = (int)avg_slots_per_frame;
+
+  config->mpeg.frac_slots_per_frame  = avg_slots_per_frame - (double)config->mpeg.whole_slots_per_frame;
+  config->mpeg.slot_lag              = -config->mpeg.frac_slots_per_frame;
+
+  if(config->mpeg.frac_slots_per_frame==0)
+    config->mpeg.padding = 0;
 }
 
 int L3_find_samplerate_index(long freq)
@@ -53,10 +80,6 @@ void L3_compress(callback_t *callback)
   int             gr;
   double          pe[2][2];
   short          *buffer_window[2];
-  double          avg_slots_per_frame;
-  double          frac_slots_per_frame;
-  long            whole_slots_per_frame;
-  double          slot_lag;
   int             mean_bits;
   int             sideinfo_len;
   static short    buffer[2][samp_per_frame];
@@ -72,45 +95,30 @@ void L3_compress(callback_t *callback)
 
   memset((char *)&side_info,0,sizeof(L3_side_info_t));
 
-  L3_subband_initialise();
-  L3_mdct_initialise();
-  L3_loop_initialise();
-
-  callback->config.mpeg.samples_per_frame = samp_per_frame;
-  callback->config.mpeg.bits_per_slot     = 8;
   sideinfo_len = (callback->config.wave.channels==1) ? 168 : 288;
 
-  /* Figure average number of 'slots' per frame. */
-  avg_slots_per_frame   = ((double)callback->config.mpeg.samples_per_frame /
-                           ((double)callback->config.wave.samplerate/1000)) *
-                          ((double)callback->config.mpeg.bitr /
-                           (double)callback->config.mpeg.bits_per_slot);
-  whole_slots_per_frame = (int)avg_slots_per_frame;
-  frac_slots_per_frame  = avg_slots_per_frame - (double)whole_slots_per_frame;
-  slot_lag              = -frac_slots_per_frame;
-  if(frac_slots_per_frame==0)
-    callback->config.mpeg.padding = 0;
+  L3_initialise(&callback->config);
 
   while(callback->get_pcm(buffer, callback))
   {
     buffer_window[0] = buffer[0];
     buffer_window[1] = buffer[1];
 
-    if(frac_slots_per_frame)
+    if(callback->config.mpeg.frac_slots_per_frame)
     {
-      if(slot_lag>(frac_slots_per_frame-1.0))
+      if(callback->config.mpeg.slot_lag>(callback->config.mpeg.frac_slots_per_frame-1.0))
       { /* No padding for this frame */
-        slot_lag    -= frac_slots_per_frame;
+        callback->config.mpeg.slot_lag    -= callback->config.mpeg.frac_slots_per_frame;
         callback->config.mpeg.padding = 0;
       }
       else
       { /* Padding for this frame  */
-        slot_lag    += (1-frac_slots_per_frame);
+        callback->config.mpeg.slot_lag    += (1-callback->config.mpeg.frac_slots_per_frame);
         callback->config.mpeg.padding = 1;
       }
     }
 
-    callback->config.mpeg.bits_per_frame = 8*(whole_slots_per_frame + callback->config.mpeg.padding);
+    callback->config.mpeg.bits_per_frame = 8*(callback->config.mpeg.whole_slots_per_frame + callback->config.mpeg.padding);
     mean_bits = (callback->config.mpeg.bits_per_frame - sideinfo_len)>>1;
 
     /* polyphase filtering */

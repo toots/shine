@@ -13,6 +13,8 @@
 
 #include <math.h>
 
+#include "bitstream.h"
+
 /* #define DEBUG if you want the library to dump info to stdout */
 
 #define false 0
@@ -62,23 +64,26 @@ typedef struct {
 /* This is the struct the encoder uses to hold informationn about the output MP3 */
 
 typedef struct {
-    int  type;
-    int  layr;
-    int  mode;      /* + */ /* Stereo mode */
-    int  bitr;      /* + */ /* Must conform to known bitrate - see Main.c */
-    int  psyc;      /* + */ /* Which psy model - see Main.c */
-    int  emph;      /* + */ /* De-emphasis */
-    int  padding;
-    long samples_per_frame;
-    long bits_per_frame;
-    long bits_per_slot;
-    int  bitrate_index;     /* + */ /* See Main.c and Layer3.c */
-    int  samplerate_index;  /* + */ /* See Main.c and Layer3.c */
-    int crc;
-    int ext;
-    int mode_ext;
-    int copyright;  /* + */
-    int original;   /* + */
+    int    type;
+    int    layr;
+    int    mode;      /* + */ /* Stereo mode */
+    int    bitr;      /* + */ /* Must conform to known bitrate - see Main.c */
+    int    psyc;      /* + */ /* Which psy model - see Main.c */
+    int    emph;      /* + */ /* De-emphasis */
+    int    padding;
+    long   samples_per_frame;
+    long   bits_per_frame;
+    long   bits_per_slot;
+    double frac_slots_per_frame;
+    double slot_lag;
+    int    whole_slots_per_frame;
+    int    bitrate_index;     /* + */ /* See Main.c and Layer3.c */
+    int    samplerate_index;  /* + */ /* See Main.c and Layer3.c */
+    int    crc;
+    int    ext;
+    int    mode_ext;
+    int    copyright;  /* + */
+    int    original;   /* + */
 } mpeg_t;
 
 typedef struct {
