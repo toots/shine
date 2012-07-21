@@ -40,7 +40,7 @@ typedef struct  bit_stream_struc {
 
 
 int refill_buffer(bitstream_t *bs);
-void empty_buffer(bitstream_t *bs,int minimum, config_t *config);
+void empty_buffer(bitstream_t *bs,int minimum);
 void open_bit_stream(bitstream_t *bs,const int size);
 void close_bit_stream(bitstream_t *bs);
 void alloc_buffer(bitstream_t *bs,int size);
@@ -50,7 +50,7 @@ unsigned int get1bit(bitstream_t *bs);
 void put1bit(bitstream_t *bs,int bit);
 unsigned long look_ahead(bitstream_t *bs,int N);
 unsigned long getbits(bitstream_t *bs,int N);
-void putbits(bitstream_t *bs,unsigned long int val, unsigned int N, config_t *config);
+void putbits(bitstream_t *bs,unsigned long int val, unsigned int N);
 void byte_ali_putbits(bitstream_t *bs,unsigned int val,int N);
 unsigned long byte_ali_getbits(bitstream_t *bs,int N);
 unsigned long sstell(bitstream_t *bs);

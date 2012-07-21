@@ -36,9 +36,9 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi , config_
  * putMyBits:
  * ----------
  */
-void putMyBits(unsigned long int val, unsigned int len, void *config)
+void putMyBits(unsigned long int val, unsigned int len)
 {
-  putbits( bs, val, len, config );
+  putbits( bs, val, len);
 }
 
 /*

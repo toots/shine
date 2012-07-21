@@ -15,7 +15,7 @@
  * ------------
  * empty the buffer to the output device when the buffer becomes full
  */
-void empty_buffer(bitstream_t *bs, int minimum, config_t *config)
+void empty_buffer(bitstream_t *bs, int minimum)
 {
   int total = bs->buf_size-minimum;
   int i;
@@ -68,7 +68,7 @@ void close_bit_stream(bitstream_t *bs)
  * val = value to write into the buffer
  * N = number of bits of val
  */
-void putbits(bitstream_t *bs, unsigned long int val, unsigned int N, config_t *config)
+void putbits(bitstream_t *bs, unsigned long int val, unsigned int N)
 {
   static int putmask[9]={0x0, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f, 0xff};
   register int j = N;
@@ -91,7 +91,7 @@ void putbits(bitstream_t *bs, unsigned long int val, unsigned int N, config_t *c
       bs->buf_bit_idx = 8;
       bs->buf_byte_idx--;
       if (bs->buf_byte_idx < 0)
-        empty_buffer(bs, MINIMUM, config);
+        empty_buffer(bs, MINIMUM);
       bs->buf[bs->buf_byte_idx] = 0;
     }
     j -= k;
