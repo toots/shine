@@ -130,7 +130,7 @@ unsigned char *L3_encode_frame(shine_global_config *config, int16_t data[2][samp
   L3_iteration_loop(config);
 
   /* write the frame to the bitstream */
-  L3_format_bitstream(config->l3_enc,&config->side_info,&config->scalefactor, &config->bs,config->mdct_freq,NULL,0, config);
+  L3_format_bitstream(config);
 
   /* Return data. */
   *written = config->bs.data_position;

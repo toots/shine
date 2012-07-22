@@ -26,8 +26,8 @@ BF_PartHolder *codedDataPH[ MAX_GRANULES ][ MAX_CHANNELS ];
 BF_PartHolder *userSpectrumPH[ MAX_GRANULES ][ MAX_CHANNELS ];
 BF_PartHolder *userFrameDataPH;
 
-static int encodeSideInfo( L3_side_info_t  *si, shine_global_config *config );
-static void encodeMainData(int l3_enc[2][2][samp_per_frame2], L3_side_info_t  *si, L3_scalefac_t   *scalefac , shine_global_config *config);
+static int encodeSideInfo( shine_global_config *config );
+static void encodeMainData( shine_global_config *config );
 static void write_ancillary_data( char *theData, int lengthInBits );
 /*static void drain_into_ancillary_data( int lengthInBits );*/
 static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi , shine_global_config *config);
@@ -53,16 +53,12 @@ void putMyBits(unsigned long int val, unsigned int len)
 */
 
 void
-L3_format_bitstream( int              l3_enc[2][2][samp_per_frame2],
-                     L3_side_info_t  *l3_side,
-                     L3_scalefac_t   *scalefac,
-                     bitstream_t *in_bs,
-                     long            (*xr)[2][samp_per_frame2],
-                     char             *ancillary,
-                     int              ancillary_bits, shine_global_config *config )
+L3_format_bitstream(shine_global_config *config)
 {
   int gr, ch, i;
-  bs = in_bs;
+  bs = &config->bs;
+  char *ancillary = NULL;
+  int  ancillary_bits = 0;
 
   if ( frameData == NULL )
     frameData = calloc( 1, sizeof(*frameData) );
@@ -91,8 +87,8 @@ L3_format_bitstream( int              l3_enc[2][2][samp_per_frame2],
   for ( gr = 0; gr < 2; gr++ )
     for ( ch =  0; ch < config->wave.channels; ch++ )
       {
-        int *pi = &l3_enc[gr][ch][0];
-        long *pr = &xr[gr][ch][0];
+        int *pi = &config->l3_enc[gr][ch][0];
+        long *pr = &config->mdct_freq[gr][ch][0];
         for ( i = 0; i < samp_per_frame2; i++, pr++, pi++ )
           {
             if ( (*pr < 0) && (*pi > 0) )
@@ -100,13 +96,10 @@ L3_format_bitstream( int              l3_enc[2][2][samp_per_frame2],
           }
       }
 
-  encodeSideInfo( l3_side, config );
-  encodeMainData( l3_enc, l3_side, scalefac , config);
+  encodeSideInfo( config );
+  encodeMainData( config );
   write_ancillary_data( ancillary, ancillary_bits );
 
-  /*if ( l3_side->resvDrain )*/
-  /*drain_into_ancillary_data( l3_side->resvDrain );*/
-  /* Put frameData together for the call to BitstreamFrame() */
   frameData->putbits     = &putMyBits;
   frameData->frameLength = config->mpeg.bits_per_frame;
   frameData->nGranules   = 2;
@@ -130,17 +123,16 @@ L3_format_bitstream( int              l3_enc[2][2][samp_per_frame2],
   BF_BitstreamFrame( frameData, frameResults);
 
   /* we set this here -- it will be tested in the next loops iteration */
-  l3_side->main_data_begin = frameResults->nextBackPtr;
+  config->side_info.main_data_begin = frameResults->nextBackPtr;
 }
 
 static unsigned slen1_tab[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
 static unsigned slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
 
-static void encodeMainData(int l3_enc[2][2][samp_per_frame2],
-                           L3_side_info_t  *si,
-                           L3_scalefac_t   *scalefac, shine_global_config *config )
+static void encodeMainData(shine_global_config *config)
 {
   int gr, ch, sfb;
+  L3_side_info_t  si = config->side_info;
 
   for ( gr = 0; gr < 2; gr++ )
     for ( ch = 0; ch < config->wave.channels; ch++ )
@@ -156,26 +148,26 @@ static void encodeMainData(int l3_enc[2][2][samp_per_frame2],
       for ( ch = 0; ch < config->wave.channels; ch++ )
         {
           BF_PartHolder **pph = &scaleFactorsPH[gr][ch];
-          gr_info *gi = &(si->gr[gr].ch[ch].tt);
+          gr_info *gi = &(si.gr[gr].ch[ch].tt);
           unsigned slen1 = slen1_tab[ gi->scalefac_compress ];
           unsigned slen2 = slen2_tab[ gi->scalefac_compress ];
-          int *ix = &l3_enc[gr][ch][0];
+          int *ix = &config->l3_enc[gr][ch][0];
 
-          if ( (gr == 0) || (si->scfsi[ch][0] == 0) )
+          if ( (gr == 0) || (si.scfsi[ch][0] == 0) )
             for ( sfb = 0; sfb < 6; sfb++ )
-              *pph = BF_addEntry( *pph,  scalefac->l[gr][ch][sfb], slen1 );
+              *pph = BF_addEntry( *pph,  config->scalefactor.l[gr][ch][sfb], slen1 );
 
-          if ( (gr == 0) || (si->scfsi[ch][1] == 0) )
+          if ( (gr == 0) || (si.scfsi[ch][1] == 0) )
             for ( sfb = 6; sfb < 11; sfb++ )
-              *pph = BF_addEntry( *pph,  scalefac->l[gr][ch][sfb], slen1 );
+              *pph = BF_addEntry( *pph,  config->scalefactor.l[gr][ch][sfb], slen1 );
 
-          if ( (gr == 0) || (si->scfsi[ch][2] == 0) )
+          if ( (gr == 0) || (si.scfsi[ch][2] == 0) )
             for ( sfb = 11; sfb < 16; sfb++ )
-              *pph = BF_addEntry( *pph,  scalefac->l[gr][ch][sfb], slen2 );
+              *pph = BF_addEntry( *pph,  config->scalefactor.l[gr][ch][sfb], slen2 );
 
-          if ( (gr == 0) || (si->scfsi[ch][3] == 0) )
+          if ( (gr == 0) || (si.scfsi[ch][3] == 0) )
             for ( sfb = 16; sfb < 21; sfb++ )
-              *pph = BF_addEntry( *pph,  scalefac->l[gr][ch][sfb], slen2 );
+              *pph = BF_addEntry( *pph,  config->scalefactor.l[gr][ch][sfb], slen2 );
 
           Huffmancodebits( &codedDataPH[gr][ch], ix, gi, config );
         }
@@ -184,9 +176,10 @@ static void encodeMainData(int l3_enc[2][2][samp_per_frame2],
 
 //static unsigned int crc = 0;
 
-static int encodeSideInfo( L3_side_info_t  *si, shine_global_config *config )
+static int encodeSideInfo( shine_global_config *config )
 {
   int gr, ch, scfsi_band, region, bits_sent;
+  L3_side_info_t  si = config->side_info;
 
   headerPH->part->nrEntries = 0;
   headerPH = BF_addEntry( headerPH, 0xfff,                          12 );
@@ -214,25 +207,25 @@ static int encodeSideInfo( L3_side_info_t  *si, shine_global_config *config )
     for ( ch = 0; ch < config->wave.channels; ch++ )
       spectrumSIPH[gr][ch]->part->nrEntries = 0;
 
-  frameSIPH = BF_addEntry( frameSIPH, si->main_data_begin, 9 );
+  frameSIPH = BF_addEntry( frameSIPH, si.main_data_begin, 9 );
 
   if ( config->wave.channels == 2 )
-    frameSIPH = BF_addEntry( frameSIPH, si->private_bits, 3 );
+    frameSIPH = BF_addEntry( frameSIPH, si.private_bits, 3 );
   else
-    frameSIPH = BF_addEntry( frameSIPH, si->private_bits, 5 );
+    frameSIPH = BF_addEntry( frameSIPH, si.private_bits, 5 );
 
   for ( ch = 0; ch < config->wave.channels; ch++ )
     for ( scfsi_band = 0; scfsi_band < 4; scfsi_band++ )
       {
         BF_PartHolder **pph = &channelSIPH[ch];
-        *pph = BF_addEntry( *pph, si->scfsi[ch][scfsi_band], 1 );
+        *pph = BF_addEntry( *pph, si.scfsi[ch][scfsi_band], 1 );
       }
 
   for ( gr = 0; gr < 2; gr++ )
     for ( ch = 0; ch < config->wave.channels ; ch++ )
       {
         BF_PartHolder **pph = &spectrumSIPH[gr][ch];
-        gr_info *gi = &(si->gr[gr].ch[ch].tt);
+        gr_info *gi = &(si.gr[gr].ch[ch].tt);
         *pph = BF_addEntry( *pph, gi->part2_3_length,        12 );
         *pph = BF_addEntry( *pph, gi->big_values,            9 );
         *pph = BF_addEntry( *pph, gi->global_gain,           8 );
