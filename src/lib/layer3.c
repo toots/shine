@@ -57,6 +57,12 @@ void L3_initialise(config_t *pub_config, priv_config_t *config)
 
   config->mpeg.samplerate_index = L3_find_samplerate_index(config->wave.samplerate);
   config->mpeg.bitrate_index    = L3_find_bitrate_index(config->mpeg.bitr);
+
+  open_bit_stream(&config->bs, BUFFER_SIZE);
+
+  memset((char *)&config->side_info,0,sizeof(L3_side_info_t));
+
+  config->sideinfo_len = (config->wave.channels==1) ? 168 : 288;
 }
 
 int L3_find_samplerate_index(long freq)
@@ -86,23 +92,13 @@ void L3_compress(callback_t *callback)
   int             gr;
   double          pe[2][2];
   short          *buffer_window[2];
-  int             mean_bits;
-  int             sideinfo_len;
   static short    buffer[2][samp_per_frame];
   static int      l3_enc[2][2][samp_per_frame2];
   static long     l3_sb_sample[2][3][18][SBLIMIT];
   static long     mdct_freq[2][2][samp_per_frame2];
   static L3_psy_ratio_t  ratio;
-  static L3_side_info_t  side_info;
   static L3_scalefac_t   scalefactor;
-  static bitstream_t     bs;
   static priv_config_t   config;
-
-  open_bit_stream(&bs, BUFFER_SIZE);
-
-  memset((char *)&side_info,0,sizeof(L3_side_info_t));
-
-  sideinfo_len = (config.wave.channels==1) ? 168 : 288;
 
   L3_initialise(&callback->config, &config);
 
@@ -126,7 +122,7 @@ void L3_compress(callback_t *callback)
     }
 
     config.mpeg.bits_per_frame = 8*(config.mpeg.whole_slots_per_frame + config.mpeg.padding);
-    mean_bits = (config.mpeg.bits_per_frame - sideinfo_len)>>1;
+    config.mean_bits = (config.mpeg.bits_per_frame - config.sideinfo_len)>>1;
 
     /* polyphase filtering */
     for(gr=0;gr<2;gr++)
@@ -138,17 +134,17 @@ void L3_compress(callback_t *callback)
     L3_mdct_sub(l3_sb_sample, mdct_freq, &config);
 
     /* bit and noise allocation */
-    L3_iteration_loop(pe,mdct_freq,&ratio,&side_info, l3_enc, mean_bits,&scalefactor, &config);
+    L3_iteration_loop(pe,mdct_freq,&ratio,&config.side_info, l3_enc, config.mean_bits,&scalefactor, &config);
 
     /* write the frame to the bitstream */
-    L3_format_bitstream(l3_enc,&side_info,&scalefactor, &bs,mdct_freq,NULL,0, &config);
+    L3_format_bitstream(l3_enc,&config.side_info,&scalefactor, &config.bs,mdct_freq,NULL,0, &config);
 
     /* Write data to disk. */
-    if (bs.data_position)
-      callback->write_mp3(sizeof(unsigned char)*bs.data_position, bs.data, &config);
+    if (config.bs.data_position)
+      callback->write_mp3(sizeof(unsigned char)*config.bs.data_position, config.bs.data, &config);
     
-    bs.data_position = 0;
+    config.bs.data_position = 0;
   }
-  close_bit_stream(&bs);
+  close_bit_stream(&config.bs);
 }
 

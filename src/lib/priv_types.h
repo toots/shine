@@ -7,15 +7,16 @@
 
 #include <math.h>
 
+#define samp_per_frame2  576
+
 #include "types.h"
 #include "bitstream.h"
+#include "layer3.h"
 
 /* #define DEBUG if you want the library to dump info to stdout */
 
 #define false 0
 #define true 1
-
-#define samp_per_frame2  576
 
 #define PI          3.14159265358979
 #define PI4         0.78539816339745
@@ -56,8 +57,12 @@ typedef struct {
 } priv_mpeg_t;
 
 typedef struct {
-  wave_t      wave;
-  priv_mpeg_t mpeg;
+  wave_t         wave;
+  priv_mpeg_t    mpeg;
+  bitstream_t    bs;
+  L3_side_info_t side_info;
+  int            sideinfo_len;
+  int            mean_bits;
 } priv_config_t;
 
 #endif
