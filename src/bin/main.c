@@ -181,11 +181,17 @@ int main(int argc, char **argv)
       exit(1);
     }
 
-  /* Initiate encoder */
-  s = L3_initialise(&config);
+  /* Set to stereo mode if wave data is stereo, mono otherwise. */
+  if (config.wave.channels > 1)
+    config.mpeg.mode = STEREO;
+  else
+    config.mpeg.mode = MONO;
 
   /* Print some info about the file about to be created (optional) */
   if (!quiet) check_config(&config);
+
+  /* Initiate encoder */
+  s = L3_initialise(&config);
 
   /* All the magic happens here */
   while (wave_get(buffer, infile, &config)) {

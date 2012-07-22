@@ -11,19 +11,37 @@ static int  bitrates[15]   = {0,32,40,48,56,64,80,96,112,128,160,192,224,256,320
 
 /* This is the struct used to tell the encoder about the input PCM */
 
+enum channels {
+  PCM_MONO   = 1,
+  PCM_STEREO = 2
+};
+
 typedef struct {
-    int  channels;
-    long samplerate;
+    enum channels channels;
+    long          samplerate;
 } wave_t;
 
 /* This is the struct the encoder uses to hold informationn about the output MP3 */
 
+enum modes {
+  STEREO       = 0,
+  JOINT_STEREO = 1,
+  DUAL_CHANNEL = 2,
+  MONO         = 3 
+};
+
+enum emph {
+  NONE    = 0,
+  MU50_15 = 1,
+  CITT    = 3
+};
+
 typedef struct {
-    int    mode;      /* Stereo mode */
-    int    bitr;      /* Must conform to known bitrate - see Main.c */
-    int    emph;      /* De-emphasis */
-    int    copyright;
-    int    original;
+    enum modes mode;      /* Stereo mode */
+    int        bitr;      /* Must conform to known bitrate - see Main.c */
+    enum emph  emph;      /* De-emphasis */
+    int        copyright;
+    int        original;
 } mpeg_t;
 
 typedef struct {

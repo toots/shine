@@ -12,7 +12,7 @@
 void L3_set_config_mpeg_defaults(mpeg_t *mpeg)
 {
   mpeg->bitr = 128;
-  mpeg->emph = 0;
+  mpeg->emph = NONE;
   mpeg->copyright = 0;
   mpeg->original  = 1;
 }
