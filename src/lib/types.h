@@ -36,6 +36,83 @@
 typedef unsigned char bool;
 #endif
 
+#ifndef MAX_CHANNELS
+#define MAX_CHANNELS 2
+#endif
+
+#ifndef MAX_GRANULES
+#define MAX_GRANULES 2
+#endif
+
+/*
+  A BitstreamElement contains encoded data
+  to be written to the bitstream.
+  'length' bits of 'value' will be written to
+  the bitstream msb-first.
+*/
+typedef struct
+{
+    unsigned long int value;
+    unsigned int length;
+} BF_BitstreamElement;
+
+/*
+  A BitstreamPart contains a group
+  of 'nrEntries' of BitstreamElements.
+  Each BitstreamElement will be written
+  to the bitstream in the order it appears
+  in the 'element' array.
+*/
+typedef struct
+{
+    unsigned long int nrEntries;
+    BF_BitstreamElement *element;
+} BF_BitstreamPart;
+
+/*
+  This structure contains all the information needed by the
+  bitstream formatter to encode one frame of data. You must
+  fill this out and provide a pointer to it when you call
+  the formatter.
+  Maintainers: If you add or remove part of the side
+  information, you will have to update the routines that
+  make local copies of that information (in formatBitstream.c)
+*/
+
+typedef struct BF_FrameData
+{
+    int              frameLength;
+    int              nGranules;
+    int              nChannels;
+    BF_BitstreamPart *header;
+    BF_BitstreamPart *frameSI;
+    BF_BitstreamPart *channelSI[MAX_CHANNELS];
+    BF_BitstreamPart *spectrumSI[MAX_GRANULES][MAX_CHANNELS];
+    BF_BitstreamPart *scaleFactors[MAX_GRANULES][MAX_CHANNELS];
+    BF_BitstreamPart *codedData[MAX_GRANULES][MAX_CHANNELS];
+    BF_BitstreamPart *userSpectrum[MAX_GRANULES][MAX_CHANNELS];
+    BF_BitstreamPart *userFrameData;
+} BF_FrameData;
+
+/*
+  This structure contains information provided by
+  the bitstream formatter. You can use this to
+  check to see if your code agrees with the results
+  of the call to the formatter.
+*/
+typedef struct BF_FrameResults
+{
+    int SILength;
+    int mainDataLength;
+    int nextBackPtr;
+} BF_FrameResults;
+
+typedef struct BF_PartHolder
+{
+    int max_elements;
+    BF_BitstreamPart *part;
+} BF_PartHolder;
+
 typedef struct {
     int    mode;      /* + */ /* Stereo mode */
     int    bitr;      /* + */ /* Must conform to known bitrate - see Main.c */
@@ -61,6 +138,20 @@ typedef struct {
     int BitsRemaining;
 } formatbits_t;
 
+typedef struct {
+  BF_FrameData    frameData;
+  BF_FrameResults frameResults;
+
+  BF_PartHolder *headerPH;
+  BF_PartHolder *frameSIPH;
+  BF_PartHolder *channelSIPH[ MAX_CHANNELS ];
+  BF_PartHolder *spectrumSIPH[ MAX_GRANULES ][ MAX_CHANNELS ];
+  BF_PartHolder *scaleFactorsPH[ MAX_GRANULES ][ MAX_CHANNELS ];
+  BF_PartHolder *codedDataPH[ MAX_GRANULES ][ MAX_CHANNELS ];
+  BF_PartHolder *userSpectrumPH[ MAX_GRANULES ][ MAX_CHANNELS ];
+  BF_PartHolder *userFrameDataPH;
+} l3stream_t;
+
 typedef struct shine_global_flags { 
   wave_t         wave;
   priv_mpeg_t    mpeg;
@@ -76,6 +167,7 @@ typedef struct shine_global_flags {
   long           l3_sb_sample[2][3][18][SBLIMIT];
   long           mdct_freq[2][2][samp_per_frame2];
   formatbits_t   formatbits;
+  l3stream_t     l3stream;
 } shine_global_config;
 
 #endif

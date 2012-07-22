@@ -46,8 +46,10 @@ void WriteMainDataBits( unsigned long int val, unsigned int nbits, BF_FrameResul
  * See formatBitstream.h for more information about the data
  * structures and the bitstream syntax.
  */
-void BF_BitstreamFrame(BF_FrameData *frameInfo, BF_FrameResults *results, shine_global_config *config)
+void BF_BitstreamFrame(shine_global_config *config)
 {
+  BF_FrameData *frameInfo  = &config->l3stream.frameData;
+  BF_FrameResults *results = &config->l3stream.frameResults;
   /* get ptr to bit writing function */
   /* save SI and compute its length */
   results->SILength = store_side_info( frameInfo );

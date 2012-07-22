@@ -31,6 +31,7 @@ shine_global_config *L3_initialise(config_t *pub_config)
   L3_mdct_initialise();
   L3_loop_initialise();
   L3_formatbits_initialise(config);
+  L3_bitstream_initialise(config );
 
   /* Copy public config. */
   memcpy(&config->wave, &pub_config->wave, sizeof(pub_config->wave));
@@ -142,6 +143,7 @@ unsigned char *L3_encode_frame(shine_global_config *config, int16_t data[2][samp
 
 
 void L3_close(shine_global_config *config) {
+  L3_bitstream_close(config);
   close_bit_stream(&config->bs);
   free(config);
 }
