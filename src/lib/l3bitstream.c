@@ -26,11 +26,11 @@ BF_PartHolder *codedDataPH[ MAX_GRANULES ][ MAX_CHANNELS ];
 BF_PartHolder *userSpectrumPH[ MAX_GRANULES ][ MAX_CHANNELS ];
 BF_PartHolder *userFrameDataPH;
 
-static int encodeSideInfo( L3_side_info_t  *si, config_t *config );
-static void encodeMainData(int l3_enc[2][2][samp_per_frame2], L3_side_info_t  *si, L3_scalefac_t   *scalefac , config_t *config);
+static int encodeSideInfo( L3_side_info_t  *si, priv_config_t *config );
+static void encodeMainData(int l3_enc[2][2][samp_per_frame2], L3_side_info_t  *si, L3_scalefac_t   *scalefac , priv_config_t *config);
 static void write_ancillary_data( char *theData, int lengthInBits );
 /*static void drain_into_ancillary_data( int lengthInBits );*/
-static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi , config_t *config);
+static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi , priv_config_t *config);
 
 /*
  * putMyBits:
@@ -59,7 +59,7 @@ L3_format_bitstream( int              l3_enc[2][2][samp_per_frame2],
                      bitstream_t *in_bs,
                      long            (*xr)[2][samp_per_frame2],
                      char             *ancillary,
-                     int              ancillary_bits, config_t *config )
+                     int              ancillary_bits, priv_config_t *config )
 {
   int gr, ch, i;
   bs = in_bs;
@@ -138,7 +138,7 @@ static unsigned slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3
 
 static void encodeMainData(int l3_enc[2][2][samp_per_frame2],
                            L3_side_info_t  *si,
-                           L3_scalefac_t   *scalefac, config_t *config )
+                           L3_scalefac_t   *scalefac, priv_config_t *config )
 {
   int gr, ch, sfb;
 
@@ -184,15 +184,14 @@ static void encodeMainData(int l3_enc[2][2][samp_per_frame2],
 
 //static unsigned int crc = 0;
 
-static int encodeSideInfo( L3_side_info_t  *si, config_t *config )
+static int encodeSideInfo( L3_side_info_t  *si, priv_config_t *config )
 {
   int gr, ch, scfsi_band, region, bits_sent;
 
   headerPH->part->nrEntries = 0;
   headerPH = BF_addEntry( headerPH, 0xfff,                          12 );
-  headerPH = BF_addEntry( headerPH, config->mpeg.type,               1 );
-  /* HEADER HARDCODED SHOULDN'T BE THIS WAY ! */
-  headerPH = BF_addEntry( headerPH, 1/*config->mpeg.layr*/,          2 );
+  headerPH = BF_addEntry( headerPH, 1,                               1 );
+  headerPH = BF_addEntry( headerPH, 1,                               2 );
   headerPH = BF_addEntry( headerPH, !config->mpeg.crc,               1 );
   headerPH = BF_addEntry( headerPH, config->mpeg.bitrate_index,      4 );
   headerPH = BF_addEntry( headerPH, config->mpeg.samplerate_index,   2 );
@@ -303,7 +302,7 @@ static void drain_into_ancillary_data( int lengthInBits )
 
 /* Note the discussion of huffmancodebits() on pages 28 and 29 of the IS, as
   well as the definitions of the side information on pages 26 and 27. */
-static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, config_t *config )
+static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, priv_config_t *config )
 {
   int L3_huffman_coder_count1( BF_PartHolder **pph, struct huffcodetab *h, int v, int w, int x, int y );
   int bigv_bitcount( int ix[samp_per_frame2], gr_info *cod_info );
@@ -323,7 +322,7 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, config_t
   /* 1: Write the bigvalues */
   bigvalues = gi->big_values <<1;
 
-  int *scalefac = &sfBandIndex[config->mpeg.samplerate_index+(config->mpeg.type*3)].l[0];
+  int *scalefac = &sfBandIndex[config->mpeg.samplerate_index+3].l[0];
   unsigned scalefac_index = 100;
 
   scalefac_index = gi->region0_count + 1;

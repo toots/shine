@@ -106,7 +106,7 @@ void L3_iteration_loop(double          pe[][2],
                        L3_side_info_t *side_info,
                        int             l3_enc[2][2][samp_per_frame2],
                        int             mean_bits,
-                       L3_scalefac_t  *scalefactor, config_t *config)
+                       L3_scalefac_t  *scalefactor, priv_config_t *config)
 {
   L3_psy_xmin_t l3_xmin;
   gr_info *cod_info;
@@ -124,7 +124,7 @@ void L3_iteration_loop(double          pe[][2],
     firstcall=0;
   }
 
-  scalefac_band_long  = &sfBandIndex[config->mpeg.samplerate_index + (config->mpeg.type * 3)].l[0];
+  scalefac_band_long  = &sfBandIndex[config->mpeg.samplerate_index + 3].l[0];
 
   for(ch=config->wave.channels; ch--; )
   {

@@ -118,7 +118,7 @@ int wave_get(short buffer[2][samp_per_frame], void *callback_in)
   switch(callback->config.mpeg.mode)
   {
     case MODE_MONO  :
-      samples_read = read_samples(temp_buf,(int)callback->config.mpeg.samples_per_frame, callback);
+      samples_read = read_samples(temp_buf,(int)samp_per_frame, callback);
       for(j=0;j<samp_per_frame;j++)
       {
         buffer[0][j] = temp_buf[j];
@@ -127,7 +127,7 @@ int wave_get(short buffer[2][samp_per_frame], void *callback_in)
       break;
 
     default: /* stereo */
-      samples_read = read_samples(temp_buf,(int)callback->config.mpeg.samples_per_frame<<1, callback);
+      samples_read = read_samples(temp_buf,(int)samp_per_frame<<1, callback);
       for(j=0;j<samp_per_frame;j++)
       {
         buffer[0][j] = temp_buf[2*j];

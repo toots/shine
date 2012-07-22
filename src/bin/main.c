@@ -118,7 +118,6 @@ static int parse_command(int argc, char** argv, config_t *config)
   return 1;
 }
 
-
 /*
  * check_config: Print some info about what we're going to encode
  * -------------
@@ -126,13 +125,9 @@ static int parse_command(int argc, char** argv, config_t *config)
 static void check_config(config_t *config)
 {
   static char *mode_names[4]    = { "stereo", "j-stereo", "dual-ch", "mono" };
-  static char *layer_names[3]   = { "I", "II", "III" };
-  static char *version_names[2] = { "MPEG-II (LSF)", "MPEG-I" };
   static char *demp_names[4]    = { "none", "50/15us", "", "CITT" };
 
-  printf("%s layer %s, %s  Psychoacoustic Model: Shine\n",
-         version_names[config->mpeg.type],
-         layer_names[config->mpeg.layr],
+  printf("MPEG-I layer III, %s  Psychoacoustic Model: Shine\n",
          mode_names[config->mpeg.mode]);
   printf("Bitrate=%d kbps  ",config->mpeg.bitr );
   printf("De-emphasis: %s   %s %s\n",
@@ -169,13 +164,11 @@ int main(int argc, char **argv)
   /* Open the input file and fill the config wave_t header */
   infile = callback.user = wave_open(infname, &callback.config, quiet);
 
-  /* Set the MP3 sample rate index plus see if it's valid */
-  callback.config.mpeg.samplerate_index = L3_find_samplerate_index(callback.config.wave.samplerate);
-  if (callback.config.mpeg.samplerate_index < 0) error("invalid samplerate");
+  /* See if samplerate is valid */
+  if (L3_find_samplerate_index(callback.config.wave.samplerate) < 0) error("invalid samplerate");
 
-  /* Set the MP3 bit rate index plus see if it's valid */
-  callback.config.mpeg.bitrate_index = L3_find_bitrate_index(callback.config.mpeg.bitr);
-  if (callback.config.mpeg.bitrate_index < 0) error("invalid bitrate");
+  /* See if bitrate is valid */
+  if (L3_find_bitrate_index(callback.config.mpeg.bitr) < 0) error("invalid bitrate");
 
   /* open the output file */
   if (!strcmp(outfname, "-"))

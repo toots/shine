@@ -47,7 +47,7 @@ void L3_mdct_initialise(void)
  * ------------
  */
 void L3_mdct_sub(long sb_sample[2][3][18][SBLIMIT],
-                 long mdct_freq[2][2][samp_per_frame2], config_t *config)
+                 long mdct_freq[2][2][samp_per_frame2], priv_config_t *config)
 {
   /* note. we wish to access the array 'mdct_freq[2][2][576]' as
    * [2][2][32][18]. (32*18=576),

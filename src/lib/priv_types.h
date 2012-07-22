@@ -32,9 +32,32 @@
 #define SCALE       32768
 #define SBLIMIT     32
 
-
 #ifndef bool
 typedef unsigned char bool;
 #endif
+
+typedef struct {
+    int    mode;      /* + */ /* Stereo mode */
+    int    bitr;      /* + */ /* Must conform to known bitrate - see Main.c */
+    int    emph;      /* + */ /* De-emphasis */
+    int    padding;
+    long   bits_per_frame;
+    long   bits_per_slot;
+    double frac_slots_per_frame;
+    double slot_lag;
+    int    whole_slots_per_frame;
+    int    bitrate_index;     /* + */ /* See Main.c and Layer3.c */
+    int    samplerate_index;  /* + */ /* See Main.c and Layer3.c */
+    int    crc;
+    int    ext;
+    int    mode_ext;
+    int    copyright;  /* + */
+    int    original;   /* + */
+} priv_mpeg_t;
+
+typedef struct {
+  wave_t      wave;
+  priv_mpeg_t mpeg;
+} priv_config_t;
 
 #endif

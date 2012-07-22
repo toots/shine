@@ -3,6 +3,10 @@
 
 #define samp_per_frame  1152
 
+/* Valid samplerates and bitrates. */
+static long samplerates[3] = {44100, 48000, 32000};
+static int  bitrates[15]   = {0,32,40,48,56,64,80,96,112,128,160,192,224,256,320};
+
 /* This is the struct used to tell the encoder about the input PCM */
 
 typedef struct {
@@ -10,34 +14,14 @@ typedef struct {
     long samplerate;
 } wave_t;
 
-/* In the mpeg_t struct below, values marked with a '+'
-   actually control something the calling app might want
-   to change.  The rest are internal values.  See set_defaults()
-   in shineenc Main.c for example init.
-*/
-
 /* This is the struct the encoder uses to hold informationn about the output MP3 */
 
 typedef struct {
-    int    type;
-    int    layr;
-    int    mode;      /* + */ /* Stereo mode */
-    int    bitr;      /* + */ /* Must conform to known bitrate - see Main.c */
-    int    emph;      /* + */ /* De-emphasis */
-    int    padding;
-    long   samples_per_frame;
-    long   bits_per_frame;
-    long   bits_per_slot;
-    double frac_slots_per_frame;
-    double slot_lag;
-    int    whole_slots_per_frame;
-    int    bitrate_index;     /* + */ /* See Main.c and Layer3.c */
-    int    samplerate_index;  /* + */ /* See Main.c and Layer3.c */
-    int    crc;
-    int    ext;
-    int    mode_ext;
-    int    copyright;  /* + */
-    int    original;   /* + */
+    int    mode;      /* Stereo mode */
+    int    bitr;      /* Must conform to known bitrate - see Main.c */
+    int    emph;      /* De-emphasis */
+    int    copyright;  
+    int    original; 
 } mpeg_t;
 
 typedef struct {
