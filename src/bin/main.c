@@ -128,14 +128,12 @@ static void check_config(config_t *config)
   static char *mode_names[4]    = { "stereo", "j-stereo", "dual-ch", "mono" };
   static char *layer_names[3]   = { "I", "II", "III" };
   static char *version_names[2] = { "MPEG-II (LSF)", "MPEG-I" };
-  static char *psy_names[3]     = { "", "MUSICAM", "Shine" };
   static char *demp_names[4]    = { "none", "50/15us", "", "CITT" };
 
-  printf("%s layer %s, %s  Psychoacoustic Model: %s\n",
+  printf("%s layer %s, %s  Psychoacoustic Model: Shine\n",
          version_names[config->mpeg.type],
          layer_names[config->mpeg.layr],
-         mode_names[config->mpeg.mode],
-         psy_names[config->mpeg.psyc]);
+         mode_names[config->mpeg.mode]);
   printf("Bitrate=%d kbps  ",config->mpeg.bitr );
   printf("De-emphasis: %s   %s %s\n",
          demp_names[config->mpeg.emph],

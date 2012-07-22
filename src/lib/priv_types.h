@@ -37,6 +37,4 @@
 typedef unsigned char bool;
 #endif
 
-void error(char* s);
-
 #endif

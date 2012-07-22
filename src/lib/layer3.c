@@ -15,7 +15,6 @@ void L3_set_config_mpeg_defaults(mpeg_t *mpeg)
   mpeg->layr = 2;
   mpeg->mode = 2;
   mpeg->bitr = 128;
-  mpeg->psyc = 2;
   mpeg->emph = 0;
   mpeg->crc  = 0;
   mpeg->ext  = 0;

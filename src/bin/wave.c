@@ -43,6 +43,7 @@ FILE *wave_open(const char *fname, config_t *config, int quiet)
   struct wave_header
   {
     char riff[4];             /* "RIFF" */
+    uint32_t size;    /* length of rest of file = size of rest of header(36) + data length */
     char wave[4];             /* "WAVE" */
     char fmt[4];              /* "fmt " */
     uint32_t fmt_len;    /* length of rest of fmt chunk = 16 */

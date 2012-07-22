@@ -23,7 +23,6 @@ typedef struct {
     int    layr;
     int    mode;      /* + */ /* Stereo mode */
     int    bitr;      /* + */ /* Must conform to known bitrate - see Main.c */
-    int    psyc;      /* + */ /* Which psy model - see Main.c */
     int    emph;      /* + */ /* De-emphasis */
     int    padding;
     long   samples_per_frame;
