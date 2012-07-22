@@ -16,6 +16,8 @@
 #define WAVE  0xfb1      /* Wave filetype */
 #define DATA  0xffd      /* Data filetype */
 
+#define MODE_MONO 3
+
 /*
  * wave_close:
  * -----------
@@ -35,12 +37,12 @@ FILE *wave_open(const char *fname, config_t *config, int quiet)
 {
   static char *channel_mappings[] = {NULL,"mono","stereo"};
   FILE *file;
+  uint32_t length;
 
   /* Wave file headers can vary from this, but we're only intereseted in this format */
   struct wave_header
   {
     char riff[4];             /* "RIFF" */
-    uint32_t size;    /* length of rest of file = size of rest of header(36) + data length */
     char wave[4];             /* "WAVE" */
     char fmt[4];              /* "fmt " */
     uint32_t fmt_len;    /* length of rest of fmt chunk = 16 */
@@ -70,16 +72,15 @@ FILE *wave_open(const char *fname, config_t *config, int quiet)
   if (header.bit_samp != 16)               error("Not 16 bit");
   if (strncmp(header.data,"data", 4) != 0) error("Can't find data chunk");
 
-  config->wave.type          = WAVE_RIFF_PCM;
   config->wave.channels      = header.channels;
   config->wave.samplerate    = header.samp_rate;
-  config->wave.bits          = header.bit_samp;
-  config->wave.length        = header.length / header.byte_rate;
+  
+  length        = header.length / header.byte_rate;
 
   if (!quiet)
     printf("%s, %s %ldHz %ldbit, Length: %2ld:%2ld:%2ld\n",
            "WAV PCM DATA", channel_mappings[header.channels], (long)header.samp_rate, (long)header.bit_samp,
-           (long)config->wave.length/3600, (long)(config->wave.length/60)%60, (long)config->wave.length%60);
+           (long)length/3600, (long)(length/60)%60, (long)length%60);
 
   return file;
 }
@@ -92,18 +93,11 @@ int read_samples(short *sample_buffer, int frame_size, callback_t *callback)
 {
   int samples_read=0;
 
-  switch(callback->config.wave.type)
-  {
-    case WAVE_RIFF_PCM :
-      samples_read = fread(sample_buffer,sizeof(short),frame_size, callback->user);
+  samples_read = fread(sample_buffer,sizeof(short),frame_size, callback->user);
 
-      if(samples_read<frame_size && samples_read>0) /* Pad sample with zero's */
-        while(samples_read<frame_size) sample_buffer[samples_read++] = 0;
-      break;
+  if(samples_read<frame_size && samples_read>0) /* Pad sample with zero's */
+    while(samples_read<frame_size) sample_buffer[samples_read++] = 0;
 
-    default:
-      error("[read_samples], wave filetype not supported");
-  }
   return samples_read;
 }
 

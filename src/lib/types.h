@@ -1,27 +1,13 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#define WAVE_RIFF_PCM 0
-#define WAVE_PCM_LOHI 1
-#define WAVE_PCM_HILO 2
-#define WAVE_PCM_AIFF 3
-
-#define MODE_MONO     3
-
 #define samp_per_frame  1152
-
-/* In the wave_t struct below, values marked with a '+' are necessary.
-   Everything else is optional and for the calling apps read
-   and write vectors convenience */
 
 /* This is the struct used to tell the encoder about the input PCM */
 
 typedef struct {
-    int  type;
-    int  channels;      /* + */
-    int  bits;
-    long samplerate;    /* + */
-    long length;
+    int  channels;
+    long samplerate;
 } wave_t;
 
 /* In the mpeg_t struct below, values marked with a '+'
