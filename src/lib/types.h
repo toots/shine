@@ -180,6 +180,8 @@ typedef struct shine_global_flags {
   int            l3_enc[2][2][samp_per_frame2];
   long           l3_sb_sample[2][3][18][SBLIMIT];
   long           mdct_freq[2][2][samp_per_frame2];
+  int            ResvSize;
+  int            ResvMax;
   formatbits_t   formatbits;
   l3stream_t     l3stream;
   l3loop_t       l3loop;

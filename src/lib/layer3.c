@@ -42,6 +42,8 @@ shine_global_config *L3_initialise(config_t *pub_config)
   config->mpeg.original  = pub_config->mpeg.original; 
 
   /* Set default values. */
+  config->ResvMax        = 0;
+  config->ResvSize       = 0;
   config->mpeg.crc       = 0;
   config->mpeg.ext       = 0;
   config->mpeg.mode_ext  = 0;

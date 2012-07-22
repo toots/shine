@@ -131,7 +131,7 @@ void L3_iteration_loop(shine_global_config *config)
       calc_scfsi(&l3_xmin,ch,gr,config);
 
       /* calculation of number of available bit( per granule ) */
-      max_bits = ResvMaxBits(&config->side_info,&config->pe[gr][ch],config->mean_bits, config);
+      max_bits = ResvMaxBits(&config->pe[gr][ch],config);
 
       /* reset of iteration variables */
       memset(config->scalefactor.l[gr][ch],0,22);
@@ -159,13 +159,13 @@ void L3_iteration_loop(shine_global_config *config)
         cod_info->part2_3_length = outer_loop(max_bits,&l3_xmin,ix,
                                               gr,ch,config);
 
-      ResvAdjust(cod_info, &config->side_info, config->mean_bits, config );
+      ResvAdjust(cod_info, config );
       cod_info->global_gain = cod_info->quantizerStepSize+210;
 
     } /* for gr */
   } /* for ch */
 
-  ResvFrameEnd(&config->side_info,config->mean_bits, config);
+  ResvFrameEnd(config);
 }
 
 /*
