@@ -21,13 +21,7 @@
 #define MAX_GRANULES 2
 #endif
 
-/*
-  This is the prototype for the function pointer you must
-  provide to write bits to the bitstream. It should write
-  'length' bits from 'value,' msb first. Bits in value are
-  assumed to be right-justified.
-*/
-typedef void (*BitsFcnPtr)( unsigned long int value, unsigned int length);
+void L3_formatbits_initialise(shine_global_config *config);
 
 /*
   A BitstreamElement contains encoded data

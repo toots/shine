@@ -30,6 +30,7 @@ shine_global_config *L3_initialise(config_t *pub_config)
   L3_subband_initialise();
   L3_mdct_initialise();
   L3_loop_initialise();
+  L3_formatbits_initialise(config);
 
   /* Copy public config. */
   memcpy(&config->wave, &pub_config->wave, sizeof(pub_config->wave));

@@ -55,6 +55,12 @@ typedef struct {
     int    original;   /* + */
 } priv_mpeg_t;
 
+typedef struct {
+    int BitCount;
+    int ThisFrameSize;
+    int BitsRemaining;
+} formatbits_t;
+
 typedef struct shine_global_flags { 
   wave_t         wave;
   priv_mpeg_t    mpeg;
@@ -69,7 +75,7 @@ typedef struct shine_global_flags {
   int            l3_enc[2][2][samp_per_frame2];
   long           l3_sb_sample[2][3][18][SBLIMIT];
   long           mdct_freq[2][2][samp_per_frame2];
-
+  formatbits_t   formatbits;
 } shine_global_config;
 
 #endif

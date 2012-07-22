@@ -18,16 +18,17 @@
 #include "g_includes.h"
 #include "formatbits.h"
 
-/* globals (to this file only) */
-static int BitCount       = 0;
-static int ThisFrameSize  = 0;
-static int BitsRemaining  = 0;
-static bitstream_t *bs;
+void L3_formatbits_initialise(shine_global_config *config)
+{
+  config->formatbits.BitCount       = 0;
+  config->formatbits.ThisFrameSize  = 0;
+  config->formatbits.BitsRemaining  = 0;
+}
 
 /* forward declarations */
 int store_side_info( BF_FrameData *frameInfo );
-int main_data( BF_FrameData *frameInfo, BF_FrameResults *results );
-void WriteMainDataBits( unsigned long int val, unsigned int nbits, BF_FrameResults *results );
+int main_data( BF_FrameData *frameInfo, BF_FrameResults *results, shine_global_config *config);
+void WriteMainDataBits( unsigned long int val, unsigned int nbits, BF_FrameResults *results, shine_global_config *config);
 
 /*
  * BF_BitStreamFrame:
@@ -47,17 +48,12 @@ void WriteMainDataBits( unsigned long int val, unsigned int nbits, BF_FrameResul
  */
 void BF_BitstreamFrame(BF_FrameData *frameInfo, BF_FrameResults *results, shine_global_config *config)
 {
-  /* assert( frameInfo->nGranules <= MAX_GRANULES ); */
-  /* assert( frameInfo->nChannels <= MAX_CHANNELS ); */
-
-  bs = &config->bs;
-
   /* get ptr to bit writing function */
   /* save SI and compute its length */
   results->SILength = store_side_info( frameInfo );
 
   /* write the main data, inserting SI to maintain framing */
-  results->mainDataLength = main_data( frameInfo, results );
+  results->mainDataLength = main_data( frameInfo, results, config );
 
   /*
    * Caller must ensure that back SI and main data are
@@ -100,14 +96,13 @@ typedef struct
 } MYSideInfo;
 
 MYSideInfo *get_side_info();
-int write_side_info();
-typedef int (*PartWriteFcnPtr)( BF_BitstreamPart *part, BF_FrameResults *results );
+int write_side_info(shine_global_config *config);
 
 /*
  * writePartMainData:
  * ------------------
  */
-int writePartMainData(BF_BitstreamPart *part, BF_FrameResults *results)
+int writePartMainData(BF_BitstreamPart *part, BF_FrameResults *results, shine_global_config *config)
 {
   BF_BitstreamElement *ep;
   int i, bits;
@@ -119,13 +114,13 @@ int writePartMainData(BF_BitstreamPart *part, BF_FrameResults *results)
   ep = part->element;
   for ( i = 0; i < part->nrEntries; i++, ep++ )
     {
-      WriteMainDataBits( ep->value, ep->length, results );
+      WriteMainDataBits( ep->value, ep->length, results, config );
       bits += ep->length;
     }
   return bits;
 }
 
-int writePartSideInfo(BF_BitstreamPart *part, BF_FrameResults *results)
+int writePartSideInfo(BF_BitstreamPart *part, BF_FrameResults *results, shine_global_config *config)
 {
   BF_BitstreamElement *ep;
   int i, bits;
@@ -136,27 +131,26 @@ int writePartSideInfo(BF_BitstreamPart *part, BF_FrameResults *results)
   ep = part->element;
   for ( i = 0; i < part->nrEntries; i++, ep++ )
     {
-      putbits( bs, ep->value, ep->length);
+      putbits( &config->bs, ep->value, ep->length);
       bits += ep->length;
     }
   return bits;
 }
 
-int main_data(BF_FrameData *fi, BF_FrameResults *results)
+int main_data(BF_FrameData *fi, BF_FrameResults *results, shine_global_config *config)
 {
   int gr, ch, bits;
-  PartWriteFcnPtr wp = writePartMainData;
   bits = 0;
   results->mainDataLength = 0;
 
   for (gr = 0; gr < fi->nGranules; gr++)
     for (ch = 0; ch < fi->nChannels; ch++)
       {
-        bits += (*wp)( fi->scaleFactors[gr][ch], results );
-        bits += (*wp)( fi->codedData[gr][ch],    results );
-        bits += (*wp)( fi->userSpectrum[gr][ch], results );
+        bits += writePartMainData( fi->scaleFactors[gr][ch], results, config );
+        bits += writePartMainData( fi->codedData[gr][ch],    results, config );
+        bits += writePartMainData( fi->userSpectrum[gr][ch], results, config );
       }
-  bits += (*wp)( fi->userFrameData, results );
+  bits += writePartMainData( fi->userFrameData, results, config );
   return bits;
 }
 
@@ -168,51 +162,48 @@ int main_data(BF_FrameData *fi, BF_FrameResults *results)
 
 void WriteMainDataBits(unsigned long int val,
                        unsigned int nbits,
-                       BF_FrameResults *results)
+                       BF_FrameResults *results,
+                       shine_global_config *config)
 {
   /* assert( nbits <= 32 ); */
-  if (BitCount == ThisFrameSize)
+  if (config->formatbits.BitCount == config->formatbits.ThisFrameSize)
     {
-      BitCount = write_side_info();
-      BitsRemaining = ThisFrameSize - BitCount;
+      config->formatbits.BitCount = write_side_info(config);
+      config->formatbits.BitsRemaining = config->formatbits.ThisFrameSize - config->formatbits.BitCount;
     }
   if (nbits == 0) return;
-  if (nbits > BitsRemaining)
+  if (nbits > config->formatbits.BitsRemaining)
     {
-      unsigned extra = val >> (nbits - BitsRemaining);
-      nbits -= BitsRemaining;
-      putbits( bs, extra, BitsRemaining);
-      BitCount = write_side_info();
-      BitsRemaining = ThisFrameSize - BitCount;
-      putbits( bs, val, nbits);
+      unsigned extra = val >> (nbits - config->formatbits.BitsRemaining);
+      nbits -= config->formatbits.BitsRemaining;
+      putbits( &config->bs, extra, config->formatbits.BitsRemaining);
+      config->formatbits.BitCount = write_side_info(config);
+      config->formatbits.BitsRemaining = config->formatbits.ThisFrameSize - config->formatbits.BitCount;
+      putbits( &config->bs, val, nbits);
     }
   else
-    putbits( bs, val, nbits);
-  BitCount += nbits;
-  BitsRemaining -= nbits;
-  /* assert( BitCount <= ThisFrameSize ); */
-  /* assert( BitsRemaining >= 0 ); */
-  /* assert( (BitCount + BitsRemaining) == ThisFrameSize ); */
+    putbits( &config->bs, val, nbits);
+  config->formatbits.BitCount += nbits;
+  config->formatbits.BitsRemaining -= nbits;
 }
 
-int write_side_info()
+int write_side_info(shine_global_config *config)
 {
   MYSideInfo *si;
   int bits, ch, gr;
-  PartWriteFcnPtr wp = writePartSideInfo;
 
   bits = 0;
   si = get_side_info();
-  ThisFrameSize = si->frameLength;
-  bits += (*wp)( si->headerPH->part,  NULL );
-  bits += (*wp)( si->frameSIPH->part, NULL );
+  config->formatbits.ThisFrameSize = si->frameLength;
+  bits += writePartSideInfo( si->headerPH->part,  NULL, config );
+  bits += writePartSideInfo( si->frameSIPH->part, NULL, config );
 
   for ( ch = 0; ch < si->nChannels; ch++ )
-    bits += (*wp)( si->channelSIPH[ch]->part, NULL );
+    bits += writePartSideInfo( si->channelSIPH[ch]->part, NULL, config );
 
   for ( gr = 0; gr < si->nGranules; gr++ )
     for ( ch = 0; ch < si->nChannels; ch++ )
-      bits += (*wp)( si->spectrumSIPH[gr][ch]->part, NULL );
+      bits += writePartSideInfo( si->spectrumSIPH[gr][ch]->part, NULL, config );
   return bits;
 }
 
