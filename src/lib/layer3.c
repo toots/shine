@@ -146,6 +146,7 @@ unsigned char *L3_encode_frame(shine_global_config *config, int16_t data[2][samp
 
 void L3_close(shine_global_config *config) {
   L3_bitstream_close(config);
+  L3_formatbits_close(config);
   close_bit_stream(&config->bs);
   free(config);
 }

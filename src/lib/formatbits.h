@@ -22,6 +22,7 @@
 #endif
 
 void L3_formatbits_initialise(shine_global_config *config);
+void L3_formatbits_close(shine_global_config *config);
 
 /*
   The following is a shorthand bitstream syntax for

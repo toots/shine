@@ -20,13 +20,43 @@
 
 void L3_formatbits_initialise(shine_global_config *config)
 {
-  config->formatbits.BitCount       = 0;
-  config->formatbits.ThisFrameSize  = 0;
-  config->formatbits.BitsRemaining  = 0;
+  config->formatbits.BitCount        = 0;
+  config->formatbits.ThisFrameSize   = 0;
+  config->formatbits.BitsRemaining   = 0;
+  config->formatbits.side_queue_head = NULL;
+  config->formatbits.side_queue_free = NULL;
+}
+
+void side_info_free(side_info_link *cur, shine_global_config *config)
+{
+  int ch, gr;
+
+  side_info_link *next;
+  BF_FrameData *info = &config->l3stream.frameData;
+
+  while (cur) {
+    BF_freePartHolder(cur->side_info.headerPH);
+    BF_freePartHolder(cur->side_info.frameSIPH);
+      for ( ch = 0; ch < info->nChannels; ch++ )
+        BF_freePartHolder(cur->side_info.channelSIPH[ch]);
+      for ( gr = 0; gr < info->nGranules; gr++ )
+        for ( ch = 0; ch < info->nChannels; ch++ )
+          BF_freePartHolder(cur->side_info.spectrumSIPH[gr][ch]);
+
+    next = cur->next;
+    free(cur);
+    cur  = next;
+  }
+}
+
+void L3_formatbits_close(shine_global_config *config)
+{
+  side_info_free(config->formatbits.side_queue_head, config);
+  side_info_free(config->formatbits.side_queue_free, config);
 }
 
 /* forward declarations */
-int store_side_info( BF_FrameData *frameInfo );
+int store_side_info( BF_FrameData *frameInfo, shine_global_config *config );
 int main_data( BF_FrameData *frameInfo, BF_FrameResults *results, shine_global_config *config);
 void WriteMainDataBits( unsigned long int val, unsigned int nbits, BF_FrameResults *results, shine_global_config *config);
 
@@ -52,7 +82,7 @@ void BF_BitstreamFrame(shine_global_config *config)
   BF_FrameResults *results = &config->l3stream.frameResults;
   /* get ptr to bit writing function */
   /* save SI and compute its length */
-  results->SILength = store_side_info( frameInfo );
+  results->SILength = store_side_info( frameInfo, config );
 
   /* write the main data, inserting SI to maintain framing */
   results->mainDataLength = main_data( frameInfo, results, config );
@@ -81,23 +111,7 @@ int BF_PartLength( BF_BitstreamPart *part )
   return bits;
 }
 
-/*
- * The following is all private to this file
- */
-
-typedef struct
-{
-  int frameLength;
-  int SILength;
-  int nGranules;
-  int nChannels;
-  BF_PartHolder *headerPH;
-  BF_PartHolder *frameSIPH;
-  BF_PartHolder *channelSIPH[MAX_CHANNELS];
-  BF_PartHolder *spectrumSIPH[MAX_GRANULES][MAX_CHANNELS];
-} MYSideInfo;
-
-MYSideInfo *get_side_info();
+MYSideInfo *get_side_info(shine_global_config *config);
 int write_side_info(shine_global_config *config);
 
 /*
@@ -195,7 +209,7 @@ int write_side_info(shine_global_config *config)
   int bits, ch, gr;
 
   bits = 0;
-  si = get_side_info();
+  si = get_side_info(config);
   config->formatbits.ThisFrameSize = si->frameLength;
   bits += writePartSideInfo( si->headerPH->part,  NULL, config );
   bits += writePartSideInfo( si->frameSIPH->part, NULL, config );
@@ -209,33 +223,22 @@ int write_side_info(shine_global_config *config)
   return bits;
 }
 
-typedef struct side_info_link
-{
-    struct side_info_link *next;
-    MYSideInfo           side_info;
-} side_info_link;
-
-static struct side_info_link *side_queue_head   = NULL;
-static struct side_info_link *side_queue_free   = NULL;
-
-/* static void free_side_info_link( side_info_link *l ); */
-
-int store_side_info(BF_FrameData *info)
+int store_side_info(BF_FrameData *info, shine_global_config *config)
 {
   int ch, gr;
   side_info_link *l = NULL;
   /* obtain a side_info_link to store info */
-  side_info_link *f = side_queue_free;
+  side_info_link *f = config->formatbits.side_queue_free;
   int bits = 0;
 
   if (f == NULL)
     { /* must allocate another */
+      l = (side_info_link *) calloc( 1, sizeof(side_info_link) );
 #ifdef DEBUG
       static int n_si = 0;
       n_si += 1;
-      printf("allocating side_info_link number %d\n", n_si );
+      printf("allocating side_info_link number %d, %p\n", n_si, l );
 #endif
-      l = (side_info_link *) calloc( 1, sizeof(side_info_link) );
       l->next = NULL;
       l->side_info.headerPH  = BF_newPartHolder( info->header->nrEntries );
       l->side_info.frameSIPH = BF_newPartHolder( info->frameSI->nrEntries );
@@ -247,7 +250,7 @@ int store_side_info(BF_FrameData *info)
     }
   else
     { /* remove from the free list */
-      side_queue_free = f->next;
+      config->formatbits.side_queue_free = f->next;
       f->next = NULL;
       l = f;
     }
@@ -275,10 +278,10 @@ int store_side_info(BF_FrameData *info)
       }
   l->side_info.SILength = bits;
   /* place at end of queue */
-  f = side_queue_head;
+  f = config->formatbits.side_queue_head;
   if ( f == NULL )
     {  /* empty queue */
-      side_queue_head = l;
+      config->formatbits.side_queue_head = l;
     }
   else
     { /* find last element */
@@ -289,21 +292,21 @@ int store_side_info(BF_FrameData *info)
   return bits;
 }
 
-MYSideInfo* get_side_info()
+MYSideInfo* get_side_info(shine_global_config *config)
 {
-  side_info_link *f = side_queue_free;
-  side_info_link *l = side_queue_head;
+  side_info_link *f = config->formatbits.side_queue_free;
+  side_info_link *l = config->formatbits.side_queue_head;
 
   /* If we stop here it means you didn't provide enough headers to support the
     amount of main data that was written. */
   /* assert(l); */
 
   /* update queue head */
-  side_queue_head = l->next;
+  config->formatbits.side_queue_head = l->next;
 
   /* Append l to the free list. You can continue to use it until store_side_info
     is called again, which will not happen again for this frame. */
-  side_queue_free = l;
+  config->formatbits.side_queue_free = l;
   l->next = f;
   return &l->side_info;
 }
