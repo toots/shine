@@ -22,7 +22,7 @@
 static int BitCount       = 0;
 static int ThisFrameSize  = 0;
 static int BitsRemaining  = 0;
-static BitsFcnPtr PutBits = NULL;
+static bitstream_t *bs;
 
 /* forward declarations */
 int store_side_info( BF_FrameData *frameInfo );
@@ -45,14 +45,14 @@ void WriteMainDataBits( unsigned long int val, unsigned int nbits, BF_FrameResul
  * See formatBitstream.h for more information about the data
  * structures and the bitstream syntax.
  */
-void BF_BitstreamFrame(BF_FrameData *frameInfo, BF_FrameResults *results)
+void BF_BitstreamFrame(BF_FrameData *frameInfo, BF_FrameResults *results, shine_global_config *config)
 {
   /* assert( frameInfo->nGranules <= MAX_GRANULES ); */
   /* assert( frameInfo->nChannels <= MAX_CHANNELS ); */
 
+  bs = &config->bs;
+
   /* get ptr to bit writing function */
-  PutBits = frameInfo->putbits;
-  /* assert( PutBits );*/
   /* save SI and compute its length */
   results->SILength = store_side_info( frameInfo );
 
@@ -136,7 +136,7 @@ int writePartSideInfo(BF_BitstreamPart *part, BF_FrameResults *results)
   ep = part->element;
   for ( i = 0; i < part->nrEntries; i++, ep++ )
     {
-      (*PutBits)( ep->value, ep->length);
+      putbits( bs, ep->value, ep->length);
       bits += ep->length;
     }
   return bits;
@@ -181,13 +181,13 @@ void WriteMainDataBits(unsigned long int val,
     {
       unsigned extra = val >> (nbits - BitsRemaining);
       nbits -= BitsRemaining;
-      (*PutBits)( extra, BitsRemaining);
+      putbits( bs, extra, BitsRemaining);
       BitCount = write_side_info();
       BitsRemaining = ThisFrameSize - BitCount;
-      (*PutBits)( val, nbits);
+      putbits( bs, val, nbits);
     }
   else
-    (*PutBits)( val, nbits);
+    putbits( bs, val, nbits);
   BitCount += nbits;
   BitsRemaining -= nbits;
   /* assert( BitCount <= ThisFrameSize ); */

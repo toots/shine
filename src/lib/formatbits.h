@@ -66,7 +66,6 @@ typedef struct
 
 typedef struct BF_FrameData
 {
-    BitsFcnPtr       putbits;  /* your low-level bitstream function */
     int              frameLength;
     int              nGranules;
     int              nChannels;
@@ -140,7 +139,7 @@ MainData()
 int  BF_PartLength( BF_BitstreamPart *part );
 
 /* encode a frame of audio and write it to your bitstream */
-void BF_BitstreamFrame( BF_FrameData *frameInfo, BF_FrameResults *results);
+void BF_BitstreamFrame( BF_FrameData *frameInfo, BF_FrameResults *results, shine_global_config *config);
 
 typedef struct BF_PartHolder
 {

@@ -33,15 +33,6 @@ static void write_ancillary_data( char *theData, int lengthInBits );
 static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi , shine_global_config *config);
 
 /*
- * putMyBits:
- * ----------
- */
-void putMyBits(unsigned long int val, unsigned int len)
-{
-  putbits( bs, val, len);
-}
-
-/*
   L3_format_bitstream()
 
   This is called after a frame of audio has been quantized and coded.
@@ -100,7 +91,6 @@ L3_format_bitstream(shine_global_config *config)
   encodeMainData( config );
   write_ancillary_data( ancillary, ancillary_bits );
 
-  frameData->putbits     = &putMyBits;
   frameData->frameLength = config->mpeg.bits_per_frame;
   frameData->nGranules   = 2;
   frameData->nChannels   = config->wave.channels;
@@ -120,7 +110,7 @@ L3_format_bitstream(shine_global_config *config)
       }
   frameData->userFrameData = userFrameDataPH->part;
 
-  BF_BitstreamFrame( frameData, frameResults);
+  BF_BitstreamFrame( frameData, frameResults, config);
 
   /* we set this here -- it will be tested in the next loops iteration */
   config->side_info.main_data_begin = frameResults->nextBackPtr;
