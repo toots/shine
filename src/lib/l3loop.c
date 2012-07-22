@@ -100,7 +100,7 @@ static int outer_loop( int max_bits,
  * L3_iteration_loop:
  * ------------------
  */
-void L3_iteration_loop(encoder_t *config)
+void L3_iteration_loop(shine_global_config *config)
 {
   L3_psy_xmin_t l3_xmin;
   gr_info *cod_info;

@@ -1,4 +1,4 @@
-#include "priv_types.h"
+#include "types.h"
 
 #if defined(__arm__)
 #include "mult_sarm_gcc.h"

@@ -6,7 +6,7 @@
  */
 
 /* Required headers from libshine. */
-#include "types.h"
+#include "layer3.h"
 
 /* Local header */
 #include <stdint.h>
@@ -90,11 +90,11 @@ FILE *wave_open(const char *fname, config_t *config, int quiet)
  * read_samples:
  * -------------
  */
-int read_samples(short *sample_buffer, int frame_size, callback_t *callback)
+int read_samples(short *sample_buffer, int frame_size, FILE *file)
 {
   int samples_read=0;
 
-  samples_read = fread(sample_buffer,sizeof(short),frame_size, callback->user);
+  samples_read = fread(sample_buffer,sizeof(short),frame_size, file);
 
   if(samples_read<frame_size && samples_read>0) /* Pad sample with zero's */
     while(samples_read<frame_size) sample_buffer[samples_read++] = 0;
@@ -108,17 +108,17 @@ int read_samples(short *sample_buffer, int frame_size, callback_t *callback)
  * Expects an interleaved 16bit pcm stream from read_samples, which it
  * de-interleaves into buffer.
  */
-int wave_get(short buffer[2][samp_per_frame], void *callback_in)
+int wave_get(short buffer[2][samp_per_frame], FILE *file, void *config_in)
 {
   static short temp_buf[2304];
   int          samples_read;
   int          j;
-  callback_t *callback=callback_in;
+  config_t     *config=config_in;
 
-  switch(callback->config.mpeg.mode)
+  switch(config->mpeg.mode)
   {
     case MODE_MONO  :
-      samples_read = read_samples(temp_buf,(int)samp_per_frame, callback);
+      samples_read = read_samples(temp_buf,(int)samp_per_frame, file);
       for(j=0;j<samp_per_frame;j++)
       {
         buffer[0][j] = temp_buf[j];
@@ -127,7 +127,7 @@ int wave_get(short buffer[2][samp_per_frame], void *callback_in)
       break;
 
     default: /* stereo */
-      samples_read = read_samples(temp_buf,(int)samp_per_frame<<1, callback);
+      samples_read = read_samples(temp_buf,(int)samp_per_frame<<1, file);
       for(j=0;j<samp_per_frame;j++)
       {
         buffer[0][j] = temp_buf[2*j];

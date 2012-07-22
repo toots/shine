@@ -18,9 +18,14 @@ void L3_set_config_mpeg_defaults(mpeg_t *mpeg)
 }
 
 /* Compute default encoding values. */
-void L3_initialise(config_t *pub_config, encoder_t *config)
+shine_global_config *L3_initialise(config_t *pub_config)
 {
   double avg_slots_per_frame;
+  shine_global_config *config;
+
+  config = malloc(sizeof(shine_global_config));
+  if (config == NULL)
+    return config;
 
   L3_subband_initialise();
   L3_mdct_initialise();
@@ -63,6 +68,8 @@ void L3_initialise(config_t *pub_config, encoder_t *config)
   memset((char *)&config->side_info,0,sizeof(L3_side_info_t));
 
   config->sideinfo_len = (config->wave.channels==1) ? 168 : 288;
+
+  return config;
 }
 
 int L3_find_samplerate_index(long freq)
@@ -85,56 +92,55 @@ int L3_find_bitrate_index(int bitr)
   return -1; /* error - not a valid samplerate for encoder */
 }
 
-void L3_compress(callback_t *callback)
+unsigned char *L3_encode_frame(shine_global_config *config, short data[2][samp_per_frame], long *written)
 {
   int i, gr, channel;
-  static encoder_t   config;
 
-  L3_initialise(&callback->config, &config);
+  config->buffer[0] = data[0];
+  if (config->wave.channels == 2)
+    config->buffer[1] = data[1];
 
-  while(callback->get_pcm(config.buffer, callback))
+  if(config->mpeg.frac_slots_per_frame)
   {
-    config.buffer_window[0] = config.buffer[0];
-    config.buffer_window[1] = config.buffer[1];
-
-    if(config.mpeg.frac_slots_per_frame)
-    {
-      if(config.mpeg.slot_lag>(config.mpeg.frac_slots_per_frame-1.0))
-      { /* No padding for this frame */
-        config.mpeg.slot_lag    -= config.mpeg.frac_slots_per_frame;
-        config.mpeg.padding = 0;
-      }
-      else
-      { /* Padding for this frame  */
-        config.mpeg.slot_lag    += (1-config.mpeg.frac_slots_per_frame);
-        config.mpeg.padding = 1;
-      }
+    if(config->mpeg.slot_lag>(config->mpeg.frac_slots_per_frame-1.0))
+    { /* No padding for this frame */
+      config->mpeg.slot_lag    -= config->mpeg.frac_slots_per_frame;
+      config->mpeg.padding = 0;
     }
-
-    config.mpeg.bits_per_frame = 8*(config.mpeg.whole_slots_per_frame + config.mpeg.padding);
-    config.mean_bits = (config.mpeg.bits_per_frame - config.sideinfo_len)>>1;
-
-    /* polyphase filtering */
-    for(gr=0;gr<2;gr++)
-      for(channel=config.wave.channels; channel--; )
-        for(i=0;i<18;i++)
-          L3_window_filter_subband(&config.buffer_window[channel], &config.l3_sb_sample[channel][gr+1][i][0] ,channel);
-
-    /* apply mdct to the polyphase output */
-    L3_mdct_sub(&config);
-
-    /* bit and noise allocation */
-    L3_iteration_loop(&config);
-
-    /* write the frame to the bitstream */
-    L3_format_bitstream(config.l3_enc,&config.side_info,&config.scalefactor, &config.bs,config.mdct_freq,NULL,0, &config);
-
-    /* Write data to disk. */
-    if (config.bs.data_position)
-      callback->write_mp3(sizeof(unsigned char)*config.bs.data_position, config.bs.data, &config);
-    
-    config.bs.data_position = 0;
+    else
+    { /* Padding for this frame  */
+      config->mpeg.slot_lag    += (1-config->mpeg.frac_slots_per_frame);
+      config->mpeg.padding = 1;
+    }
   }
-  close_bit_stream(&config.bs);
+
+  config->mpeg.bits_per_frame = 8*(config->mpeg.whole_slots_per_frame + config->mpeg.padding);
+  config->mean_bits = (config->mpeg.bits_per_frame - config->sideinfo_len)>>1;
+
+  /* polyphase filtering */
+  for(gr=0;gr<2;gr++)
+    for(channel=config->wave.channels; channel--; )
+      for(i=0;i<18;i++)
+        L3_window_filter_subband(&config->buffer[channel], &config->l3_sb_sample[channel][gr+1][i][0] ,channel);
+
+  /* apply mdct to the polyphase output */
+  L3_mdct_sub(config);
+
+  /* bit and noise allocation */
+  L3_iteration_loop(config);
+
+  /* write the frame to the bitstream */
+  L3_format_bitstream(config->l3_enc,&config->side_info,&config->scalefactor, &config->bs,config->mdct_freq,NULL,0, config);
+
+  /* Return data. */
+  *written = config->bs.data_position;
+  config->bs.data_position = 0;
+
+  return config->bs.data;
 }
 
+
+void L3_close(shine_global_config *config) {
+  close_bit_stream(&config->bs);
+  free(config);
+}

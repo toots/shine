@@ -7,7 +7,7 @@
 
 void L3_loop_initialise(void);
 
-void L3_iteration_loop(encoder_t *config);
+void L3_iteration_loop(shine_global_config *config);
 
 #endif
 

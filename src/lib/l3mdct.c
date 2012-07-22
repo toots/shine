@@ -46,7 +46,7 @@ void L3_mdct_initialise(void)
  * L3_mdct_sub:
  * ------------
  */
-void L3_mdct_sub(encoder_t *config)
+void L3_mdct_sub(shine_global_config *config)
 {
   /* note. we wish to access the array 'config->mdct_freq[2][2][576]' as
    * [2][2][32][18]. (32*18=576),

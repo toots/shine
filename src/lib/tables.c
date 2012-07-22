@@ -5,7 +5,6 @@
  *    idx  = fr_ps->header->sampling_frequency + (fr_ps->header->version * 3)
  */
 
-#include "types.h"
 #include "tables.h"
 
 struct scalefac_struct sfBandIndex[6] =

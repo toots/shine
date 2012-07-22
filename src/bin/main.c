@@ -20,7 +20,6 @@
 #include <time.h>
 
 /* Required headers from libshine. */
-#include "types.h"
 #include "layer3.h"
 
 /* Local header */
@@ -28,9 +27,6 @@
 
 /* RISC OS specifics */
 #define WAVE  0xfb1      /* Wave filetype */
-
-/* The routine we tell libshine-fxp to use to read PCM data */
-extern int wave_get(short buffer[2][samp_per_frame], void *config_in);
 
 /* Some global vars. */
 char *infname, *outfname;
@@ -144,15 +140,19 @@ static void check_config(config_t *config)
  */
 int main(int argc, char **argv)
 {
-  callback_t callback;
-  time_t start_time, end_time;
+  time_t         start_time, end_time;
+  short          buffer[2][samp_per_frame];
+  config_t       config;
+  shine_t       *s;
+  long           written;
+  unsigned char *data;
 
   time(&start_time);
 
   /* Set the default MPEG encoding paramters - basically init the struct */
-  set_defaults(&callback.config);
+  set_defaults(&config);
 
-  if (!parse_command(argc, argv, &callback.config))
+  if (!parse_command(argc, argv, &config))
     {
       print_usage();
       exit(1);
@@ -162,13 +162,13 @@ int main(int argc, char **argv)
   if (!quiet) print_name();
 
   /* Open the input file and fill the config wave_t header */
-  infile = callback.user = wave_open(infname, &callback.config, quiet);
+  infile = wave_open(infname, &config, quiet);
 
   /* See if samplerate is valid */
-  if (L3_find_samplerate_index(callback.config.wave.samplerate) < 0) error("invalid samplerate");
+  if (L3_find_samplerate_index(config.wave.samplerate) < 0) error("invalid samplerate");
 
   /* See if bitrate is valid */
-  if (L3_find_bitrate_index(callback.config.mpeg.bitr) < 0) error("invalid bitrate");
+  if (L3_find_bitrate_index(config.mpeg.bitr) < 0) error("invalid bitrate");
 
   /* open the output file */
   if (!strcmp(outfname, "-"))
@@ -182,15 +182,19 @@ int main(int argc, char **argv)
     }
 
   /* Print some info about the file about to be created (optional) */
-  if (!quiet) check_config(&callback.config);
+  if (!quiet) check_config(&config);
 
-  /* set up the read PCM stream and write MP3 stream functions */
-  callback.get_pcm = &wave_get;
-  /* TODO: move that to callback.. */
-  callback.write_mp3 = &write_mp3;
+  /* Initiate encoder */
+  s = L3_initialise(&config);
 
   /* All the magic happens here */
-  L3_compress(&callback);
+  while (wave_get(buffer, infile, &config)) {
+    data = L3_encode_frame(s,buffer,&written);
+    write_mp3(written, data, &config);  
+  }
+
+  /* Close encoder. */
+  L3_close(s);
 
   /* Close the wave file (using the wav reader) */
   wave_close(infile);
