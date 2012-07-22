@@ -181,11 +181,11 @@ int main(int argc, char **argv)
       exit(1);
     }
 
-  /* Print some info about the file about to be created (optional) */
-  if (!quiet) check_config(&config);
-
   /* Initiate encoder */
   s = L3_initialise(&config);
+
+  /* Print some info about the file about to be created (optional) */
+  if (!quiet) check_config(&config);
 
   /* All the magic happens here */
   while (wave_get(buffer, infile, &config)) {
