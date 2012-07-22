@@ -90,11 +90,11 @@ FILE *wave_open(const char *fname, config_t *config, int quiet)
  * read_samples:
  * -------------
  */
-int read_samples(short *sample_buffer, int frame_size, FILE *file)
+int read_samples(int16_t *sample_buffer, int frame_size, FILE *file)
 {
   int samples_read=0;
 
-  samples_read = fread(sample_buffer,sizeof(short),frame_size, file);
+  samples_read = fread(sample_buffer,sizeof(int16_t),frame_size, file);
 
   if(samples_read<frame_size && samples_read>0) /* Pad sample with zero's */
     while(samples_read<frame_size) sample_buffer[samples_read++] = 0;
@@ -108,12 +108,12 @@ int read_samples(short *sample_buffer, int frame_size, FILE *file)
  * Expects an interleaved 16bit pcm stream from read_samples, which it
  * de-interleaves into buffer.
  */
-int wave_get(short buffer[2][samp_per_frame], FILE *file, void *config_in)
+int wave_get(int16_t buffer[2][samp_per_frame], FILE *file, void *config_in)
 {
-  static short temp_buf[2304];
-  int          samples_read;
-  int          j;
-  config_t     *config=config_in;
+  static int16_t temp_buf[2304];
+  int            samples_read;
+  int            j;
+  config_t      *config=config_in;
 
   switch(config->mpeg.mode)
   {

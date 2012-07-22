@@ -64,7 +64,7 @@ typedef struct shine_global_flags {
   int            mean_bits;
   L3_psy_ratio_t ratio;
   L3_scalefac_t  scalefactor;
-  short          *buffer[2];
+  int16_t       *buffer[2];
   double         pe[2][2];
   int            l3_enc[2][2][samp_per_frame2];
   long           l3_sb_sample[2][3][18][SBLIMIT];

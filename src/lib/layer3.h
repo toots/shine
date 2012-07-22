@@ -1,6 +1,8 @@
 #ifndef LAYER3_H
 #define LAYER3_H
 
+#include <stdint.h>
+
 #define samp_per_frame  1152
 
 /* Valid samplerates and bitrates. */
@@ -37,7 +39,7 @@ int L3_find_samplerate_index(long freq);
 
 shine_t *L3_initialise(config_t *config);
 
-unsigned char *L3_encode_frame(shine_t *s, short data[2][samp_per_frame], long *written);
+unsigned char *L3_encode_frame(shine_t *s, int16_t data[2][samp_per_frame], long *written);
 
 void L3_close(shine_t *s);
 

@@ -60,7 +60,7 @@ void L3_subband_initialise()
  * picking out values from the windowed samples, and then multiplying
  * them by the filter matrix, producing 32 subband samples.
  */
-void L3_window_filter_subband(short **buffer, long s[SBLIMIT] , int k)
+void L3_window_filter_subband(int16_t **buffer, long s[SBLIMIT] , int k)
 {
   long y[64];
   int i,j;

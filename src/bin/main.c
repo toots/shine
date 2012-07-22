@@ -141,7 +141,7 @@ static void check_config(config_t *config)
 int main(int argc, char **argv)
 {
   time_t         start_time, end_time;
-  short          buffer[2][samp_per_frame];
+  int16_t        buffer[2][samp_per_frame];
   config_t       config;
   shine_t       *s;
   long           written;

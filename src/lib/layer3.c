@@ -92,7 +92,7 @@ int L3_find_bitrate_index(int bitr)
   return -1; /* error - not a valid samplerate for encoder */
 }
 
-unsigned char *L3_encode_frame(shine_global_config *config, short data[2][samp_per_frame], long *written)
+unsigned char *L3_encode_frame(shine_global_config *config, int16_t data[2][samp_per_frame], long *written)
 {
   int i, gr, channel;
 
