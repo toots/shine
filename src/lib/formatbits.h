@@ -27,7 +27,7 @@
   'length' bits from 'value,' msb first. Bits in value are
   assumed to be right-justified.
 */
-typedef void (*BitsFcnPtr)( unsigned long int value, unsigned int length, void *config );
+typedef void (*BitsFcnPtr)( unsigned long int value, unsigned int length);
 
 /*
   A BitstreamElement contains encoded data
@@ -140,7 +140,7 @@ MainData()
 int  BF_PartLength( BF_BitstreamPart *part );
 
 /* encode a frame of audio and write it to your bitstream */
-void BF_BitstreamFrame( BF_FrameData *frameInfo, BF_FrameResults *results, void *config );
+void BF_BitstreamFrame( BF_FrameData *frameInfo, BF_FrameResults *results);
 
 typedef struct BF_PartHolder
 {

@@ -23,7 +23,6 @@ static int BitCount       = 0;
 static int ThisFrameSize  = 0;
 static int BitsRemaining  = 0;
 static BitsFcnPtr PutBits = NULL;
-static void *user_config = NULL; /* Data to pass user buffer writer */
 
 /* forward declarations */
 int store_side_info( BF_FrameData *frameInfo );
@@ -46,14 +45,13 @@ void WriteMainDataBits( unsigned long int val, unsigned int nbits, BF_FrameResul
  * See formatBitstream.h for more information about the data
  * structures and the bitstream syntax.
  */
-void BF_BitstreamFrame(BF_FrameData *frameInfo, BF_FrameResults *results, void *config)
+void BF_BitstreamFrame(BF_FrameData *frameInfo, BF_FrameResults *results)
 {
   /* assert( frameInfo->nGranules <= MAX_GRANULES ); */
   /* assert( frameInfo->nChannels <= MAX_CHANNELS ); */
 
   /* get ptr to bit writing function */
   PutBits = frameInfo->putbits;
-  user_config=config;
   /* assert( PutBits );*/
   /* save SI and compute its length */
   results->SILength = store_side_info( frameInfo );
@@ -138,7 +136,7 @@ int writePartSideInfo(BF_BitstreamPart *part, BF_FrameResults *results)
   ep = part->element;
   for ( i = 0; i < part->nrEntries; i++, ep++ )
     {
-      (*PutBits)( ep->value, ep->length, user_config);
+      (*PutBits)( ep->value, ep->length);
       bits += ep->length;
     }
   return bits;
@@ -183,13 +181,13 @@ void WriteMainDataBits(unsigned long int val,
     {
       unsigned extra = val >> (nbits - BitsRemaining);
       nbits -= BitsRemaining;
-      (*PutBits)( extra, BitsRemaining, user_config );
+      (*PutBits)( extra, BitsRemaining);
       BitCount = write_side_info();
       BitsRemaining = ThisFrameSize - BitCount;
-      (*PutBits)( val, nbits, user_config );
+      (*PutBits)( val, nbits);
     }
   else
-    (*PutBits)( val, nbits, user_config );
+    (*PutBits)( val, nbits);
   BitCount += nbits;
   BitsRemaining -= nbits;
   /* assert( BitCount <= ThisFrameSize ); */

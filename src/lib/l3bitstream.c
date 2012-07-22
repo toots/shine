@@ -127,7 +127,7 @@ L3_format_bitstream( int              l3_enc[2][2][samp_per_frame2],
       }
   frameData->userFrameData = userFrameDataPH->part;
 
-  BF_BitstreamFrame( frameData, frameResults, (void *)config );
+  BF_BitstreamFrame( frameData, frameResults);
 
   /* we set this here -- it will be tested in the next loops iteration */
   l3_side->main_data_begin = frameResults->nextBackPtr;
