@@ -152,6 +152,20 @@ typedef struct {
   BF_PartHolder *userFrameDataPH;
 } l3stream_t;
 
+typedef struct {
+  long *xr;                    /* magnitudes of the spectral values */
+  long xrsq[samp_per_frame2];  /* xr squared */
+  long xrabs[samp_per_frame2]; /* xr absolute */
+  long xrmax;                  /* maximum of xrabs array */
+  long en_tot[2]; /* gr */
+  long en[2][21];
+  long xm[2][21];
+  long xrmaxl[2];
+  double steptab[128]; /* 2**(-x/4)  for x = -127..0 */
+  long steptabi[128];  /* 2**(-x/4)  for x = -127..0 */
+  long int2idx[10000]; /* x**(3/4)   for x = 0..9999 */
+} l3loop_t;
+
 typedef struct shine_global_flags { 
   wave_t         wave;
   priv_mpeg_t    mpeg;
@@ -168,6 +182,7 @@ typedef struct shine_global_flags {
   long           mdct_freq[2][2][samp_per_frame2];
   formatbits_t   formatbits;
   l3stream_t     l3stream;
+  l3loop_t       l3loop;
 } shine_global_config;
 
 #endif
