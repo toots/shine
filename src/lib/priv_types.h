@@ -11,7 +11,7 @@
 
 #include "types.h"
 #include "bitstream.h"
-#include "layer3.h"
+#include "priv_layer3.h"
 
 /* #define DEBUG if you want the library to dump info to stdout */
 
@@ -63,6 +63,15 @@ typedef struct {
   L3_side_info_t side_info;
   int            sideinfo_len;
   int            mean_bits;
-} priv_config_t;
+  L3_psy_ratio_t ratio;
+  L3_scalefac_t  scalefactor;
+  short          *buffer_window[2];
+  short          buffer[2][samp_per_frame];
+  double         pe[2][2];
+  int            l3_enc[2][2][samp_per_frame2];
+  long           l3_sb_sample[2][3][18][SBLIMIT];
+  long           mdct_freq[2][2][samp_per_frame2];
+
+} encoder_t;
 
 #endif

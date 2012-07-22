@@ -3,7 +3,7 @@
 #define __INLINE_ASM
 #include "g_includes.h"
 #include "tables.h"
-#include "layer3.h"
+#include "priv_layer3.h"
 #include "l3loop.h"
 #include "huffman.h"
 #include "bitstream.h"
@@ -100,13 +100,7 @@ static int outer_loop( int max_bits,
  * L3_iteration_loop:
  * ------------------
  */
-void L3_iteration_loop(double          pe[][2],
-                       long            mdct_freq_org[2][2][samp_per_frame2],
-                       L3_psy_ratio_t *ratio,
-                       L3_side_info_t *side_info,
-                       int             l3_enc[2][2][samp_per_frame2],
-                       int             mean_bits,
-                       L3_scalefac_t  *scalefactor, priv_config_t *config)
+void L3_iteration_loop(encoder_t *config)
 {
   L3_psy_xmin_t l3_xmin;
   gr_info *cod_info;
@@ -116,7 +110,7 @@ void L3_iteration_loop(double          pe[][2],
   static int firstcall = 1;
   int *ix;
 
-  main_data_begin = &side_info->main_data_begin;
+  main_data_begin = &config->side_info.main_data_begin;
 
   if ( firstcall )
   {
@@ -131,8 +125,8 @@ void L3_iteration_loop(double          pe[][2],
     for(gr=0; gr<2; gr++)
     {
       /* setup pointers */
-      ix = l3_enc[gr][ch];
-      xr = mdct_freq_org[gr][ch];
+      ix = config->l3_enc[gr][ch];
+      xr = config->mdct_freq[gr][ch];
 
       /* Precalculate the square, abs,  and maximum,
        * for use later on.
@@ -145,19 +139,19 @@ void L3_iteration_loop(double          pe[][2],
           xrmax=xrabs[i];
       }
 
-      cod_info = (gr_info *) &(side_info->gr[gr].ch[ch]);
+      cod_info = (gr_info *) &(config->side_info.gr[gr].ch[ch]);
       cod_info->sfb_lmax = SFB_LMAX - 1; /* gr_deco */
 
-      calc_xmin(ratio, cod_info, &l3_xmin, gr, ch );
+      calc_xmin(&config->ratio, cod_info, &l3_xmin, gr, ch );
 
-      calc_scfsi(side_info,&l3_xmin,ch,gr);
+      calc_scfsi(&config->side_info,&l3_xmin,ch,gr);
 
       /* calculation of number of available bit( per granule ) */
-      max_bits = ResvMaxBits(side_info,&pe[gr][ch],mean_bits, config);
+      max_bits = ResvMaxBits(&config->side_info,&config->pe[gr][ch],config->mean_bits, config);
 
       /* reset of iteration variables */
-      memset(scalefactor->l[gr][ch],0,22);
-      memset(scalefactor->s[gr][ch],0,14);
+      memset(config->scalefactor.l[gr][ch],0,22);
+      memset(config->scalefactor.s[gr][ch],0,14);
 
       for ( i=4; i--; )
         cod_info->slen[i] = 0;
@@ -179,16 +173,16 @@ void L3_iteration_loop(double          pe[][2],
       /* all spectral values zero ? */
       if(xrmax)
         cod_info->part2_3_length = outer_loop(max_bits,&l3_xmin,ix,
-                                              scalefactor,
-                                              gr,ch,side_info );
+                                              &config->scalefactor,
+                                              gr,ch,&config->side_info );
 
-      ResvAdjust(cod_info, side_info, mean_bits, config );
+      ResvAdjust(cod_info, &config->side_info, config->mean_bits, config );
       cod_info->global_gain = cod_info->quantizerStepSize+210;
 
     } /* for gr */
   } /* for ch */
 
-  ResvFrameEnd(side_info,mean_bits, config);
+  ResvFrameEnd(&config->side_info,config->mean_bits, config);
 }
 
 /*

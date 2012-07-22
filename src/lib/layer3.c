@@ -1,7 +1,7 @@
 /* layer3.c */
 
 #include "g_includes.h"
-#include "layer3.h"
+#include "priv_layer3.h"
 #include "l3subband.h"
 #include "l3mdct.h"
 #include "l3loop.h"
@@ -18,7 +18,7 @@ void L3_set_config_mpeg_defaults(mpeg_t *mpeg)
 }
 
 /* Compute default encoding values. */
-void L3_initialise(config_t *pub_config, priv_config_t *config)
+void L3_initialise(config_t *pub_config, encoder_t *config)
 {
   double avg_slots_per_frame;
 
@@ -87,25 +87,15 @@ int L3_find_bitrate_index(int bitr)
 
 void L3_compress(callback_t *callback)
 {
-  int             channel;
-  int             i;
-  int             gr;
-  double          pe[2][2];
-  short          *buffer_window[2];
-  static short    buffer[2][samp_per_frame];
-  static int      l3_enc[2][2][samp_per_frame2];
-  static long     l3_sb_sample[2][3][18][SBLIMIT];
-  static long     mdct_freq[2][2][samp_per_frame2];
-  static L3_psy_ratio_t  ratio;
-  static L3_scalefac_t   scalefactor;
-  static priv_config_t   config;
+  int i, gr, channel;
+  static encoder_t   config;
 
   L3_initialise(&callback->config, &config);
 
-  while(callback->get_pcm(buffer, callback))
+  while(callback->get_pcm(config.buffer, callback))
   {
-    buffer_window[0] = buffer[0];
-    buffer_window[1] = buffer[1];
+    config.buffer_window[0] = config.buffer[0];
+    config.buffer_window[1] = config.buffer[1];
 
     if(config.mpeg.frac_slots_per_frame)
     {
@@ -128,16 +118,16 @@ void L3_compress(callback_t *callback)
     for(gr=0;gr<2;gr++)
       for(channel=config.wave.channels; channel--; )
         for(i=0;i<18;i++)
-          L3_window_filter_subband(&buffer_window[channel], &l3_sb_sample[channel][gr+1][i][0] ,channel);
+          L3_window_filter_subband(&config.buffer_window[channel], &config.l3_sb_sample[channel][gr+1][i][0] ,channel);
 
     /* apply mdct to the polyphase output */
-    L3_mdct_sub(l3_sb_sample, mdct_freq, &config);
+    L3_mdct_sub(&config);
 
     /* bit and noise allocation */
-    L3_iteration_loop(pe,mdct_freq,&ratio,&config.side_info, l3_enc, config.mean_bits,&scalefactor, &config);
+    L3_iteration_loop(&config);
 
     /* write the frame to the bitstream */
-    L3_format_bitstream(l3_enc,&config.side_info,&scalefactor, &config.bs,mdct_freq,NULL,0, &config);
+    L3_format_bitstream(config.l3_enc,&config.side_info,&config.scalefactor, &config.bs,config.mdct_freq,NULL,0, &config);
 
     /* Write data to disk. */
     if (config.bs.data_position)

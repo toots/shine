@@ -3,7 +3,7 @@
  */
 
 #include "priv_types.h"
-#include "layer3.h"
+#include "priv_layer3.h"
 #include "l3loop.h"
 #include "huffman.h"
 #include "bitstream.h"
@@ -57,7 +57,7 @@ void ResvFrameBegin(L3_side_info_t *l3_side, int mean_bits, int frameLength )
  * allowance for the current granule based on reservoir size
  * and perceptual entropy.
  */
-int ResvMaxBits (L3_side_info_t *l3_side, double *pe, int mean_bits, priv_config_t *config )
+int ResvMaxBits (L3_side_info_t *l3_side, double *pe, int mean_bits, encoder_t *config )
 {
   int more_bits, max_bits, add_bits, over_bits;
 
@@ -96,7 +96,7 @@ int ResvMaxBits (L3_side_info_t *l3_side, double *pe, int mean_bits, priv_config
  * Called after a granule's bit allocation. Readjusts the size of
  * the reservoir to reflect the granule's usage.
  */
-void ResvAdjust(gr_info *gi, L3_side_info_t *l3_side, int mean_bits, priv_config_t *config )
+void ResvAdjust(gr_info *gi, L3_side_info_t *l3_side, int mean_bits, encoder_t *config )
 {
   ResvSize += (mean_bits / config->wave.channels) - gi->part2_3_length;
 }
@@ -110,7 +110,7 @@ void ResvAdjust(gr_info *gi, L3_side_info_t *l3_side, int mean_bits, priv_config
  * part2_3_length. The bitstream formatter will detect this and write the
  * appropriate stuffing bits to the bitstream.
  */
-void ResvFrameEnd(L3_side_info_t *l3_side, int mean_bits, priv_config_t *config )
+void ResvFrameEnd(L3_side_info_t *l3_side, int mean_bits, encoder_t *config )
 {
   gr_info *gi;
   int gr, ch, ancillary_pad, stuffingBits;

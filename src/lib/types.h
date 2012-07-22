@@ -29,6 +29,9 @@ typedef struct {
   mpeg_t mpeg;
 } config_t;
 
+/* Abstract encoder type. */
+typedef struct encoder_t encoder;
+
 // TODO: remove!
 typedef struct {
   config_t config;

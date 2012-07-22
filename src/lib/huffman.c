@@ -1,7 +1,7 @@
 /* huffman.c */
 
 #include "g_includes.h"
-#include "layer3.h"
+#include "priv_layer3.h"
 #include "huffman.h"
 #include "bitstream.h"
 #include "l3bitstream.h"

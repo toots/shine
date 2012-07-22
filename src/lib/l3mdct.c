@@ -2,7 +2,7 @@
 
 #define __INLINE_ASM
 #include "g_includes.h"
-#include "layer3.h"
+#include "priv_layer3.h"
 #include "l3mdct.h"
 
 /*extern long mul(long x, long y); */ /* inlined in header file */
@@ -46,10 +46,9 @@ void L3_mdct_initialise(void)
  * L3_mdct_sub:
  * ------------
  */
-void L3_mdct_sub(long sb_sample[2][3][18][SBLIMIT],
-                 long mdct_freq[2][2][samp_per_frame2], priv_config_t *config)
+void L3_mdct_sub(encoder_t *config)
 {
-  /* note. we wish to access the array 'mdct_freq[2][2][576]' as
+  /* note. we wish to access the array 'config->mdct_freq[2][2][576]' as
    * [2][2][32][18]. (32*18=576),
    */
   long (*mdct_enc)[18];
@@ -61,23 +60,23 @@ void L3_mdct_sub(long sb_sample[2][3][18][SBLIMIT],
   for(gr=0; gr<2; gr++)
     for(ch=config->wave.channels; ch--; )
     {
-      /* set up pointer to the part of mdct_freq we're using */
-      mdct_enc = (long (*)[18]) mdct_freq[gr][ch];
+      /* set up pointer to the part of config->mdct_freq we're using */
+      mdct_enc = (long (*)[18]) config->mdct_freq[gr][ch];
 
       /* Compensate for inversion in the analysis filter
        * (every odd index of band AND k)
        */
       for(band=1; band<=31; band+=2 )
         for(k=1; k<=17; k+=2 )
-          sb_sample[ch][gr+1][k][band] *= -1;
+          config->l3_sb_sample[ch][gr+1][k][band] *= -1;
 
       /* Perform imdct of 18 previous subband samples + 18 current subband samples */
       for(band=32; band--; )
       {
         for(k=18; k--; )
         {
-          mdct_in[k]    = sb_sample[ch][ gr ][k][band];
-          mdct_in[k+18] = sb_sample[ch][gr+1][k][band];
+          mdct_in[k]    = config->l3_sb_sample[ch][ gr ][k][band];
+          mdct_in[k+18] = config->l3_sb_sample[ch][gr+1][k][band];
         }
 
         /* Calculation of the MDCT
@@ -111,6 +110,6 @@ void L3_mdct_sub(long sb_sample[2][3][18][SBLIMIT],
   for(ch=config->wave.channels ;ch--; )
     for(j=18; j--; )
       for(band=32; band--; )
-        sb_sample[ch][0][j][band] = sb_sample[ch][2][j][band];
+        config->l3_sb_sample[ch][0][j][band] = config->l3_sb_sample[ch][2][j][band];
 }
 
