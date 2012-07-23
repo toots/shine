@@ -56,9 +56,9 @@ void L3_formatbits_close(shine_global_config *config)
 }
 
 /* forward declarations */
-int store_side_info( BF_FrameData *frameInfo, shine_global_config *config );
-int main_data( BF_FrameData *frameInfo, BF_FrameResults *results, shine_global_config *config);
-void WriteMainDataBits( unsigned long int val, unsigned int nbits, BF_FrameResults *results, shine_global_config *config);
+static int store_side_info( BF_FrameData *frameInfo, shine_global_config *config );
+static int main_data( BF_FrameData *frameInfo, BF_FrameResults *results, shine_global_config *config);
+static void WriteMainDataBits( unsigned long int val, unsigned int nbits, BF_FrameResults *results, shine_global_config *config);
 
 /*
  * BF_BitStreamFrame:

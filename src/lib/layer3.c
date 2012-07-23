@@ -28,7 +28,7 @@ shine_global_config *L3_initialise(config_t *pub_config)
     return config;
 
   L3_subband_initialise();
-  L3_mdct_initialise();
+  L3_mdct_initialise(config);
   L3_loop_initialise(config);
   L3_formatbits_initialise(config);
   L3_bitstream_initialise(config );

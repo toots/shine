@@ -189,6 +189,12 @@ typedef struct {
   long int2idx[10000]; /* x**(3/4)   for x = 0..9999 */
 } l3loop_t;
 
+typedef struct {
+  long ca[8];
+  long cs[8];
+  long cos_l[18][36];
+} mdct_t;
+
 typedef struct shine_global_flags { 
   wave_t         wave;
   priv_mpeg_t    mpeg;
@@ -208,6 +214,7 @@ typedef struct shine_global_flags {
   formatbits_t   formatbits;
   l3stream_t     l3stream;
   l3loop_t       l3loop;
+  mdct_t         mdct;
 } shine_global_config;
 
 #endif
