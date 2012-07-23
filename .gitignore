@@ -1,4 +1,6 @@
 *.swp
+shine
+shine.pc
 m4
 Makefile
 Makefile.in
