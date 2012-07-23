@@ -5,14 +5,6 @@
 #include "tables.h"
 #include "l3subband.h"
 
-static int off[2] = {0,0};
-static long fl[SBLIMIT][64];
-static long x[2][HAN_SIZE];
-static long z[2][HAN_SIZE];
-static long ew[HAN_SIZE];
-
-/*extern long mul(long x, long y); */ /* inlined in header file */
-
 /*
  * L3_subband_initialise:
  * ----------------------
@@ -20,14 +12,16 @@ static long ew[HAN_SIZE];
  * 9th decimal place accuracy of the filterbank tables in the ISO
  * document.  The coefficients are stored in #filter#
  */
-void L3_subband_initialise()
+void L3_subband_initialise(shine_global_config *config)
 {
   int i,j;
   double filter;
 
+  config->subband.off[0] = config->subband.off[1] = 0;
+
   for(i=2; i-- ; )
     for(j=HAN_SIZE; j--; )
-      x[i][j] = 0;
+      config->subband.x[i][j] = 0;
 
   for (i=SBLIMIT; i--; )
     for (j=64; j--; )
@@ -37,13 +31,13 @@ void L3_subband_initialise()
       else
         modf(filter-0.5, &filter);
       /* scale and convert to fixed point before storing */
-      fl[i][j] = (long)(filter * (0x7fffffff * 1e-9));
+      config->subband.fl[i][j] = (long)(filter * (0x7fffffff * 1e-9));
     }
 
   /* note. 0.035781 is enwindow maximum value */
   /* scale and convert to fixed point before storing */
   for (i=HAN_SIZE; i--;)
-    ew[i] = (long)(enwindow[i] * 0x7fffffff);
+    config->subband.ew[i] = (long)(enwindow[i] * 0x7fffffff);
 }
 
 /*
@@ -60,27 +54,27 @@ void L3_subband_initialise()
  * picking out values from the windowed samples, and then multiplying
  * them by the filter matrix, producing 32 subband samples.
  */
-void L3_window_filter_subband(int16_t **buffer, long s[SBLIMIT] , int k)
+void L3_window_filter_subband(int16_t **buffer, long s[SBLIMIT] , int k, shine_global_config *config)
 {
   long y[64];
   int i,j;
 
   /* replace 32 oldest samples with 32 new samples */
   for (i=31;i>=0;i--)
-    x[k][i+off[k]] = ((long)*(*buffer)++) << 16;
+    config->subband.x[k][i+config->subband.off[k]] = ((long)*(*buffer)++) << 16;
 
   /* shift samples into proper window positions */
   for (i=HAN_SIZE; i--; )
-    z[k][i] = mul(x[k][(i+off[k])&(HAN_SIZE-1)],ew[i]);
+    config->subband.z[k][i] = mul(config->subband.x[k][(i+config->subband.off[k])&(HAN_SIZE-1)],config->subband.ew[i]);
 
-  off[k] = (off[k] + 480) & (HAN_SIZE-1); /* offset is modulo (HAN_SIZE)*/
+  config->subband.off[k] = (config->subband.off[k] + 480) & (HAN_SIZE-1); /* offset is modulo (HAN_SIZE)*/
 
   for (i=64; i--; )
     for (j=8, y[i] = 0; j--; )
-      y[i] += z[k][i+(j<<6)];
+      y[i] += config->subband.z[k][i+(j<<6)];
 
   for (i=SBLIMIT; i--; )
     for (j=64, s[i]= 0; j--; )
-      s[i] += mul(fl[i][j],y[j]);
+      s[i] += mul(config->subband.fl[i][j],y[j]);
 }
 

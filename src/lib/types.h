@@ -195,6 +195,14 @@ typedef struct {
   long cos_l[18][36];
 } mdct_t;
 
+typedef struct {
+  int off[2];
+  long fl[SBLIMIT][64];
+  long x[2][HAN_SIZE];
+  long z[2][HAN_SIZE];
+  long ew[HAN_SIZE];
+} subband_t; 
+
 typedef struct shine_global_flags { 
   wave_t         wave;
   priv_mpeg_t    mpeg;
@@ -215,6 +223,7 @@ typedef struct shine_global_flags {
   l3stream_t     l3stream;
   l3loop_t       l3loop;
   mdct_t         mdct;
+  subband_t      subband;
 } shine_global_config;
 
 #endif

@@ -27,7 +27,7 @@ shine_global_config *L3_initialise(config_t *pub_config)
   if (config == NULL)
     return config;
 
-  L3_subband_initialise();
+  L3_subband_initialise(config);
   L3_mdct_initialise(config);
   L3_loop_initialise(config);
   L3_formatbits_initialise(config);
@@ -125,7 +125,7 @@ unsigned char *L3_encode_frame(shine_global_config *config, int16_t data[2][samp
   for(gr=0;gr<2;gr++)
     for(channel=config->wave.channels; channel--; )
       for(i=0;i<18;i++)
-        L3_window_filter_subband(&config->buffer[channel], &config->l3_sb_sample[channel][gr+1][i][0] ,channel);
+        L3_window_filter_subband(&config->buffer[channel], &config->l3_sb_sample[channel][gr+1][i][0] ,channel,config);
 
   /* apply mdct to the polyphase output */
   L3_mdct_sub(config);
