@@ -20,9 +20,9 @@ The encoding API should be quite straight forward:
 s = L3_initialise(&config);
 
 /* All the magic happens here */
-while (read(buffer, infile, &config)) {
+while (read(buffer, infile) {
   data = L3_encode_frame(s,buffer,&written);
-  write(written, data, &config);
+  write(data, written);
 }
 
 /* Close encoder. */
