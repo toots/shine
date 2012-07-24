@@ -19,7 +19,7 @@ enum channels {
 typedef struct {
     enum channels channels;
     long          samplerate;
-} wave_t;
+} shine_wave_t;
 
 /* This is the struct the encoder uses to hold informationn about the output MP3 */
 
@@ -42,20 +42,20 @@ typedef struct {
     enum emph  emph;      /* De-emphasis */
     int        copyright;
     int        original;
-} mpeg_t;
+} shine_mpeg_t;
 
 typedef struct {
-  wave_t wave;
-  mpeg_t mpeg;
-} config_t;
+  shine_wave_t wave;
+  shine_mpeg_t mpeg;
+} shine_config_t;
 
 typedef struct shine_global_flags shine_t;
 
-void L3_set_config_mpeg_defaults(mpeg_t *mpeg);
+void L3_set_config_mpeg_defaults(shine_mpeg_t *mpeg);
 int L3_find_bitrate_index(int bitr);
 int L3_find_samplerate_index(long freq);
 
-shine_t *L3_initialise(config_t *config);
+shine_t *L3_initialise(shine_config_t *config);
 
 unsigned char *L3_encode_frame(shine_t *s, int16_t data[2][samp_per_frame], long *written);
 

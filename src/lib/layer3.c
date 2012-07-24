@@ -9,7 +9,7 @@
 #include "l3bitstream.h"
 
 /* Set default values for important vars */
-void L3_set_config_mpeg_defaults(mpeg_t *mpeg)
+void L3_set_config_mpeg_defaults(shine_mpeg_t *mpeg)
 {
   mpeg->bitr = 128;
   mpeg->emph = NONE;
@@ -18,7 +18,7 @@ void L3_set_config_mpeg_defaults(mpeg_t *mpeg)
 }
 
 /* Compute default encoding values. */
-shine_global_config *L3_initialise(config_t *pub_config)
+shine_global_config *L3_initialise(shine_config_t *pub_config)
 {
   double avg_slots_per_frame;
   shine_global_config *config;

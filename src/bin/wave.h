@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-FILE *wave_open(const char *file, config_t *config, int quiet);
+FILE *wave_open(const char *file, shine_config_t *config, int quiet);
 int  wave_get(int16_t buffer[2][samp_per_frame], FILE *file, void *config_in);
 void wave_close(FILE *file);
 

@@ -130,7 +130,7 @@ typedef struct {
     int    mode_ext;
     int    copyright;  /* + */
     int    original;   /* + */
-} priv_mpeg_t;
+} priv_shine_mpeg_t;
 
 typedef struct
 {
@@ -204,8 +204,8 @@ typedef struct {
 } subband_t; 
 
 typedef struct shine_global_flags { 
-  wave_t         wave;
-  priv_mpeg_t    mpeg;
+  shine_wave_t         wave;
+  priv_shine_mpeg_t    mpeg;
   bitstream_t    bs;
   L3_side_info_t side_info;
   int            sideinfo_len;

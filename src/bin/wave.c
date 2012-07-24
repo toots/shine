@@ -33,7 +33,7 @@ void wave_close(FILE *file)
  * Opens and verifies the header of the Input Wave file. The file pointer is
  * left pointing to the start of the samples.
  */
-FILE *wave_open(const char *fname, config_t *config, int quiet)
+FILE *wave_open(const char *fname, shine_config_t *config, int quiet)
 {
   static char *channel_mappings[] = {NULL,"mono","stereo"};
   FILE *file;
@@ -113,7 +113,7 @@ int wave_get(int16_t buffer[2][samp_per_frame], FILE *file, void *config_in)
   static int16_t temp_buf[2304];
   int            samples_read;
   int            j;
-  config_t      *config=config_in;
+  shine_config_t      *config=config_in;
 
   switch(config->mpeg.mode)
   {

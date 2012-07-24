@@ -72,7 +72,7 @@ static void print_usage()
  * set_defaults:
  * -------------
  */
-static void set_defaults(config_t *config)
+static void set_defaults(shine_config_t *config)
 {
   L3_set_config_mpeg_defaults(&config->mpeg);
   /* Could set overrides here, if any - see Layer3.c */
@@ -82,7 +82,7 @@ static void set_defaults(config_t *config)
  * parse_command line arguments
  * --------------
  */
-static int parse_command(int argc, char** argv, config_t *config)
+static int parse_command(int argc, char** argv, shine_config_t *config)
 {
   int i = 0;
 
@@ -118,7 +118,7 @@ static int parse_command(int argc, char** argv, config_t *config)
  * check_config: Print some info about what we're going to encode
  * -------------
  */
-static void check_config(config_t *config)
+static void check_config(shine_config_t *config)
 {
   static char *mode_names[4]    = { "stereo", "j-stereo", "dual-ch", "mono" };
   static char *demp_names[4]    = { "none", "50/15us", "", "CITT" };
@@ -142,7 +142,7 @@ int main(int argc, char **argv)
 {
   time_t         start_time, end_time;
   int16_t        buffer[2][samp_per_frame];
-  config_t       config;
+  shine_config_t       config;
   shine_t       *s;
   long           written;
   unsigned char *data;
@@ -161,7 +161,7 @@ int main(int argc, char **argv)
 
   if (!quiet) print_name();
 
-  /* Open the input file and fill the config wave_t header */
+  /* Open the input file and fill the config shine_wave_t header */
   infile = wave_open(infname, &config, quiet);
 
   /* See if samplerate is valid */
