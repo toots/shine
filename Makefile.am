@@ -7,7 +7,7 @@ libshine_la_SOURCES  = src/lib/bitstream.c src/lib/formatbits.c src/lib/huffman.
 											 src/lib/l3subband.c src/lib/layer3.c src/lib/reservoir.c \
 											 src/lib/tables.c
 libshine_la_LDFLAGS  = -version-info 1:0:0
-libshine_ladir       = shine
+libshine_ladir       = ${prefix}/include/shine
 libshine_la_HEADERS  = src/lib/layer3.h
 
 bin_PROGRAMS     = shineenc
