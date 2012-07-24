@@ -23,7 +23,7 @@ shine_global_config *L3_initialise(config_t *pub_config)
   double avg_slots_per_frame;
   shine_global_config *config;
 
-  config = malloc(sizeof(shine_global_config));
+  config = calloc(1,sizeof(shine_global_config));
   if (config == NULL)
     return config;
 
