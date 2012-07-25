@@ -143,7 +143,7 @@ int main(int argc, char **argv)
   time_t         start_time, end_time;
   int16_t        buffer[2][samp_per_frame];
   shine_config_t       config;
-  shine_t       *s;
+  shine_t       s;
   long           written;
   unsigned char *data;
 
