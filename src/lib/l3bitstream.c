@@ -1,7 +1,6 @@
 /* l3bitstrea.c */
 
-#include "g_includes.h"
-#include "priv_layer3.h"
+#include "types.h"
 #include "l3mdct.h"
 #include "l3loop.h"
 #include "formatbits.h"

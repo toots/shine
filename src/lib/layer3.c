@@ -1,7 +1,7 @@
 /* layer3.c */
 
-#include "g_includes.h"
-#include "priv_layer3.h"
+#include "types.h"
+#include "layer3.h"
 #include "l3subband.h"
 #include "l3mdct.h"
 #include "l3loop.h"
@@ -34,12 +34,13 @@ shine_global_config *L3_initialise(shine_config_t *pub_config)
   L3_bitstream_initialise(config );
 
   /* Copy public config. */
-  memcpy(&config->wave, &pub_config->wave, sizeof(pub_config->wave));
-  config->mpeg.mode      = pub_config->mpeg.mode;     
-  config->mpeg.bitr      = pub_config->mpeg.bitr; 
-  config->mpeg.emph      = pub_config->mpeg.emph; 
-  config->mpeg.copyright = pub_config->mpeg.copyright;  
-  config->mpeg.original  = pub_config->mpeg.original; 
+  config->wave.channels   = pub_config->wave.channels;
+  config->wave.samplerate = pub_config->wave.samplerate; 
+  config->mpeg.mode       = pub_config->mpeg.mode;     
+  config->mpeg.bitr       = pub_config->mpeg.bitr; 
+  config->mpeg.emph       = pub_config->mpeg.emph; 
+  config->mpeg.copyright  = pub_config->mpeg.copyright;  
+  config->mpeg.original   = pub_config->mpeg.original; 
 
   /* Set default values. */
   config->ResvMax        = 0;

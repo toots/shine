@@ -7,7 +7,7 @@
  * Removed unused functions. Feb 2001 P.Everett
  */
 
-#include "g_includes.h"
+#include "types.h"
 #include "bitstream.h"
 
 #if !defined(__APPLE__)

@@ -1,9 +1,7 @@
 /* l3loop.c */
 
-#define __INLINE_ASM
-#include "g_includes.h"
+#include "types.h"
 #include "tables.h"
-#include "priv_layer3.h"
 #include "l3loop.h"
 #include "huffman.h"
 #include "bitstream.h"

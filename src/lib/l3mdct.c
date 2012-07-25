@@ -1,8 +1,6 @@
 /* L3mdct */
 
-#define __INLINE_ASM
-#include "g_includes.h"
-#include "priv_layer3.h"
+#include "types.h"
 #include "l3mdct.h"
 
 /*extern long mul(long x, long y); */ /* inlined in header file */

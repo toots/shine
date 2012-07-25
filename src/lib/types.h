@@ -10,7 +10,12 @@
 #define samp_per_frame2  576
 
 #include "bitstream.h"
-#include "priv_layer3.h"
+
+#if defined(__arm__)
+#include "mult_sarm_gcc.h"
+#else
+#include "mult_noarch_gcc.h"
+#endif
 
 /* #define DEBUG if you want the library to dump info to stdout */
 
@@ -114,6 +119,11 @@ typedef struct BF_PartHolder
 } BF_PartHolder;
 
 typedef struct {
+    int  channels;
+    long samplerate;
+} priv_shine_wave_t;
+
+typedef struct {
     int    mode;      /* + */ /* Stereo mode */
     int    bitr;      /* + */ /* Must conform to known bitrate - see Main.c */
     int    emph;      /* + */ /* De-emphasis */
@@ -203,8 +213,57 @@ typedef struct {
   long ew[HAN_SIZE];
 } subband_t; 
 
+/* Side information */
+typedef struct {
+        unsigned part2_3_length;
+        unsigned big_values;
+        unsigned count1;
+        unsigned global_gain;
+        unsigned scalefac_compress;
+        unsigned table_select[3];
+        unsigned region0_count;
+        unsigned region1_count;
+        unsigned preflag;
+        unsigned scalefac_scale;
+        unsigned count1table_select;
+
+        unsigned part2_length;
+        unsigned sfb_lmax;
+        unsigned address1;
+        unsigned address2;
+        unsigned address3;
+        int quantizerStepSize;
+        unsigned slen[4];
+} gr_info;
+
+typedef struct {
+    int main_data_begin; /* unsigned -> int */
+    unsigned private_bits;
+    int resvDrain;
+    unsigned scfsi[2][4];
+    struct {
+        struct {
+            gr_info tt;
+        } ch[2];
+    } gr[2];
+} L3_side_info_t;
+
+typedef struct {
+    double  l[2][2][21];
+} L3_psy_ratio_t;
+
+typedef struct {
+        double  l[2][2][21];
+} L3_psy_xmin_t;
+
+typedef struct {
+    int l[2][2][22];            /* [cb] */
+    int s[2][2][13][3];         /* [window][cb] */
+} L3_scalefac_t;
+
+
 typedef struct shine_global_flags { 
-  shine_wave_t         wave;
+  priv_shine_wave_t    wave;
   priv_shine_mpeg_t    mpeg;
   bitstream_t    bs;
   L3_side_info_t side_info;

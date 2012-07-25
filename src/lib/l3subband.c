@@ -1,7 +1,6 @@
 /* L3SubBand */
 
-#define __INLINE_ASM
-#include "g_includes.h"
+#include "types.h"
 #include "tables.h"
 #include "l3subband.h"
 

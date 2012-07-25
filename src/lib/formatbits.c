@@ -15,7 +15,7 @@
 
 /*#define DEBUG*/
 
-#include "g_includes.h"
+#include "types.h"
 #include "formatbits.h"
 
 void L3_formatbits_initialise(shine_global_config *config)

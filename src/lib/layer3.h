@@ -49,16 +49,16 @@ typedef struct {
   shine_mpeg_t mpeg;
 } shine_config_t;
 
-typedef struct shine_global_flags shine_t;
+typedef struct shine_global_flags *shine_t;
 
 void L3_set_config_mpeg_defaults(shine_mpeg_t *mpeg);
 int L3_find_bitrate_index(int bitr);
 int L3_find_samplerate_index(long freq);
 
-shine_t *L3_initialise(shine_config_t *config);
+shine_t L3_initialise(shine_config_t *config);
 
-unsigned char *L3_encode_frame(shine_t *s, int16_t data[2][samp_per_frame], long *written);
+unsigned char *L3_encode_frame(shine_t s, int16_t data[2][samp_per_frame], long *written);
 
-void L3_close(shine_t *s);
+void L3_close(shine_t s);
 
 #endif
