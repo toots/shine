@@ -11,11 +11,19 @@
 
 #include "bitstream.h"
 
+/* TODO: Assembler code did not seem to like
+ * moving all static variables to allocated struct..
+ * Needs fixing, so disabled for now. However, it does
+ * not seem to make much of a difference anyway..
+ 
 #if defined(__arm__)
 #include "mult_sarm_gcc.h"
 #else
+*/
+
 #include "mult_noarch_gcc.h"
-#endif
+
+/* #endif */
 
 /* #define DEBUG if you want the library to dump info to stdout */
 
