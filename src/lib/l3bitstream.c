@@ -9,6 +9,8 @@
 #include "tables.h"
 #include "l3bitstream.h" /* the public interface */
 
+int HuffmanCode(int table_select, int x, int y, unsigned int *code,
+                unsigned int *ext, int *cbits, int *xbits );
 
 void L3_bitstream_initialise( shine_global_config *config )
 {

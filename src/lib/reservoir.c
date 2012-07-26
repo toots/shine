@@ -58,7 +58,6 @@ void ResvFrameBegin(int frameLength, shine_global_config *config)
 int ResvMaxBits (double *pe, shine_global_config *config )
 {
   int more_bits, max_bits, add_bits, over_bits;
-  L3_side_info_t *l3_side = &config->side_info;
   int mean_bits = config->mean_bits;
 
   mean_bits /= config->wave.channels;

@@ -10,6 +10,7 @@
 
 /* Local header */
 #include <stdint.h>
+#include <string.h>
 #include "wave.h"
 
 /* RISC OS specifics */

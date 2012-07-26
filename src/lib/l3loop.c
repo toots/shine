@@ -16,7 +16,6 @@ int *scalefac_band_long  = &sfBandIndex[3].l[0];
 
 static void calc_scfsi(L3_psy_xmin_t *l3_xmin, int ch, int gr, shine_global_config *config);
 static int part2_length(L3_scalefac_t *scalefac, int gr, int ch, L3_side_info_t *si);
-static int scale_bitcount(L3_scalefac_t *scalefac, gr_info *cod_info, int gr, int ch );
 static int bin_search_StepSize(int desired_rate, int ix[samp_per_frame2], gr_info * cod_info, shine_global_config *config);
 static int count_bit(int ix[samp_per_frame2], unsigned int start, unsigned int end, unsigned int table );
 static int bigv_bitcount(int ix[samp_per_frame2], gr_info *gi);
@@ -320,39 +319,6 @@ int part2_length(L3_scalefac_t *scalefac,
 }
 
 /*
- * scale_bitcount:
- * ---------------
- * Also calculates the number of bits necessary to code the scalefactors.
- */
-int scale_bitcount(L3_scalefac_t *scalefac,
-                   gr_info *cod_info,
-                   int gr, int ch )
-{
-  int k, sfb, max_slen1 = 0, max_slen2 = 0, /*a, b, */ ep = 2;
-
-  static int pow2[5] = { 1, 2, 4, 8, 16 };
-
-  for ( sfb =11; sfb--; )
-    if ( scalefac->l[gr][ch][sfb] > max_slen1 )
-      max_slen1 = scalefac->l[gr][ch][sfb];
-
-  for ( sfb = 11; sfb < 21; sfb++ )
-    if ( scalefac->l[gr][ch][sfb] > max_slen2 )
-      max_slen2 = scalefac->l[gr][ch][sfb];
-
-  for ( k = 0; k < 16; k++ )
-    if ( (max_slen1 < pow2[slen1_tab[k]]) && (max_slen2 < pow2[slen2_tab[k]]) )
-    {
-      ep = 0;
-      break;
-    }
-
-  if ( !ep )
-    cod_info->scalefac_compress = k;
-  return ep;
-}
-
-/*
  * calc_xmin:
  * ----------
  * Calculate the allowed distortion for each scalefactor band,
@@ -427,7 +393,7 @@ void L3_loop_initialise(shine_global_config *config)
  */
 int quantize(int ix[samp_per_frame2], int stepsize, shine_global_config *config )
 {
-  int i, max, ln, lnf, scalei;
+  int i, max, ln, scalei;
   double scale, dbl;
 
   scalei = config->l3loop.steptabi[stepsize+127]; /* 2**(-stepsize/4) */

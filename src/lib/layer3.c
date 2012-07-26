@@ -6,6 +6,7 @@
 #include "l3mdct.h"
 #include "l3loop.h"
 #include "bitstream.h"
+#include "formatbits.h"
 #include "l3bitstream.h"
 
 /* Set default values for important vars */
