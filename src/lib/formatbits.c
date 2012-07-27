@@ -1,5 +1,5 @@
 /*********************************************************************
-  Copyright (c) 1995 ISO/IEC JTC1 SC29 WG1, All Rights Reserved
+  Copyright (c) 1995 ISO/IEC JTC1 SC29 WG1
   formatBitstream.c
 **********************************************************************/
 /*
@@ -10,8 +10,20 @@
   1995/09/06  mc@fivebats.com           created
   1995/09/18  mc@fivebats.com           bugfix: WriteMainDataBits
   1995/09/20  mc@fivebats.com           bugfix: store_side_info
+  2012/07/26  toots@rastageeks.org      clarified license.
 */
 
+/* In email <CAKheQp9H5-8eUeXtCahAhS-0pKOW1kZVC9xY0D0oLVfE_kPPMA@mail.gmail.com>,
+ * Mike Coleman <mc@fivebats.com> added the following regarding the code in this file:
+ * 
+ * "As I recall, the intention of the ISO at the time was to be permissive
+ * with the code -- far more permissive than LGPL. In other words, do
+ * what you want with the code."
+ *
+ * I have thus removed a "All Rights Reserved" sentence above. I am leaving this file
+ * without a license header as it could also be re-licensed with a more liberal
+ * license by other interested parties.
+ *   -- Romain Beauxis <toots@rastageeks.org> Thu Jul 26 19:20:11 CDT 2012 */
 
 /*#define DEBUG*/
 

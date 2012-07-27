@@ -1,7 +1,7 @@
 #ifndef _FORMAT_BITSTREAM_H
 #define _FORMAT_BITSTREAM_H
 /*********************************************************************
-  Copyright (c) 1995 ISO/IEC JTC1 SC29 WG1, All Rights Reserved
+  Copyright (c) 1995 ISO/IEC JTC1 SC29 WG1
   formatBitstream.h
 **********************************************************************/
 
@@ -11,6 +11,7 @@
   Date        Programmer                Comment
   ==========  ========================= ===============================
   1995/09/06  mc@fivebats.com           created
+  2012/26/07  toots@rastageeks.org      clarified license
 
 */
 #ifndef MAX_CHANNELS
