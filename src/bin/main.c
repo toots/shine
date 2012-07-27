@@ -24,6 +24,7 @@
 #include "layer3.h"
 
 /* Local header */
+#include "main.h"
 #include "wave.h"
 
 /* RISC OS specifics */
