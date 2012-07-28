@@ -71,9 +71,9 @@ int L3_find_samplerate_index(long freq);
  *
  * Checking for valid configuration values is left for the application to 
  * implement. You can use the `L3_find_bitrate_index` and 
- * `L3_find_samplerate_index` functions above, or the `bitrates` and 
+ * `L3_find_samplerate_index` functions or the `bitrates` and 
  * `samplerates` arrays above to check those parameters. Mone and stereo 
- * mode for wave and mpeg should als be consistent with each other.
+ * mode for wave and mpeg should also be consistent with each other.
  *
  * This function returns NULL if it was not able to allocate memory data for 
  * the encoder. */
@@ -82,10 +82,10 @@ shine_t L3_initialise(shine_config_t *config);
 /* Encode audio data. Source data must have `samp_per_frames` audio samples per
  * channels. Mono encoder only expect one channel. 
  *
- * Returns a pointer to newly encoded data while `written` contains the size of
- * available encoded data. This pointer's memory is handled by the library and 
- * is only valid until the next call to `L3_encode_frame` or `L3_close` and may
- * be NULL if no data was written. */
+ * Returns a pointer to freshly encoded data while `written` contains the size of
+ * available data. This pointer's memory is handled by the library and is only valid 
+ * until the next call to `L3_encode_frame` or `L3_close` and may be NULL if no data
+ * was written. */
 unsigned char *L3_encode_frame(shine_t s, int16_t data[2][samp_per_frame], long *written);
 
 /* Close an encoder, freeing all associated memory. Encoder handler is not
