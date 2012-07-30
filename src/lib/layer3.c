@@ -67,7 +67,7 @@ shine_global_config *L3_initialise(shine_config_t *pub_config)
     config->mpeg.padding = 0;
 
   config->mpeg.samplerate_index = L3_find_samplerate_index(config->wave.samplerate);
-  config->mpeg.bitrate_index    = L3_find_bitrate_index(config->mpeg.bitr);
+  config->mpeg.bitrate_index    = L3_find_bitrate_index(config->mpeg.bitr)+1;
 
   open_bit_stream(&config->bs, BUFFER_SIZE);
 
