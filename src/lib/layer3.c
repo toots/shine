@@ -92,7 +92,7 @@ int L3_find_bitrate_index(int bitr)
 {
   int i;
 
-  for(i=0;i<15;i++)
+  for(i=0;i<14;i++)
     if(bitr==bitrates[i]) return i;
 
   return -1; /* error - not a valid samplerate for encoder */

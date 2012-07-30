@@ -7,7 +7,7 @@
 
 /* Valid samplerates and bitrates. */
 static long samplerates[3] = {44100, 48000, 32000};
-static int  bitrates[15]   = {0,32,40,48,56,64,80,96,112,128,160,192,224,256,320};
+static int  bitrates[14]   = {32,40,48,56,64,80,96,112,128,160,192,224,256,320};
 
 /* This is the struct used to tell the encoder about the input PCM */
 
