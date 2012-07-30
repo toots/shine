@@ -201,6 +201,10 @@ int main(int argc, char **argv)
     write_mp3(written, data, &config);  
   }
 
+  /* Flush and write remaining data. */
+  data = L3_flush(s,&written);
+  write_mp3(written, data, &config);
+
   /* Close encoder. */
   L3_close(s);
 

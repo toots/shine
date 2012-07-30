@@ -25,6 +25,10 @@ while (read(buffer, infile) {
   write(data, written);
 }
 
+/* Flush and write remaining data. */
+data = L3_flush(s,&written);
+write(written, data);
+
 /* Close encoder. */
 L3_close(s);
 ```

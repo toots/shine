@@ -145,6 +145,14 @@ unsigned char *L3_encode_frame(shine_global_config *config, int16_t data[2][samp
   return config->bs.data;
 }
 
+unsigned char *L3_flush(shine_global_config *config, long *written) {
+  empty_buffer(&config->bs, MINIMUM);
+  *written = config->bs.data_position;
+  config->bs.data_position = 0;
+
+  return config->bs.data;
+}
+
 
 void L3_close(shine_global_config *config) {
   L3_bitstream_close(config);

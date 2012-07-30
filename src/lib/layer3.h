@@ -88,6 +88,10 @@ shine_t L3_initialise(shine_config_t *config);
  * was written. */
 unsigned char *L3_encode_frame(shine_t s, int16_t data[2][samp_per_frame], long *written);
 
+/* Flush all data currently in the encoding buffer. Should be used before closing
+ * the encoder, to make all encoded data has been written. */
+unsigned char *L3_flush(shine_t s, long *written);
+
 /* Close an encoder, freeing all associated memory. Encoder handler is not
  * valid after this call. */
 void L3_close(shine_t s);
