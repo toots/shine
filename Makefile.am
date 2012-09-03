@@ -20,3 +20,9 @@ shineenc_CFLAGS  = -Isrc/lib
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = shine.pc
+
+android:
+	NDK_PROJECT_PATH=$(shell pwd) ndk-build APP_BUILD_SCRIPT=$(shell pwd)/Android.mk
+
+clean-local:
+	-rm -rf obj libs

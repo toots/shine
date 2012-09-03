@@ -1,4 +1,6 @@
 *.swp
+obj
+libs
 shine
 shine.pc
 m4
