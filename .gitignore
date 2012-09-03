@@ -1,6 +1,9 @@
 *.swp
 obj
 libs
+android/lib
+android/include
+android/bin
 shine
 shine.pc
 m4

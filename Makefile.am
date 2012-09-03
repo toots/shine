@@ -1,3 +1,5 @@
+.PHONY : android
+
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS  = -I m4
 
@@ -22,7 +24,14 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = shine.pc
 
 android:
-	NDK_PROJECT_PATH=$(shell pwd) ndk-build APP_BUILD_SCRIPT=$(shell pwd)/Android.mk
+	mkdir android/bin
+	mkdir android/include
+	mkdir android/lib
+	NDK_PROJECT_PATH=$(shell pwd) ndk-build APP_BUILD_SCRIPT=$(shell pwd)/android/Library.mk
+	cp libs/armeabi/libshine.so android/lib
+	cp src/lib/layer3.h android/include
+	NDK_PROJECT_PATH=$(shell pwd) ndk-build APP_BUILD_SCRIPT=$(shell pwd)/android/Binary.mk
+	cp libs/armeabi/shineenc android/bin
 
 clean-local:
-	-rm -rf obj libs
+	-rm -rf obj libs android/lib android/bin android/include
