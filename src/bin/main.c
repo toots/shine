@@ -34,189 +34,183 @@
 char *infname, *outfname;
 FILE *infile, *outfile;
 int quiet = 0;
+int _verbose = 0;
 
-/* Routine we tell libshine-fxp to call to write out the MP3 file */
-int write_mp3(long bytes, void *buffer, void *config) {
-    return fwrite(buffer, sizeof(unsigned char), bytes, outfile);
+int verbose()
+{
+	return _verbose;
 }
 
+/* Write out the MP3 file */
+int write_mp3(long bytes, void *buffer, void *config)
+{
+	return fwrite(buffer, sizeof(unsigned char), bytes, outfile);
+}
 
-/*
- * error:
- * ------
- */
+/* Output error message and exit */
 void error(char *s)
 {
-  fprintf(stderr, "[ERROR] %s\n",s);
-  exit(1);
+	fprintf(stderr, "Error: %s\n", s);
+	exit(1);
 }
 
 static void print_name()
 {
-  printf("shineenc (Liquidsoap version)\n");
+	printf("shineenc (Liquidsoap version)\n");
 }
 
-/*
- * print_usage:
- * ------------
- */
 static void print_usage()
 {
-  printf("Usage: shineenc [options] <infile> <outfile>\n\n");
-  printf("Options:\n");
-  printf(" -h            this help message\n");
-  printf(" -b <bitrate>  set the bitrate [32-320], default 128kbit\n");
-  printf(" -c            set copyright flag, default off\n");
-  printf(" -q            quiet mode\n");
+	printf("Usage: shineenc [options] <infile> <outfile>\n\n");
+	printf("Options:\n");
+	printf(" -h            this help message\n");
+	printf(" -b <bitrate>  set the bitrate [32-320], default 128kbit\n");
+	printf(" -c            set copyright flag, default off\n");
+	printf(" -q            quiet mode\n");
+	printf(" -v            verbose mode\n");
 }
 
-/*
- * set_defaults:
- * -------------
- */
+/* Use these default settings, can be overridden */
 static void set_defaults(shine_config_t *config)
 {
-  L3_set_config_mpeg_defaults(&config->mpeg);
-  /* Could set overrides here, if any - see Layer3.c */
+	L3_set_config_mpeg_defaults(&config->mpeg);
 }
 
-/*
- * parse_command line arguments
- * --------------
- */
+/* Parse command line arguments */
 static int parse_command(int argc, char** argv, shine_config_t *config)
 {
-  int i = 0;
+	int i = 0;
 
-  if(argc<3) return 0;
+	if(argc < 3) return 0;
 
-  while (argv[++i][0] == '-' && argv[i][1] != '\000' && argv[i][1] != ' ')
-    switch (argv[i][1])
-      {
-      case 'b':
-        config->mpeg.bitr = atoi(argv[++i]);
-        break;
+	while (argv[++i][0] == '-' && argv[i][1] != '\000' && argv[i][1] != ' ')
+		switch (argv[i][1]) {
+			case 'b':
+				config->mpeg.bitr = atoi(argv[++i]);
+				break;
 
-      case 'c':
-        config->mpeg.copyright = 1;
-        break;
+			case 'c':
+				config->mpeg.copyright = 1;
+				break;
 
-      case 'q':
-        quiet = 1;
-        break;
+			case 'q':
+				quiet = 1;
+				_verbose = 0;
+				break;
 
-      case 'h':
-      default :
-        return 0;
-      }
+			case 'v':
+				_verbose = 1;
+				quiet = 0;
+				break;
 
-  if (argc - i != 2) return 0;
-  infname = argv[i++];
-  outfname = argv[i];
-  return 1;
+			case 'h':
+			default :
+				return 0;
+		}
+
+	if (argc - i != 2) return 0;
+	infname = argv[i++];
+	outfname = argv[i];
+	return 1;
 }
 
-/*
- * check_config: Print some info about what we're going to encode
- * -------------
- */
+/* Print some info about what we're going to encode */
 static void check_config(shine_config_t *config)
 {
-  static char *mode_names[4]    = { "stereo", "j-stereo", "dual-ch", "mono" };
-  static char *demp_names[4]    = { "none", "50/15us", "", "CITT" };
+	static char *mode_names[4]    = { "stereo", "j-stereo", "dual-ch", "mono" };
+	static char *demp_names[4]    = { "none", "50/15us", "", "CITT" };
 
-  printf("MPEG-I layer III, %s  Psychoacoustic Model: Shine\n",
-         mode_names[config->mpeg.mode]);
-  printf("Bitrate=%d kbps  ",config->mpeg.bitr );
-  printf("De-emphasis: %s   %s %s\n",
-         demp_names[config->mpeg.emph],
-         ((config->mpeg.original)?"Original":""),
-         ((config->mpeg.copyright)?"(C)":""));
-
-  printf("Encoding \"%s\" to \"%s\"\n", infname, outfname);
+	printf("MPEG-I layer III, %s  Psychoacoustic Model: Shine\n",
+		mode_names[config->mpeg.mode]);
+	printf("Bitrate: %d kbps  ", config->mpeg.bitr);
+	printf("De-emphasis: %s   %s %s\n",
+		demp_names[config->mpeg.emph],
+		((config->mpeg.original) ? "Original" : ""),
+		((config->mpeg.copyright) ? "(C)" : ""));
+	printf("Encoding \"%s\" to \"%s\"\n", infname, outfname);
 }
 
-/*
- * main:
- * -----
- */
 int main(int argc, char **argv)
 {
-  time_t         start_time, end_time;
-  int16_t        buffer[2][samp_per_frame];
-  shine_config_t       config;
-  shine_t       s;
-  long           written;
-  unsigned char *data;
+	wave_t         wave;
+	time_t         start_time, end_time;
+	int16_t        buffer[2][samp_per_frame];
+	shine_config_t config;
+	shine_t        s;
+	long           written;
+	unsigned char  *data;
 
-  time(&start_time);
+	time(&start_time);
 
-  /* Set the default MPEG encoding paramters - basically init the struct */
-  set_defaults(&config);
+	/* Set the default MPEG encoding paramters - basically init the struct */
+	set_defaults(&config);
 
-  if (!parse_command(argc, argv, &config))
-    {
-      print_usage();
-      exit(1);
-    }
-  quiet = quiet || !strcmp(outfname, "-");
+	if (!parse_command(argc, argv, &config)) {
+		print_usage();
+		exit(1);
+	}
 
-  if (!quiet) print_name();
+	quiet = quiet || !strcmp(outfname, "-");
 
-  /* Open the input file and fill the config shine_wave_t header */
-  infile = wave_open(infname, &config, quiet);
+	if (!quiet) print_name();
 
-  /* See if samplerate is valid */
-  if (L3_find_samplerate_index(config.wave.samplerate) < 0) error("invalid samplerate");
+	/* Open the input file and fill the config shine_wave_t header */
+	if (!wave_open(infname, &wave, &config, quiet))
+		error("Could not open WAVE file");
 
-  /* See if bitrate is valid */
-  if (L3_find_bitrate_index(config.mpeg.bitr) < 0) error("invalid bitrate");
+	infile = wave.file;
 
-  /* open the output file */
-  if (!strcmp(outfname, "-"))
-    outfile = stdout;
-  else
-    outfile = fopen(outfname, "wb");
-  if (!outfile)
-    {
-      fprintf(stderr, "Could not create \"%s\".\n", outfname);
-      exit(1);
-    }
+	/* See if samplerate is valid */
+	if (L3_find_samplerate_index(config.wave.samplerate) < 0) error("Unsupported samplerate");
 
-  /* Set to stereo mode if wave data is stereo, mono otherwise. */
-  if (config.wave.channels > 1)
-    config.mpeg.mode = STEREO;
-  else
-    config.mpeg.mode = MONO;
+	/* See if bitrate is valid */
+	if (L3_find_bitrate_index(config.mpeg.bitr) < 0) error("Unsupported bitrate");
 
-  /* Print some info about the file about to be created (optional) */
-  if (!quiet) check_config(&config);
+	/* open the output file */
+	if (!strcmp(outfname, "-"))
+		outfile = stdout;
+	else
+		outfile = fopen(outfname, "wb");
+	if (!outfile) {
+		fprintf(stderr, "Could not create \"%s\".\n", outfname);
+		exit(1);
+	}
 
-  /* Initiate encoder */
-  s = L3_initialise(&config);
+	/* Set to stereo mode if wave data is stereo, mono otherwise. */
+	if (config.wave.channels > 1)
+		config.mpeg.mode = STEREO;
+	else
+		config.mpeg.mode = MONO;
 
-  /* All the magic happens here */
-  while (wave_get(buffer, infile, &config)) {
-    data = L3_encode_frame(s,buffer,&written);
-    write_mp3(written, data, &config);  
-  }
+	/* Print some info about the file about to be created (optional) */
+	if (!quiet) check_config(&config);
 
-  /* Flush and write remaining data. */
-  data = L3_flush(s,&written);
-  write_mp3(written, data, &config);
+	/* Initiate encoder */
+	s = L3_initialise(&config);
 
-  /* Close encoder. */
-  L3_close(s);
+	/* All the magic happens here */
+	while (wave_get(buffer, &wave, &config)) {
+		data = L3_encode_frame(s, buffer, &written);
+		write_mp3(written, data, &config);
+	}
 
-  /* Close the wave file (using the wav reader) */
-  wave_close(infile);
+	/* Flush and write remaining data. */
+	data = L3_flush(s, &written);
+	write_mp3(written, data, &config);
 
-  /* Close the MP3 file */
-  fclose(outfile);
+	/* Close encoder. */
+	L3_close(s);
 
-  time(&end_time);
-  end_time -= start_time;
-  if (!quiet)
-    printf(" Finished in %2ld:%2ld:%2ld\n", end_time/3600, (end_time/60)%60, end_time%60);
-  exit(0);
+	/* Close the wave file (using the wav reader) */
+	wave_close(&wave);
+
+	/* Close the MP3 file */
+	fclose(outfile);
+
+	time(&end_time);
+	end_time -= start_time;
+	if (!quiet)
+		printf("Finished in %02ld:%02ld:%02ld (%01.1fx realtime)\n", end_time / 3600, (end_time / 60) % 60, end_time % 60, (float)wave.duration / (float)end_time);
+
+	return 0;
 }

@@ -7,9 +7,10 @@
 typedef struct {
         FILE *file;
         long length;
+	long duration;
 } wave_t;
 
-bool wave_open(const char *fname, wave_t *wave, shine_config_t *config, int quiet, long *data_length);
+bool wave_open(const char *fname, wave_t *wave, shine_config_t *config, int quiet);
 int  wave_get(int16_t buffer[2][samp_per_frame], wave_t *wave, void *config_in);
 void wave_close(wave_t *wave);
 
