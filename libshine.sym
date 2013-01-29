@@ -1,0 +1,7 @@
+L3_close
+L3_encode_frame
+L3_find_bitrate_index
+L3_find_samplerate_index
+L3_flush
+L3_initialise
+L3_set_config_mpeg_defaults
