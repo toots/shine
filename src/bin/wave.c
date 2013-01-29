@@ -20,14 +20,70 @@
 
 #define MODE_MONO 3
 
-/*
- * wave_close:
- * -----------
- */
-void wave_close(FILE *file)
+typedef struct {
+	char id[4];
+	uint32_t length;
+} riff_chunk_header_t;
+
+typedef struct {
+	riff_chunk_header_t header;
+	char wave[4];
+} wave_chunk_t;
+
+typedef struct {
+	riff_chunk_header_t header;
+	uint16_t format;       /* MS PCM = 1 */
+	uint16_t channels;     /* channels, mono = 1, stereo = 2 */
+	uint32_t sample_rate;  /* samples per second = 44100 */
+	uint32_t byte_rate;    /* bytes per second = samp_rate * byte_samp = 176400 */
+	uint16_t frame_size;   /* block align (bytes per sample) = channels * bits_per_sample / 8 = 4 */
+	uint16_t depth;        /* bits per sample = 16 for MS PCM (format specific) */
+} fmt_chunk_t;
+
+
+bool wave_get_chunk_header(FILE *file, const char id[4], riff_chunk_header_t *header)
 {
-  fclose(file);
+	bool found = false;
+	uint32_t chunk_length;
+	long i;
+	char chunk_id[5] = "\0\0\0\0\0";
+
+	if (verbose())
+		fprintf(stderr, "Looking for chunk '%s'\n", id);
+
+	while(!found) {
+		if (fread(header, sizeof(riff_chunk_header_t), 1, file) != 1) {
+			if (feof(file))
+				return false;
+			else
+				error("Read error");
+		}
+
+		/* chunks must be word-aligned, chunk data doesn't need to */
+		chunk_length = header->length + header->length % 2;
+		if (verbose()) {
+			memcpy(chunk_id, &header->id, 4);
+			fprintf(stderr, "Found chunk '%s', length: %u\n", chunk_id, header->length);
+		}
+
+		if (strncmp(header->id, id, 4) == 0)
+			return true;
+
+		/* move forward */
+		for (i = 0; i < chunk_length; i++)
+			getc(file);
+
+	}
+
+	return false;
 }
+
+
+void wave_close(wave_t *wave)
+{
+  fclose(wave->file);
+}
+
 
 /*
  * wave_open:
@@ -35,63 +91,74 @@ void wave_close(FILE *file)
  * Opens and verifies the header of the Input Wave file. The file pointer is
  * left pointing to the start of the samples.
  */
-FILE *wave_open(const char *fname, shine_config_t *config, int quiet)
+bool wave_open(const char *fname, wave_t *wave, shine_config_t *config, int quiet)
 {
-  static char *channel_mappings[] = {NULL,"mono","stereo"};
-  FILE *file;
-  uint32_t length;
+	static char *channel_mappings[] = { NULL, "mono", "stereo" };
+	wave_chunk_t wave_chunk;
+	fmt_chunk_t fmt_chunk;
+	riff_chunk_header_t data_chunk;
 
-  /* Wave file headers can vary from this, but we're only intereseted in this format */
-  struct wave_header
-  {
-    char riff[4];             /* "RIFF" */
-    uint32_t size;    /* length of rest of file = size of rest of header(36) + data length */
-    char wave[4];             /* "WAVE" */
-    char fmt[4];              /* "fmt " */
-    uint32_t fmt_len;    /* length of rest of fmt chunk = 16 */
-    uint16_t tag;       /* MS PCM = 1 */
-    uint16_t channels;  /* channels, mono = 1, stereo = 2 */
-    uint32_t samp_rate;  /* samples per second = 44100 */
-    uint32_t byte_rate;  /* bytes per second = samp_rate * byte_samp = 176400 */
-    uint16_t byte_samp; /* block align (bytes per sample) = channels * bits_per_sample / 8 = 4 */
-    uint16_t bit_samp;  /* bits per sample = 16 for MS PCM (format specific) */
-    char data[4];             /* "data" */
-    uint32_t length;     /* data length (bytes) */
-  } header;
+	if (!strcmp(fname, "-"))
+		 /* TODO: support raw PCM stream with commandline parameters specifying format */
+		wave->file = stdin;
+	else
+		wave->file = fopen(fname, "rb");
 
-  if (!strcmp(fname, "-"))
-    file = stdin;
-  else
-    file = fopen(fname, "rb");
+	if (!wave->file)
+		error("Unable to open file");
 
-  if (!file) error("Unable to open file");
+	if (fread(&wave_chunk, sizeof(wave_chunk), 1, wave->file) != 1)
+		error("Invalid header");
 
-  if (fread(&header, sizeof(header), 1, file) != 1) error("Invalid Header");
-  if (strncmp(header.riff,"RIFF", 4) != 0) error("Not a MS-RIFF file");
-  if (strncmp(header.wave,"WAVE", 4) != 0) error("Not a WAVE audio");
-  if (strncmp(header.fmt, "fmt ", 4) != 0) error("Can't find format chunk");
-  if (header.tag != 1)                     error("Unknown WAVE format");
-  if (header.channels > 2)                 error("More than 2 channels");
-  if (header.bit_samp != 16)               error("Not 16 bit");
-  if (strncmp(header.data,"data", 4) != 0) error("Can't find data chunk");
+	if (strncmp(wave_chunk.header.id, "RIFF", 4) != 0)
+		error("Not a MS-RIFF file");
 
-  config->wave.channels      = header.channels;
-  config->wave.samplerate    = header.samp_rate;
-  
-  length        = header.length / header.byte_rate;
+	if (strncmp(wave_chunk.wave, "WAVE", 4) != 0)
+		error("Not a WAVE audio file");
 
-  if (!quiet)
-    printf("%s, %s %ldHz %ldbit, Length: %2ld:%2ld:%2ld\n",
-           "WAV PCM DATA", channel_mappings[header.channels], (long)header.samp_rate, (long)header.bit_samp,
-           (long)length/3600, (long)(length/60)%60, (long)length%60);
+	/* Check the fmt chunk */
+	if (!wave_get_chunk_header(wave->file, "fmt ", (riff_chunk_header_t *)&fmt_chunk))
+		error("WAVE fmt chunk not found");
 
-  return file;
+	if(fread(&fmt_chunk.format,
+		sizeof(fmt_chunk_t) - sizeof(riff_chunk_header_t), 1, wave->file) != 1)
+		error("Read error");
+
+	if (verbose())
+		fprintf(stderr, "WAVE format: %u\n", fmt_chunk.format);
+
+	if (fmt_chunk.format != 1)
+		error("Unknown WAVE format");
+
+	if (fmt_chunk.channels > 2)
+		error("More than 2 channels");
+
+	if (fmt_chunk.depth != 16)
+		error("Unsupported PCM bit depth");
+
+	/* Position the file pointer at the data chunk */
+	if (!wave_get_chunk_header(wave->file, "data", &data_chunk))
+		error("WAVE data chunk not found");
+
+	config->wave.channels   = fmt_chunk.channels;
+	config->wave.samplerate = fmt_chunk.sample_rate;
+
+        wave->length = data_chunk.length;
+  	wave->duration = data_chunk.length / fmt_chunk.byte_rate;
+
+	if (!quiet)
+		printf("%s, %s %ldHz %ldbit, duration: %02ld:%02ld:%02ld\n",
+			"WAVE PCM Data", channel_mappings[fmt_chunk.channels], (long)fmt_chunk.sample_rate, (long)fmt_chunk.depth,
+			(long)wave->duration / 3600, (long)(wave->duration / 60) % 60, (long)wave->duration % 60);
+	return true;
 }
 
 /*
  * read_samples:
  * -------------
  */
+
+/* TODO: respect data chunk length */
 int read_samples(int16_t *sample_buffer, int frame_size, FILE *file)
 {
   int samples_read=0;
@@ -110,8 +177,10 @@ int read_samples(int16_t *sample_buffer, int frame_size, FILE *file)
  * Expects an interleaved 16bit pcm stream from read_samples, which it
  * de-interleaves into buffer.
  */
-int wave_get(int16_t buffer[2][samp_per_frame], FILE *file, void *config_in)
+int wave_get(int16_t buffer[2][samp_per_frame], wave_t *wave, void *config_in)
 {
+	FILE *file = wave->file;
+
   static int16_t temp_buf[2304];
   int            samples_read;
   int            j;
