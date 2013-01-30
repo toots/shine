@@ -24,9 +24,9 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = shine.pc
 
 android:
-	mkdir android/bin
-	mkdir android/include
-	mkdir android/lib
+	[ -d android/bin ]     || mkdir android/bin
+	[ -d android/include ] || mkdir android/include
+	[ -d android/lib ]     || mkdir android/lib
 	NDK_PROJECT_PATH=$(shell pwd) ndk-build APP_BUILD_SCRIPT=$(shell pwd)/android/Library.mk
 	cp libs/armeabi/libshine.so android/lib
 	cp src/lib/layer3.h android/include
