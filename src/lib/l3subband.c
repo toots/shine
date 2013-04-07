@@ -33,10 +33,10 @@ void L3_subband_initialise(shine_global_config *config)
       config->subband.fl[i][j] = (long)(filter * (0x7fffffff * 1e-9));
     }
 
-  /* note. 0.035781 is enwindow maximum value */
+  /* note. 0.035781 is shine_enwindow maximum value */
   /* scale and convert to fixed point before storing */
   for (i=HAN_SIZE; i--;)
-    config->subband.ew[i] = (long)(enwindow[i] * 0x7fffffff);
+    config->subband.ew[i] = (long)(shine_enwindow[i] * 0x7fffffff);
 }
 
 /*
@@ -45,7 +45,7 @@ void L3_subband_initialise(shine_global_config *config)
  * Overlapping window on PCM samples
  * 32 16-bit pcm samples are scaled to fractional 2's complement and
  * concatenated to the end of the window buffer #x#. The updated window
- * buffer #x# is then windowed by the analysis window #enwindow# to produce
+ * buffer #x# is then windowed by the analysis window #shine_enwindow# to produce
  * the windowed sample #z#
  * Calculates the analysis filter bank coefficients
  * The windowed samples #z# is filtered by the digital filter matrix #filter#

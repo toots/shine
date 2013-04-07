@@ -7,8 +7,8 @@ struct scalefac_struct
    int s[14];
 };
 
-extern struct scalefac_struct sfBandIndex[6];
-extern double enwindow[];
+extern struct scalefac_struct shine_scale_fact_band_index[6];
+extern double shine_enwindow[];
 
 #endif
 

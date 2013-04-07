@@ -12,7 +12,7 @@
 #define CBLIMIT  21
 #define SFB_LMAX 22
 
-int *scalefac_band_long  = &sfBandIndex[3].l[0];
+int *scalefac_band_long  = &shine_scale_fact_band_index[3].l[0];
 
 static void calc_scfsi(L3_psy_xmin_t *l3_xmin, int ch, int gr, shine_global_config *config);
 static int part2_length(L3_scalefac_t *scalefac, int gr, int ch, L3_side_info_t *si);
@@ -99,7 +99,7 @@ void L3_iteration_loop(shine_global_config *config)
   int ch, gr, i;
   int *ix;
 
-  scalefac_band_long  = &sfBandIndex[config->mpeg.samplerate_index + 3].l[0];
+  scalefac_band_long  = &shine_scale_fact_band_index[config->mpeg.samplerate_index + 3].l[0];
 
   for(ch=config->wave.channels; ch--; )
   {
@@ -505,8 +505,8 @@ int count1_bitcount(int ix[samp_per_frame2], gr_info *cod_info)
     sum0 += signbits;
     sum1 += signbits;
 
-    sum0 += ht[32].hlen[p];
-    sum1 += ht[33].hlen[p];
+    sum0 += shine_huffman_table[32].hlen[p];
+    sum1 += shine_huffman_table[33].hlen[p];
   }
 
   if(sum0<sum1)
@@ -652,7 +652,7 @@ int new_choose_table( int ix[samp_per_frame2], unsigned int begin, unsigned int 
   {
     /* try tables with no linbits */
     for ( i =14; i--; )
-      if ( ht[i].xlen > max )
+      if ( shine_huffman_table[i].xlen > max )
       {
         choice[0] = i;
         break;
@@ -711,14 +711,14 @@ int new_choose_table( int ix[samp_per_frame2], unsigned int begin, unsigned int 
     max -= 15;
 
     for(i=15;i<24;i++)
-      if(ht[i].linmax>=max)
+      if(shine_huffman_table[i].linmax>=max)
       {
         choice[0] = i;
         break;
       }
 
     for(i=24;i<32;i++)
-      if(ht[i].linmax>=max)
+      if(shine_huffman_table[i].linmax>=max)
       {
         choice[1] = i;
         break;
@@ -769,7 +769,7 @@ int count_bit(int ix[samp_per_frame2],
   if(!table)
     return 0;
 
-  h   = &(ht[table]);
+  h   = &(shine_huffman_table[table]);
   sum = 0;
 
   ylen    = h->ylen;

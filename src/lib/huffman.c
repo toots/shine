@@ -79,7 +79,7 @@ static unsigned char t32l[]  = {1, 4, 4, 5, 4, 6, 5, 6, 4, 5, 5, 6, 5, 6, 6, 6};
 static unsigned char t33l[]  = {4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4};
 
 #define NOREF -1
-struct huffcodetab ht[HTN] =
+struct huffcodetab shine_huffman_table[HTN] =
 {
 { 0, 0, 0,   0,NULL,NULL},
 { 2, 2, 0,   0,t1HB, t1l},

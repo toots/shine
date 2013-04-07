@@ -262,7 +262,7 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
   /* 1: Write the bigvalues */
   bigvalues = gi->big_values <<1;
 
-  int *scalefac = &sfBandIndex[config->mpeg.samplerate_index+3].l[0];
+  int *scalefac = &shine_scale_fact_band_index[config->mpeg.samplerate_index+3].l[0];
   unsigned scalefac_index = 100;
 
   scalefac_index = gi->region0_count + 1;
@@ -290,7 +290,7 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
             tableindex = gi->table_select[2];
             pr = &r2;
           }
-      h = &ht[ tableindex ];
+      h = &shine_huffman_table[ tableindex ];
       /* get huffman code */
       x = ix[i];
       y = ix[i + 1];
@@ -311,7 +311,7 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
   bvbits = bitsWritten;
 
   /* 2: Write count1 area */
-  h = &ht[gi->count1table_select + 32];
+  h = &shine_huffman_table[gi->count1table_select + 32];
   count1End = bigvalues + (gi->count1 <<2);
   for ( i = bigvalues; i < count1End; i += 4 )
     {
@@ -399,7 +399,7 @@ int HuffmanCode(int table_select, int x, int y, unsigned int *code,
 
   signx = abs_and_sign( &x );
   signy = abs_and_sign( &y );
-  h = &(ht[table_select]);
+  h = &(shine_huffman_table[table_select]);
   xlen = h->xlen;
   ylen = h->ylen;
   linbits = h->linbits;
