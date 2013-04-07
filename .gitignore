@@ -80,3 +80,4 @@ src/lib/reservoir.lo
 src/lib/reservoir.o
 src/lib/tables.lo
 src/lib/tables.o
+shine-*.tar.gz
