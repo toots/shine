@@ -1,0 +1,8 @@
+1.0.1 (2013-04-07):
+======
+* Prefix some symbols to avoid name clash
+  with libmp3lame.
+
+1.0.0 (2013-02-02):
+======
+* Initial release

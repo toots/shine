@@ -1,6 +1,6 @@
 .PHONY : android
 
-EXTRA_DIST = src/lib/*.h src/bin/*.h README* libshine.sym
+EXTRA_DIST = ChangeLog src/lib/*.h src/bin/*.h README* libshine.sym
 
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS  = -I m4
