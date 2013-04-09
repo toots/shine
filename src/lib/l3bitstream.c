@@ -9,49 +9,49 @@
 #include "tables.h"
 #include "l3bitstream.h" /* the public interface */
 
-int HuffmanCode(int table_select, int x, int y, unsigned int *code,
+int shine_HuffmanCode(int table_select, int x, int y, unsigned int *code,
                 unsigned int *ext, int *cbits, int *xbits );
 
-void L3_bitstream_initialise( shine_global_config *config )
+void shine_bitstream_initialise( shine_global_config *config )
 {
   int ch, gr;
 
-  config->l3stream.headerPH = BF_newPartHolder( 12 );
-  config->l3stream.frameSIPH = BF_newPartHolder( 12 );
+  config->l3stream.headerPH = shine_BF_newPartHolder( 12 );
+  config->l3stream.frameSIPH = shine_BF_newPartHolder( 12 );
 
   for ( ch = 0; ch < MAX_CHANNELS; ch++ )
-     config->l3stream.channelSIPH[ch] = BF_newPartHolder( 8 );
+     config->l3stream.channelSIPH[ch] = shine_BF_newPartHolder( 8 );
 
   for ( gr = 0; gr < MAX_GRANULES; gr++ )
     for ( ch = 0; ch < MAX_CHANNELS; ch++ )
       {
-       config->l3stream.spectrumSIPH[gr][ch]   = BF_newPartHolder( 32 );
-       config->l3stream.scaleFactorsPH[gr][ch] = BF_newPartHolder( 64 );
-       config->l3stream.codedDataPH[gr][ch]    = BF_newPartHolder( samp_per_frame2 );
-       config->l3stream.userSpectrumPH[gr][ch] = BF_newPartHolder( 4 );
+       config->l3stream.spectrumSIPH[gr][ch]   = shine_BF_newPartHolder( 32 );
+       config->l3stream.scaleFactorsPH[gr][ch] = shine_BF_newPartHolder( 64 );
+       config->l3stream.codedDataPH[gr][ch]    = shine_BF_newPartHolder( samp_per_frame2 );
+       config->l3stream.userSpectrumPH[gr][ch] = shine_BF_newPartHolder( 4 );
       }
-  config->l3stream.userFrameDataPH = BF_newPartHolder( 8 );
+  config->l3stream.userFrameDataPH = shine_BF_newPartHolder( 8 );
 }
 
-void L3_bitstream_close( shine_global_config *config )
+void shine_bitstream_close( shine_global_config *config )
 {
   int ch, gr;
 
-  BF_freePartHolder(config->l3stream.headerPH);
-  BF_freePartHolder(config->l3stream.frameSIPH);
+  shine_BF_freePartHolder(config->l3stream.headerPH);
+  shine_BF_freePartHolder(config->l3stream.frameSIPH);
 
   for ( ch = 0; ch < MAX_CHANNELS; ch++ )
-     BF_freePartHolder(config->l3stream.channelSIPH[ch]);
+     shine_BF_freePartHolder(config->l3stream.channelSIPH[ch]);
 
   for ( gr = 0; gr < MAX_GRANULES; gr++ )
     for ( ch = 0; ch < MAX_CHANNELS; ch++ )
       {
-       BF_freePartHolder(config->l3stream.spectrumSIPH[gr][ch]);
-       BF_freePartHolder(config->l3stream.scaleFactorsPH[gr][ch]);
-       BF_freePartHolder(config->l3stream.codedDataPH[gr][ch]);
-       BF_freePartHolder(config->l3stream.userSpectrumPH[gr][ch]);
+       shine_BF_freePartHolder(config->l3stream.spectrumSIPH[gr][ch]);
+       shine_BF_freePartHolder(config->l3stream.scaleFactorsPH[gr][ch]);
+       shine_BF_freePartHolder(config->l3stream.codedDataPH[gr][ch]);
+       shine_BF_freePartHolder(config->l3stream.userSpectrumPH[gr][ch]);
       }
-  BF_freePartHolder(config->l3stream.userFrameDataPH);
+  shine_BF_freePartHolder(config->l3stream.userFrameDataPH);
 }
 
 static int encodeSideInfo( shine_global_config *config );
@@ -59,7 +59,7 @@ static void encodeMainData( shine_global_config *config );
 static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi , shine_global_config *config);
 
 /*
-  L3_format_bitstream()
+  shine_format_bitstream()
 
   This is called after a frame of audio has been quantized and coded.
   It will write the encoded audio to the bitstream. Note that
@@ -70,7 +70,7 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi , shine_g
 */
 
 void
-L3_format_bitstream(shine_global_config *config)
+shine_format_bitstream(shine_global_config *config)
 {
   int gr, ch, i;
   BF_FrameData *frameData = &config->l3stream.frameData;
@@ -109,7 +109,7 @@ L3_format_bitstream(shine_global_config *config)
       }
   frameData->userFrameData = config->l3stream.userFrameDataPH->part;
 
-  BF_BitstreamFrame(config);
+  shine_BF_BitstreamFrame(config);
 
   /* we set this here -- it will be tested in the next loops iteration */
   config->side_info.main_data_begin = config->l3stream.frameResults.nextBackPtr;
@@ -121,7 +121,7 @@ static unsigned slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3
 static void encodeMainData(shine_global_config *config)
 {
   int gr, ch, sfb;
-  L3_side_info_t  si = config->side_info;
+  shine_side_info_t  si = config->side_info;
 
   for ( gr = 0; gr < 2; gr++ )
     for ( ch = 0; ch < config->wave.channels; ch++ )
@@ -144,19 +144,19 @@ static void encodeMainData(shine_global_config *config)
 
           if ( (gr == 0) || (si.scfsi[ch][0] == 0) )
             for ( sfb = 0; sfb < 6; sfb++ )
-              *pph = BF_addEntry( *pph,  config->scalefactor.l[gr][ch][sfb], slen1 );
+              *pph = shine_BF_addEntry( *pph,  config->scalefactor.l[gr][ch][sfb], slen1 );
 
           if ( (gr == 0) || (si.scfsi[ch][1] == 0) )
             for ( sfb = 6; sfb < 11; sfb++ )
-              *pph = BF_addEntry( *pph,  config->scalefactor.l[gr][ch][sfb], slen1 );
+              *pph = shine_BF_addEntry( *pph,  config->scalefactor.l[gr][ch][sfb], slen1 );
 
           if ( (gr == 0) || (si.scfsi[ch][2] == 0) )
             for ( sfb = 11; sfb < 16; sfb++ )
-              *pph = BF_addEntry( *pph,  config->scalefactor.l[gr][ch][sfb], slen2 );
+              *pph = shine_BF_addEntry( *pph,  config->scalefactor.l[gr][ch][sfb], slen2 );
 
           if ( (gr == 0) || (si.scfsi[ch][3] == 0) )
             for ( sfb = 16; sfb < 21; sfb++ )
-              *pph = BF_addEntry( *pph,  config->scalefactor.l[gr][ch][sfb], slen2 );
+              *pph = shine_BF_addEntry( *pph,  config->scalefactor.l[gr][ch][sfb], slen2 );
 
           Huffmancodebits( &config->l3stream.codedDataPH[gr][ch], ix, gi, config );
         }
@@ -168,22 +168,22 @@ static void encodeMainData(shine_global_config *config)
 static int encodeSideInfo( shine_global_config *config )
 {
   int gr, ch, scfsi_band, region, bits_sent;
-  L3_side_info_t  si = config->side_info;
+  shine_side_info_t  si = config->side_info;
 
   config->l3stream.headerPH->part->nrEntries = 0;
-  config->l3stream.headerPH = BF_addEntry( config->l3stream.headerPH, 0xfff,                          12 );
-  config->l3stream.headerPH = BF_addEntry( config->l3stream.headerPH, 1,                               1 );
-  config->l3stream.headerPH = BF_addEntry( config->l3stream.headerPH, 1,                               2 );
-  config->l3stream.headerPH = BF_addEntry( config->l3stream.headerPH, !config->mpeg.crc,               1 );
-  config->l3stream.headerPH = BF_addEntry( config->l3stream.headerPH, config->mpeg.bitrate_index,      4 );
-  config->l3stream.headerPH = BF_addEntry( config->l3stream.headerPH, config->mpeg.samplerate_index,   2 );
-  config->l3stream.headerPH = BF_addEntry( config->l3stream.headerPH, config->mpeg.padding,            1 );
-  config->l3stream.headerPH = BF_addEntry( config->l3stream.headerPH, config->mpeg.ext,                1 );
-  config->l3stream.headerPH = BF_addEntry( config->l3stream.headerPH, config->mpeg.mode,               2 );
-  config->l3stream.headerPH = BF_addEntry( config->l3stream.headerPH, config->mpeg.mode_ext,           2 );
-  config->l3stream.headerPH = BF_addEntry( config->l3stream.headerPH, config->mpeg.copyright,          1 );
-  config->l3stream.headerPH = BF_addEntry( config->l3stream.headerPH, config->mpeg.original,           1 );
-  config->l3stream.headerPH = BF_addEntry( config->l3stream.headerPH, config->mpeg.emph,               2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, 0xfff,                          12 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, 1,                               1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, 1,                               2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, !config->mpeg.crc,               1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.bitrate_index,      4 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.samplerate_index,   2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.padding,            1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.ext,                1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.mode,               2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.mode_ext,           2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.copyright,          1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.original,           1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.emph,               2 );
 
   bits_sent = 32;
 
@@ -196,18 +196,18 @@ static int encodeSideInfo( shine_global_config *config )
     for ( ch = 0; ch < config->wave.channels; ch++ )
       config->l3stream.spectrumSIPH[gr][ch]->part->nrEntries = 0;
 
-  config->l3stream.frameSIPH = BF_addEntry( config->l3stream.frameSIPH, si.main_data_begin, 9 );
+  config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.main_data_begin, 9 );
 
   if ( config->wave.channels == 2 )
-    config->l3stream.frameSIPH = BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 3 );
+    config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 3 );
   else
-    config->l3stream.frameSIPH = BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 5 );
+    config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 5 );
 
   for ( ch = 0; ch < config->wave.channels; ch++ )
     for ( scfsi_band = 0; scfsi_band < 4; scfsi_band++ )
       {
         BF_PartHolder **pph = &config->l3stream.channelSIPH[ch];
-        *pph = BF_addEntry( *pph, si.scfsi[ch][scfsi_band], 1 );
+        *pph = shine_BF_addEntry( *pph, si.scfsi[ch][scfsi_band], 1 );
       }
 
   for ( gr = 0; gr < 2; gr++ )
@@ -215,21 +215,21 @@ static int encodeSideInfo( shine_global_config *config )
       {
         BF_PartHolder **pph = &config->l3stream.spectrumSIPH[gr][ch];
         gr_info *gi = &(si.gr[gr].ch[ch].tt);
-        *pph = BF_addEntry( *pph, gi->part2_3_length,        12 );
-        *pph = BF_addEntry( *pph, gi->big_values,            9 );
-        *pph = BF_addEntry( *pph, gi->global_gain,           8 );
-        *pph = BF_addEntry( *pph, gi->scalefac_compress,     4 );
-        *pph = BF_addEntry( *pph, 0, 1 );
+        *pph = shine_BF_addEntry( *pph, gi->part2_3_length,        12 );
+        *pph = shine_BF_addEntry( *pph, gi->big_values,            9 );
+        *pph = shine_BF_addEntry( *pph, gi->global_gain,           8 );
+        *pph = shine_BF_addEntry( *pph, gi->scalefac_compress,     4 );
+        *pph = shine_BF_addEntry( *pph, 0, 1 );
 
         for ( region = 0; region < 3; region++ )
-          *pph = BF_addEntry( *pph, gi->table_select[region], 5 );
+          *pph = shine_BF_addEntry( *pph, gi->table_select[region], 5 );
 
-        *pph = BF_addEntry( *pph, gi->region0_count, 4 );
-        *pph = BF_addEntry( *pph, gi->region1_count, 3 );
+        *pph = shine_BF_addEntry( *pph, gi->region0_count, 4 );
+        *pph = shine_BF_addEntry( *pph, gi->region1_count, 3 );
 
-        *pph = BF_addEntry( *pph, gi->preflag,            1 );
-        *pph = BF_addEntry( *pph, gi->scalefac_scale,     1 );
-        *pph = BF_addEntry( *pph, gi->count1table_select, 1 );
+        *pph = shine_BF_addEntry( *pph, gi->preflag,            1 );
+        *pph = shine_BF_addEntry( *pph, gi->scalefac_scale,     1 );
+        *pph = shine_BF_addEntry( *pph, gi->count1table_select, 1 );
       }
 
   if ( config->wave.channels == 2 )
@@ -244,7 +244,7 @@ static int encodeSideInfo( shine_global_config *config )
   well as the definitions of the side information on pages 26 and 27. */
 static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_global_config *config )
 {
-  int L3_huffman_coder_count1( BF_PartHolder **pph, struct huffcodetab *h, int v, int w, int x, int y );
+  int shine_huffman_coder_count1( BF_PartHolder **pph, struct huffcodetab *h, int v, int w, int x, int y );
   int bigv_bitcount( int ix[samp_per_frame2], gr_info *cod_info );
 
   int region1Start;
@@ -296,9 +296,9 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
       y = ix[i + 1];
       if ( tableindex )
         {
-          bits = HuffmanCode( tableindex, x, y, &code, &ext, &cbits, &xbits );
-          *pph = BF_addEntry( *pph,  code, cbits );
-          *pph = BF_addEntry( *pph,  ext, xbits );
+          bits = shine_HuffmanCode( tableindex, x, y, &code, &ext, &cbits, &xbits );
+          *pph = shine_BF_addEntry( *pph,  code, cbits );
+          *pph = shine_BF_addEntry( *pph,  ext, xbits );
           bitsWritten += rt = bits;
           *pr += rt;
         }
@@ -319,7 +319,7 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
       w = ix[i+1];
       x = ix[i+2];
       y = ix[i+3];
-      bitsWritten += L3_huffman_coder_count1( pph, h, v, w, x, y );
+      bitsWritten += shine_huffman_coder_count1( pph, h, v, w, x, y );
     }
   c1bits = bitsWritten - bvbits;
   if ( (stuffingBits = gi->part2_3_length - gi->part2_length - bitsWritten) )
@@ -329,62 +329,62 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
 
       /* Due to the nature of the Huffman code tables, we will pad with ones */
       while ( stuffingWords-- )
-        *pph = BF_addEntry( *pph, ~0, 32 );
+        *pph = shine_BF_addEntry( *pph, ~0, 32 );
       if ( remainingBits )
-        *pph = BF_addEntry( *pph, ~0, remainingBits );
+        *pph = shine_BF_addEntry( *pph, ~0, remainingBits );
       bitsWritten += stuffingBits;
     }
 }
 
-int abs_and_sign( int *x )
+int shine_abs_and_sign( int *x )
 {
   if ( *x > 0 ) return 0;
   *x *= -1;
   return 1;
 }
 
-int L3_huffman_coder_count1( BF_PartHolder **pph, struct huffcodetab *h, int v, int w, int x, int y )
+int shine_huffman_coder_count1( BF_PartHolder **pph, struct huffcodetab *h, int v, int w, int x, int y )
 {
   HUFFBITS huffbits;
   unsigned int signv, signw, signx, signy, p;
   int len;
   int totalBits = 0;
 
-  signv = abs_and_sign( &v );
-  signw = abs_and_sign( &w );
-  signx = abs_and_sign( &x );
-  signy = abs_and_sign( &y );
+  signv = shine_abs_and_sign( &v );
+  signw = shine_abs_and_sign( &w );
+  signx = shine_abs_and_sign( &x );
+  signy = shine_abs_and_sign( &y );
 
   p = v + (w << 1) + (x << 2) + (y << 3);
   huffbits = h->table[p];
   len = h->hlen[ p ];
-  *pph = BF_addEntry( *pph,  huffbits, len );
+  *pph = shine_BF_addEntry( *pph,  huffbits, len );
   totalBits += len;
   if ( v )
     {
-      *pph = BF_addEntry( *pph,  signv, 1 );
+      *pph = shine_BF_addEntry( *pph,  signv, 1 );
       totalBits += 1;
     }
   if ( w )
     {
-      *pph = BF_addEntry( *pph,  signw, 1 );
+      *pph = shine_BF_addEntry( *pph,  signw, 1 );
       totalBits += 1;
     }
   if ( x )
     {
-      *pph = BF_addEntry( *pph,  signx, 1 );
+      *pph = shine_BF_addEntry( *pph,  signx, 1 );
       totalBits += 1;
     }
   if ( y )
     {
-      *pph = BF_addEntry( *pph,  signy, 1 );
+      *pph = shine_BF_addEntry( *pph,  signy, 1 );
       totalBits += 1;
     }
   return totalBits;
 }
 
 /* Implements the pseudocode of page 98 of the IS */
-int HuffmanCode(int table_select, int x, int y, unsigned int *code,
+int shine_HuffmanCode(int table_select, int x, int y, unsigned int *code,
                 unsigned int *ext, int *cbits, int *xbits )
 {
   unsigned signx, signy, linbitsx, linbitsy, linbits, xlen, ylen, idx;
@@ -397,8 +397,8 @@ int HuffmanCode(int table_select, int x, int y, unsigned int *code,
 
   if (table_select==0) return 0;
 
-  signx = abs_and_sign( &x );
-  signy = abs_and_sign( &y );
+  signx = shine_abs_and_sign( &x );
+  signy = shine_abs_and_sign( &y );
   h = &(shine_huffman_table[table_select]);
   xlen = h->xlen;
   ylen = h->ylen;

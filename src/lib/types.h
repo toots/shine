@@ -254,31 +254,31 @@ typedef struct {
             gr_info tt;
         } ch[2];
     } gr[2];
-} L3_side_info_t;
+} shine_side_info_t;
 
 typedef struct {
     double  l[2][2][21];
-} L3_psy_ratio_t;
+} shine_psy_ratio_t;
 
 typedef struct {
         double  l[2][2][21];
-} L3_psy_xmin_t;
+} shine_psy_xmin_t;
 
 typedef struct {
     int l[2][2][22];            /* [cb] */
     int s[2][2][13][3];         /* [window][cb] */
-} L3_scalefac_t;
+} shine_scalefac_t;
 
 
 typedef struct shine_global_flags { 
   priv_shine_wave_t    wave;
   priv_shine_mpeg_t    mpeg;
   bitstream_t    bs;
-  L3_side_info_t side_info;
+  shine_side_info_t side_info;
   int            sideinfo_len;
   int            mean_bits;
-  L3_psy_ratio_t ratio;
-  L3_scalefac_t  scalefactor;
+  shine_psy_ratio_t ratio;
+  shine_scalefac_t  scalefactor;
   int16_t       *buffer[2];
   double         pe[2][2];
   int            l3_enc[2][2][samp_per_frame2];

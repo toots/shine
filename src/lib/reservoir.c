@@ -10,17 +10,17 @@
 #include "reservoir.h"
 
 /*
- * ResvFrameBegin:
+ * shine_ResvFrameBegin:
  * ---------------
  * Called at the beginning of a frame. Updates the maximum
  * size of the reservoir, and checks to make sure main_data_begin
  * was set properly by the formatter
  */
-void ResvFrameBegin(int frameLength, shine_global_config *config)
+void shine_ResvFrameBegin(int frameLength, shine_global_config *config)
 {
   int fullFrameBits;
   int expectedResvSize, resvLimit;
-  L3_side_info_t *l3_side = &config->side_info;
+  shine_side_info_t *l3_side = &config->side_info;
   int mean_bits = config->mean_bits;
 
   resvLimit = 4088; /* main_data_begin has 9 bits in MPEG 1 */
@@ -49,13 +49,13 @@ void ResvFrameBegin(int frameLength, shine_global_config *config)
 }
 
 /*
- * ResvMaxBits:
+ * shine_ResvMaxBits:
  * ------------
  * Called at the beginning of each granule to get the max bit
  * allowance for the current granule based on reservoir size
  * and perceptual entropy.
  */
-int ResvMaxBits (double *pe, shine_global_config *config )
+int shine_ResvMaxBits (double *pe, shine_global_config *config )
 {
   int more_bits, max_bits, add_bits, over_bits;
   int mean_bits = config->mean_bits;
@@ -90,18 +90,18 @@ int ResvMaxBits (double *pe, shine_global_config *config )
 }
 
 /*
- * ResvAdjust:
+ * shine_ResvAdjust:
  * -----------
  * Called after a granule's bit allocation. Readjusts the size of
  * the reservoir to reflect the granule's usage.
  */
-void ResvAdjust(gr_info *gi, shine_global_config *config )
+void shine_ResvAdjust(gr_info *gi, shine_global_config *config )
 {
   config->ResvSize += (config->mean_bits / config->wave.channels) - gi->part2_3_length;
 }
 
 /*
- * ResvFrameEnd:
+ * shine_ResvFrameEnd:
  * -------------
  * Called after all granules in a frame have been allocated. Makes sure
  * that the reservoir size is within limits, possibly by adding stuffing
@@ -109,12 +109,12 @@ void ResvAdjust(gr_info *gi, shine_global_config *config )
  * part2_3_length. The bitstream formatter will detect this and write the
  * appropriate stuffing bits to the bitstream.
  */
-void ResvFrameEnd(shine_global_config *config )
+void shine_ResvFrameEnd(shine_global_config *config )
 {
   gr_info *gi;
   int gr, ch, ancillary_pad, stuffingBits;
   int over_bits;
-  L3_side_info_t *l3_side = &config->side_info;
+  shine_side_info_t *l3_side = &config->side_info;
   int mean_bits = config->mean_bits;
 
   ancillary_pad = 0;

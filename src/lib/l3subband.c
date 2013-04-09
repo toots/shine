@@ -5,13 +5,13 @@
 #include "l3subband.h"
 
 /*
- * L3_subband_initialise:
+ * shine_subband_initialise:
  * ----------------------
  * Calculates the analysis filterbank coefficients and rounds to the
  * 9th decimal place accuracy of the filterbank tables in the ISO
  * document.  The coefficients are stored in #filter#
  */
-void L3_subband_initialise(shine_global_config *config)
+void shine_subband_initialise(shine_global_config *config)
 {
   int i,j;
   double filter;
@@ -40,7 +40,7 @@ void L3_subband_initialise(shine_global_config *config)
 }
 
 /*
- * L3_window_filter_subband:
+ * shine_window_filter_subband:
  * -------------------------
  * Overlapping window on PCM samples
  * 32 16-bit pcm samples are scaled to fractional 2's complement and
@@ -53,7 +53,7 @@ void L3_subband_initialise(shine_global_config *config)
  * picking out values from the windowed samples, and then multiplying
  * them by the filter matrix, producing 32 subband samples.
  */
-void L3_window_filter_subband(int16_t **buffer, long s[SBLIMIT] , int k, shine_global_config *config)
+void shine_window_filter_subband(int16_t **buffer, long s[SBLIMIT] , int k, shine_global_config *config)
 {
   long y[64];
   int i,j;

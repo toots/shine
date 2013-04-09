@@ -1,7 +1,9 @@
-1.0.1 (2013-04-07):
+2.0.0 (2013-04-07):
 ======
-* Prefix some symbols to avoid name clash
+* Prefix symbols to avoid name clash
   with libmp3lame.
+* Rename public API from L3_ to shine_
+  to also avoid name clash.
 
 1.0.0 (2013-02-02):
 ======

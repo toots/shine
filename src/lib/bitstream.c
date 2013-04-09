@@ -15,11 +15,11 @@
 #endif
 
 /*
- * empty_buffer
+ * shine_empty_buffer
  * ------------
  * empty the buffer to the output device when the buffer becomes full
  */
-void empty_buffer(bitstream_t *bs, int minimum)
+void shine_empty_buffer(bitstream_t *bs, int minimum)
 {
   int total = bs->buf_size-minimum;
   int i;
@@ -42,7 +42,7 @@ void empty_buffer(bitstream_t *bs, int minimum)
 }
 
 /* open the device to write the bit stream into it */
-void open_bit_stream(bitstream_t *bs, int size)
+void shine_open_bit_stream(bitstream_t *bs, int size)
 {
   bs->data = NULL;
   bs->data_size = 0;
@@ -58,21 +58,21 @@ void open_bit_stream(bitstream_t *bs, int size)
 }
 
 /*close the device containing the bit stream */
-void close_bit_stream(bitstream_t *bs)
+void shine_close_bit_stream(bitstream_t *bs)
 {
   if (bs->data) free(bs->data);
   free(bs->buf);
 }
 
 /*
- * putbits:
+ * shine_putbits:
  * --------
  * write N bits into the bit stream.
  * bs = bit stream structure
  * val = value to write into the buffer
  * N = number of bits of val
  */
-void putbits(bitstream_t *bs, unsigned long int val, unsigned int N)
+void shine_putbits(bitstream_t *bs, unsigned long int val, unsigned int N)
 {
   static int putmask[9]={0x0, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f, 0xff};
   register int j = N;
@@ -95,7 +95,7 @@ void putbits(bitstream_t *bs, unsigned long int val, unsigned int N)
       bs->buf_bit_idx = 8;
       bs->buf_byte_idx--;
       if (bs->buf_byte_idx < 0)
-        empty_buffer(bs, MINIMUM);
+        shine_empty_buffer(bs, MINIMUM);
       bs->buf[bs->buf_byte_idx] = 0;
     }
     j -= k;
@@ -103,7 +103,7 @@ void putbits(bitstream_t *bs, unsigned long int val, unsigned int N)
 }
 
 /*return the current bit stream length (in bits)*/
-unsigned long sstell(bitstream_t *bs)
+unsigned long shine_sstell(bitstream_t *bs)
 {
   return(bs->totbit);
 }

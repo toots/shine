@@ -17,20 +17,20 @@ The encoding API should be quite straight forward:
 (...)
 
 /* Initiate encoder */
-s = L3_initialise(&config);
+s = shine_initialise(&config);
 
 /* All the magic happens here */
 while (read(buffer, infile) {
-  data = L3_encode_frame(s,buffer,&written);
+  data = shine_encode_frame(s,buffer,&written);
   write(data, written);
 }
 
 /* Flush and write remaining data. */
-data = L3_flush(s,&written);
+data = shine_flush(s,&written);
 write(written, data);
 
 /* Close encoder. */
-L3_close(s);
+shine_close(s);
 ```
 
 How fast is it?

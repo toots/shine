@@ -10,7 +10,7 @@
 #include "l3bitstream.h"
 
 /* Set default values for important vars */
-void L3_set_config_mpeg_defaults(shine_mpeg_t *mpeg)
+void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg)
 {
   mpeg->bitr = 128;
   mpeg->emph = NONE;
@@ -19,7 +19,7 @@ void L3_set_config_mpeg_defaults(shine_mpeg_t *mpeg)
 }
 
 /* Compute default encoding values. */
-shine_global_config *L3_initialise(shine_config_t *pub_config)
+shine_global_config *shine_initialise(shine_config_t *pub_config)
 {
   double avg_slots_per_frame;
   shine_global_config *config;
@@ -28,11 +28,11 @@ shine_global_config *L3_initialise(shine_config_t *pub_config)
   if (config == NULL)
     return config;
 
-  L3_subband_initialise(config);
-  L3_mdct_initialise(config);
-  L3_loop_initialise(config);
-  L3_formatbits_initialise(config);
-  L3_bitstream_initialise(config );
+  shine_subband_initialise(config);
+  shine_mdct_initialise(config);
+  shine_loop_initialise(config);
+  shine_formatbits_initialise(config);
+  shine_bitstream_initialise(config );
 
   /* Copy public config. */
   config->wave.channels   = pub_config->wave.channels;
@@ -66,19 +66,19 @@ shine_global_config *L3_initialise(shine_config_t *pub_config)
   if(config->mpeg.frac_slots_per_frame==0)
     config->mpeg.padding = 0;
 
-  config->mpeg.samplerate_index = L3_find_samplerate_index(config->wave.samplerate);
-  config->mpeg.bitrate_index    = L3_find_bitrate_index(config->mpeg.bitr)+1;
+  config->mpeg.samplerate_index = shine_find_samplerate_index(config->wave.samplerate);
+  config->mpeg.bitrate_index    = shine_find_bitrate_index(config->mpeg.bitr)+1;
 
-  open_bit_stream(&config->bs, BUFFER_SIZE);
+  shine_open_bit_stream(&config->bs, BUFFER_SIZE);
 
-  memset((char *)&config->side_info,0,sizeof(L3_side_info_t));
+  memset((char *)&config->side_info,0,sizeof(shine_side_info_t));
 
   config->sideinfo_len = (config->wave.channels==1) ? 168 : 288;
 
   return config;
 }
 
-int L3_find_samplerate_index(long freq)
+int shine_find_samplerate_index(long freq)
 {
   int i;
 
@@ -88,7 +88,7 @@ int L3_find_samplerate_index(long freq)
   return -1; /* error - not a valid samplerate for encoder */
 }
 
-int L3_find_bitrate_index(int bitr)
+int shine_find_bitrate_index(int bitr)
 {
   int i;
 
@@ -98,7 +98,7 @@ int L3_find_bitrate_index(int bitr)
   return -1; /* error - not a valid samplerate for encoder */
 }
 
-unsigned char *L3_encode_frame(shine_global_config *config, int16_t data[2][samp_per_frame], long *written)
+unsigned char *shine_encode_frame(shine_global_config *config, int16_t data[2][samp_per_frame], long *written)
 {
   int i, gr, channel;
 
@@ -127,16 +127,16 @@ unsigned char *L3_encode_frame(shine_global_config *config, int16_t data[2][samp
   for(gr=0;gr<2;gr++)
     for(channel=config->wave.channels; channel--; )
       for(i=0;i<18;i++)
-        L3_window_filter_subband(&config->buffer[channel], &config->l3_sb_sample[channel][gr+1][i][0] ,channel,config);
+        shine_window_filter_subband(&config->buffer[channel], &config->l3_sb_sample[channel][gr+1][i][0] ,channel,config);
 
   /* apply mdct to the polyphase output */
-  L3_mdct_sub(config);
+  shine_mdct_sub(config);
 
   /* bit and noise allocation */
-  L3_iteration_loop(config);
+  shine_iteration_loop(config);
 
   /* write the frame to the bitstream */
-  L3_format_bitstream(config);
+  shine_format_bitstream(config);
 
   /* Return data. */
   *written = config->bs.data_position;
@@ -145,8 +145,8 @@ unsigned char *L3_encode_frame(shine_global_config *config, int16_t data[2][samp
   return config->bs.data;
 }
 
-unsigned char *L3_flush(shine_global_config *config, long *written) {
-  empty_buffer(&config->bs, MINIMUM);
+unsigned char *shine_flush(shine_global_config *config, long *written) {
+  shine_empty_buffer(&config->bs, MINIMUM);
   *written = config->bs.data_position;
   config->bs.data_position = 0;
 
@@ -154,9 +154,9 @@ unsigned char *L3_flush(shine_global_config *config, long *written) {
 }
 
 
-void L3_close(shine_global_config *config) {
-  L3_bitstream_close(config);
-  L3_formatbits_close(config);
-  close_bit_stream(&config->bs);
+void shine_close(shine_global_config *config) {
+  shine_bitstream_close(config);
+  shine_formatbits_close(config);
+  shine_close_bit_stream(&config->bs);
   free(config);
 }

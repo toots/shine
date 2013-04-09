@@ -1,7 +1,7 @@
-L3_close
-L3_encode_frame
-L3_find_bitrate_index
-L3_find_samplerate_index
-L3_flush
-L3_initialise
-L3_set_config_mpeg_defaults
+shine_close
+shine_encode_frame
+shine_find_bitrate_index
+shine_find_samplerate_index
+shine_flush
+shine_initialise
+shine_set_config_mpeg_defaults

@@ -53,15 +53,15 @@ typedef struct {
 typedef struct shine_global_flags *shine_t;
 
 /* Fill in a `mpeg_t` structure with default values. */
-void L3_set_config_mpeg_defaults(shine_mpeg_t *mpeg);
+void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg);
 
 /* Check if a given bitrate is supported by the encoder (see `bitrates` above for a list
  * of acceptable values. */
-int L3_find_bitrate_index(int bitr);
+int shine_find_bitrate_index(int bitr);
 
 /* Check if a given bitrate is supported by the encoder (see `samplerates` above for a list
  * of acceptable values. */
-int L3_find_samplerate_index(long freq);
+int shine_find_samplerate_index(long freq);
 
 /* Pass a pointer to a `config_t` structure and returns an initialized
  * encoder. 
@@ -70,30 +70,30 @@ int L3_find_samplerate_index(long freq);
  * to change its values after initializing the encoder at the moment.
  *
  * Checking for valid configuration values is left for the application to 
- * implement. You can use the `L3_find_bitrate_index` and 
- * `L3_find_samplerate_index` functions or the `bitrates` and 
+ * implement. You can use the `shine_find_bitrate_index` and 
+ * `shine_find_samplerate_index` functions or the `bitrates` and 
  * `samplerates` arrays above to check those parameters. Mone and stereo 
  * mode for wave and mpeg should also be consistent with each other.
  *
  * This function returns NULL if it was not able to allocate memory data for 
  * the encoder. */
-shine_t L3_initialise(shine_config_t *config);
+shine_t shine_initialise(shine_config_t *config);
 
 /* Encode audio data. Source data must have `samp_per_frames` audio samples per
  * channels. Mono encoder only expect one channel. 
  *
  * Returns a pointer to freshly encoded data while `written` contains the size of
  * available data. This pointer's memory is handled by the library and is only valid 
- * until the next call to `L3_encode_frame` or `L3_close` and may be NULL if no data
+ * until the next call to `shine_encode_frame` or `shine_close` and may be NULL if no data
  * was written. */
-unsigned char *L3_encode_frame(shine_t s, int16_t data[2][samp_per_frame], long *written);
+unsigned char *shine_encode_frame(shine_t s, int16_t data[2][samp_per_frame], long *written);
 
 /* Flush all data currently in the encoding buffer. Should be used before closing
  * the encoder, to make all encoded data has been written. */
-unsigned char *L3_flush(shine_t s, long *written);
+unsigned char *shine_flush(shine_t s, long *written);
 
 /* Close an encoder, freeing all associated memory. Encoder handler is not
  * valid after this call. */
-void L3_close(shine_t s);
+void shine_close(shine_t s);
 
 #endif

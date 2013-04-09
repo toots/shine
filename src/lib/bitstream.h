@@ -40,9 +40,9 @@ typedef struct  bit_stream_struc {
 
 
 int refill_buffer(bitstream_t *bs);
-void empty_buffer(bitstream_t *bs,int minimum);
-void open_bit_stream(bitstream_t *bs,const int size);
-void close_bit_stream(bitstream_t *bs);
+void shine_empty_buffer(bitstream_t *bs,int minimum);
+void shine_open_bit_stream(bitstream_t *bs,const int size);
+void shine_close_bit_stream(bitstream_t *bs);
 void alloc_buffer(bitstream_t *bs,int size);
 void desalloc_buffer(bitstream_t *bs);
 void back_track_buffer(bitstream_t *bs,int N);
@@ -50,10 +50,10 @@ unsigned int get1bit(bitstream_t *bs);
 void put1bit(bitstream_t *bs,int bit);
 unsigned long look_ahead(bitstream_t *bs,int N);
 unsigned long getbits(bitstream_t *bs,int N);
-void putbits(bitstream_t *bs,unsigned long int val, unsigned int N);
-void byte_ali_putbits(bitstream_t *bs,unsigned int val,int N);
+void shine_putbits(bitstream_t *bs,unsigned long int val, unsigned int N);
+void byte_ali_shine_putbits(bitstream_t *bs,unsigned int val,int N);
 unsigned long byte_ali_getbits(bitstream_t *bs,int N);
-unsigned long sstell(bitstream_t *bs);
+unsigned long shine_sstell(bitstream_t *bs);
 int end_bs(bitstream_t *bs);
 int seek_sync(bitstream_t *bs,long sync,int N);
 

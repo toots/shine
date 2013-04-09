@@ -73,7 +73,7 @@ static void print_usage()
 /* Use these default settings, can be overridden */
 static void set_defaults(shine_config_t *config)
 {
-	L3_set_config_mpeg_defaults(&config->mpeg);
+	shine_set_config_mpeg_defaults(&config->mpeg);
 }
 
 /* Parse command line arguments */
@@ -161,10 +161,10 @@ int main(int argc, char **argv)
 	infile = wave.file;
 
 	/* See if samplerate is valid */
-	if (L3_find_samplerate_index(config.wave.samplerate) < 0) error("Unsupported samplerate");
+	if (shine_find_samplerate_index(config.wave.samplerate) < 0) error("Unsupported samplerate");
 
 	/* See if bitrate is valid */
-	if (L3_find_bitrate_index(config.mpeg.bitr) < 0) error("Unsupported bitrate");
+	if (shine_find_bitrate_index(config.mpeg.bitr) < 0) error("Unsupported bitrate");
 
 	/* open the output file */
 	if (!strcmp(outfname, "-"))
@@ -186,20 +186,20 @@ int main(int argc, char **argv)
 	if (!quiet) check_config(&config);
 
 	/* Initiate encoder */
-	s = L3_initialise(&config);
+	s = shine_initialise(&config);
 
 	/* All the magic happens here */
 	while (wave_get(buffer, &wave, &config)) {
-		data = L3_encode_frame(s, buffer, &written);
+		data = shine_encode_frame(s, buffer, &written);
 		write_mp3(written, data, &config);
 	}
 
 	/* Flush and write remaining data. */
-	data = L3_flush(s, &written);
+	data = shine_flush(s, &written);
 	write_mp3(written, data, &config);
 
 	/* Close encoder. */
-	L3_close(s);
+	shine_close(s);
 
 	/* Close the wave file (using the wav reader) */
 	wave_close(&wave);

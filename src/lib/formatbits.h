@@ -22,8 +22,8 @@
 #define MAX_GRANULES 2
 #endif
 
-void L3_formatbits_initialise(shine_global_config *config);
-void L3_formatbits_close(shine_global_config *config);
+void shine_formatbits_initialise(shine_global_config *config);
+void shine_formatbits_close(shine_global_config *config);
 
 /*
   The following is a shorthand bitstream syntax for
@@ -69,16 +69,16 @@ MainData()
 */
 
 /* count the bits in a BitstreamPart */
-int  BF_PartLength( BF_BitstreamPart *part );
+int  shine_BF_PartLength( BF_BitstreamPart *part );
 
 /* encode a frame of audio and write it to your bitstream */
-void BF_BitstreamFrame( shine_global_config *config);
+void shine_BF_BitstreamFrame( shine_global_config *config);
 
-BF_PartHolder *BF_newPartHolder( unsigned long int max_elements );
-BF_PartHolder *BF_resizePartHolder( BF_PartHolder *oldPH, int max_elements );
-BF_PartHolder *BF_addElement( BF_PartHolder *thePH, BF_BitstreamElement *theElement );
-BF_PartHolder *BF_addEntry( BF_PartHolder *thePH, unsigned long int value, unsigned int length );
-BF_PartHolder *BF_NewHolderFromBitstreamPart( BF_BitstreamPart *thePart );
-BF_PartHolder *BF_LoadHolderFromBitstreamPart( BF_PartHolder *theHolder, BF_BitstreamPart *thePart );
-BF_PartHolder *BF_freePartHolder( BF_PartHolder *thePH );
+BF_PartHolder *shine_BF_newPartHolder( unsigned long int max_elements );
+BF_PartHolder *shine_BF_resizePartHolder( BF_PartHolder *oldPH, int max_elements );
+BF_PartHolder *shine_BF_addElement( BF_PartHolder *thePH, BF_BitstreamElement *theElement );
+BF_PartHolder *shine_BF_addEntry( BF_PartHolder *thePH, unsigned long int value, unsigned int length );
+BF_PartHolder *shine_BF_NewHolderFromBitstreamPart( BF_BitstreamPart *thePart );
+BF_PartHolder *shine_BF_LoadHolderFromBitstreamPart( BF_PartHolder *theHolder, BF_BitstreamPart *thePart );
+BF_PartHolder *shine_BF_freePartHolder( BF_PartHolder *thePH );
 #endif

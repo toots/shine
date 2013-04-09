@@ -10,10 +10,10 @@
 static double c[8] = { -0.6,-0.535,-0.33,-0.185,-0.095,-0.041,-0.0142, -0.0037 };
 
 /*
- * L3_mdct_initialise:
+ * shine_mdct_initialise:
  * -------------------
  */
-void L3_mdct_initialise(shine_global_config *config)
+void shine_mdct_initialise(shine_global_config *config)
 {
   int i,m,k;
   double sq;
@@ -37,10 +37,10 @@ void L3_mdct_initialise(shine_global_config *config)
 }
 
 /*
- * L3_mdct_sub:
+ * shine_mdct_sub:
  * ------------
  */
-void L3_mdct_sub(shine_global_config *config)
+void shine_mdct_sub(shine_global_config *config)
 {
   /* note. we wish to access the array 'config->mdct_freq[2][2][576]' as
    * [2][2][32][18]. (32*18=576),

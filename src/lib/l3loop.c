@@ -14,8 +14,8 @@
 
 int *scalefac_band_long  = &shine_scale_fact_band_index[3].l[0];
 
-static void calc_scfsi(L3_psy_xmin_t *l3_xmin, int ch, int gr, shine_global_config *config);
-static int part2_length(L3_scalefac_t *scalefac, int gr, int ch, L3_side_info_t *si);
+static void calc_scfsi(shine_psy_xmin_t *l3_xmin, int ch, int gr, shine_global_config *config);
+static int part2_length(shine_scalefac_t *scalefac, int gr, int ch, shine_side_info_t *si);
 static int bin_search_StepSize(int desired_rate, int ix[samp_per_frame2], gr_info * cod_info, shine_global_config *config);
 static int count_bit(int ix[samp_per_frame2], unsigned int start, unsigned int end, unsigned int table );
 static int bigv_bitcount(int ix[samp_per_frame2], gr_info *gi);
@@ -24,17 +24,17 @@ static void bigv_tab_select( int ix[samp_per_frame2], gr_info *cod_info );
 static void subdivide(gr_info *cod_info);
 static int count1_bitcount( int ix[ samp_per_frame2 ], gr_info *cod_info );
 static void calc_runlen( int ix[samp_per_frame2], gr_info *cod_info );
-static void calc_xmin(L3_psy_ratio_t *ratio, gr_info *cod_info, L3_psy_xmin_t *l3_xmin, int gr, int ch );
+static void calc_xmin(shine_psy_ratio_t *ratio, gr_info *cod_info, shine_psy_xmin_t *l3_xmin, int gr, int ch );
 static int quantize(int ix[samp_per_frame2], int stepsize, shine_global_config *config);
 static int ix_max( int ix[samp_per_frame2], unsigned int begin, unsigned int end );
 
 /*
- * inner_loop:
+ * shine_inner_loop:
  * ----------
  * The code selects the best quantizerStepSize for a particular set
  * of scalefacs.
  */
-int inner_loop(int ix[samp_per_frame2],
+int shine_inner_loop(int ix[samp_per_frame2],
                int max_bits, gr_info *cod_info, int gr, int ch,
                shine_global_config *config )
 {
@@ -57,21 +57,21 @@ int inner_loop(int ix[samp_per_frame2],
 }
 
 /*
- * outer_loop:
+ * shine_outer_loop:
  * -----------
  *  Function: The outer iteration loop controls the masking conditions
  *  of all scalefactorbands. It computes the best scalefac and
  *  global gain. This module calls the inner iteration loop.
  */
 
-int outer_loop( int max_bits,
-                       L3_psy_xmin_t  *l3_xmin, /* the allowed distortion of the scalefactor */
+int shine_outer_loop( int max_bits,
+                       shine_psy_xmin_t  *l3_xmin, /* the allowed distortion of the scalefactor */
                        int ix[samp_per_frame2], /* vector of quantized values ix(0..575) */
                        int gr, int ch, shine_global_config *config)
 {
   int bits, huff_bits;
-  L3_scalefac_t *scalefac   = &config->scalefactor;
-  L3_side_info_t *side_info = &config->side_info; 
+  shine_scalefac_t *scalefac   = &config->scalefactor;
+  shine_side_info_t *side_info = &config->side_info; 
   gr_info *cod_info = &side_info->gr[gr].ch[ch].tt;
 
   cod_info->quantizerStepSize = bin_search_StepSize(max_bits,ix,cod_info, config);
@@ -79,7 +79,7 @@ int outer_loop( int max_bits,
   cod_info->part2_length = part2_length(scalefac,gr,ch,side_info);
   huff_bits = max_bits - cod_info->part2_length;
 
-  bits = inner_loop(ix, huff_bits, cod_info, gr, ch, config );
+  bits = shine_inner_loop(ix, huff_bits, cod_info, gr, ch, config );
 
   cod_info->part2_length   = part2_length(scalefac,gr,ch,side_info);
   cod_info->part2_3_length = cod_info->part2_length + bits;
@@ -88,12 +88,12 @@ int outer_loop( int max_bits,
 }
 
 /*
- * L3_iteration_loop:
+ * shine_iteration_loop:
  * ------------------
  */
-void L3_iteration_loop(shine_global_config *config)
+void shine_iteration_loop(shine_global_config *config)
 {
-  L3_psy_xmin_t l3_xmin;
+  shine_psy_xmin_t l3_xmin;
   gr_info *cod_info;
   int max_bits;
   int ch, gr, i;
@@ -128,7 +128,7 @@ void L3_iteration_loop(shine_global_config *config)
       calc_scfsi(&l3_xmin,ch,gr,config);
 
       /* calculation of number of available bit( per granule ) */
-      max_bits = ResvMaxBits(&config->pe[gr][ch],config);
+      max_bits = shine_ResvMaxBits(&config->pe[gr][ch],config);
 
       /* reset of iteration variables */
       memset(config->scalefactor.l[gr][ch],0,22);
@@ -153,16 +153,16 @@ void L3_iteration_loop(shine_global_config *config)
 
       /* all spectral values zero ? */
       if(config->l3loop.xrmax)
-        cod_info->part2_3_length = outer_loop(max_bits,&l3_xmin,ix,
+        cod_info->part2_3_length = shine_outer_loop(max_bits,&l3_xmin,ix,
                                               gr,ch,config);
 
-      ResvAdjust(cod_info, config );
+      shine_ResvAdjust(cod_info, config );
       cod_info->global_gain = cod_info->quantizerStepSize+210;
 
     } /* for gr */
   } /* for ch */
 
-  ResvFrameEnd(config);
+  shine_ResvFrameEnd(config);
 }
 
 /*
@@ -170,10 +170,10 @@ void L3_iteration_loop(shine_global_config *config)
  * -----------
  * calculation of the scalefactor select information ( scfsi ).
  */
-void calc_scfsi( L3_psy_xmin_t *l3_xmin, int ch, int gr,
+void calc_scfsi( shine_psy_xmin_t *l3_xmin, int ch, int gr,
                  shine_global_config *config )
 {
-  L3_side_info_t *l3_side = &config->side_info;
+  shine_side_info_t *l3_side = &config->side_info;
   /* This is the scfsi_band table from 2.4.2.7 of the IS */
   static int scfsi_band_long[5] = { 0, 6, 11, 16, 21 };
 
@@ -290,9 +290,9 @@ static int slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
  * calculates the number of bits needed to encode the scalefacs in the
  * main data block.
  */
-int part2_length(L3_scalefac_t *scalefac,
+int part2_length(shine_scalefac_t *scalefac,
                  int gr, int ch,
-                 L3_side_info_t *si)
+                 shine_side_info_t *si)
 {
   int slen1, slen2, bits;
   gr_info *gi = &si->gr[gr].ch[ch].tt;
@@ -325,9 +325,9 @@ int part2_length(L3_scalefac_t *scalefac,
  * as determined by the psychoacoustic model.
  * xmin(sb) = ratio(sb) * en(sb) / bw(sb)
  */
-void calc_xmin(L3_psy_ratio_t *ratio,
+void calc_xmin(shine_psy_ratio_t *ratio,
                gr_info *cod_info,
-               L3_psy_xmin_t *l3_xmin,
+               shine_psy_xmin_t *l3_xmin,
                int gr, int ch )
 {
   int sfb;
@@ -350,11 +350,11 @@ void calc_xmin(L3_psy_ratio_t *ratio,
 }
 
 /*
- * L3_loop_initialise:
+ * shine_loop_initialise:
  * -------------------
  * Calculates the look up tables used by the iteration loop.
  */
-void L3_loop_initialise(shine_global_config *config)
+void shine_loop_initialise(shine_global_config *config)
 {
   int i;
 
@@ -823,9 +823,9 @@ int count_bit(int ix[samp_per_frame2],
  * Succesive approximation approach to obtaining a initial quantizer
  * step size.
  * The following optional code written by Seymour Shlien
- * will speed up the outer_loop code which is called
+ * will speed up the shine_outer_loop code which is called
  * by iteration_loop. When BIN_SEARCH is defined, the
- * outer_loop function precedes the call to the function inner_loop
+ * shine_outer_loop function precedes the call to the function shine_inner_loop
  * with a call to bin_search gain defined below, which
  * returns a good starting quantizerStepSize.
  */
