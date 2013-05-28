@@ -82,7 +82,7 @@ int shine_find_samplerate_index(long freq)
 {
   int i;
 
-  for(i=0;i<3;i++)
+  for(i=0;i<6;i++)
     if(freq==samplerates[i]) return i;
 
   return -1; /* error - not a valid samplerate for encoder */
