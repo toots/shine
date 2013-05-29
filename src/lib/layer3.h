@@ -6,7 +6,7 @@
 #define samp_per_frame  1152
 
 /* Valid samplerates and bitrates. */
-static long samplerates[3] = {44100, 48000, 32000};
+static long samplerates[6] = {44100, 48000, 32000, 11025, 12000, 8000};
 static int  bitrates[14]   = {32,40,48,56,64,80,96,112,128,160,192,224,256,320};
 
 /* This is the struct used to tell the encoder about the input PCM */
