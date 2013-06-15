@@ -115,12 +115,19 @@ static int parse_command(int argc, char** argv, shine_config_t *config)
 }
 
 /* Print some info about what we're going to encode */
-static void check_config(shine_config_t *config)
+static void check_config(shine_config_t *config, shine_t s)
 {
+  static char *version_names[4] = { "2.5", "reserved", "II", "I" };
+  static char *layer_names[4]   = { "reserved", "III", "II", "I" };
 	static char *mode_names[4]    = { "stereo", "j-stereo", "dual-ch", "mono" };
 	static char *demp_names[4]    = { "none", "50/15us", "", "CITT" };
 
-	printf("MPEG-I layer III, %s  Psychoacoustic Model: Shine\n",
+  shine_read_only_config_t read_only_config;
+  shine_read_only_config(s, &read_only_config);
+
+	printf("MPEG-%s layer %s, %s  Psychoacoustic Model: Shine\n",
+    version_names[read_only_config.mpeg_version],
+    layer_names[read_only_config.mpeg_layer],
 		mode_names[config->mpeg.mode]);
 	printf("Bitrate: %d kbps  ", config->mpeg.bitr);
 	printf("De-emphasis: %s   %s %s\n",
@@ -182,11 +189,11 @@ int main(int argc, char **argv)
 	else
 		config.mpeg.mode = MONO;
 
-	/* Print some info about the file about to be created (optional) */
-	if (!quiet) check_config(&config);
-
 	/* Initiate encoder */
 	s = shine_initialise(&config);
+
+  /* Print some info about the file about to be created (optional) */
+  if (!quiet) check_config(&config, s);
 
 	/* All the magic happens here */
 	while (wave_get(buffer, &wave, &config)) {

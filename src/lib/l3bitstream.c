@@ -171,9 +171,9 @@ static int encodeSideInfo( shine_global_config *config )
   shine_side_info_t  si = config->side_info;
 
   config->l3stream.headerPH->part->nrEntries = 0;
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, 0xfff,                          12 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, 1,                               1 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, 1,                               2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, 0x7ff,                          11 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.version,            2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.layer,              2 );
   config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, !config->mpeg.crc,               1 );
   config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.bitrate_index,      4 );
   config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.samplerate_index,   2 );

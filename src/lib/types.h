@@ -132,6 +132,8 @@ typedef struct {
 } priv_shine_wave_t;
 
 typedef struct {
+    int    version;
+    int    layer;
     int    mode;      /* + */ /* Stereo mode */
     int    bitr;      /* + */ /* Must conform to known bitrate - see Main.c */
     int    emph;      /* + */ /* De-emphasis */

@@ -44,11 +44,13 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
   config->mpeg.original   = pub_config->mpeg.original; 
 
   /* Set default values. */
-  config->ResvMax        = 0;
-  config->ResvSize       = 0;
-  config->mpeg.crc       = 0;
-  config->mpeg.ext       = 0;
-  config->mpeg.mode_ext  = 0;
+  config->ResvMax       = 0;
+  config->ResvSize      = 0;
+  config->mpeg.version  = MPEG_I;
+  config->mpeg.layer    = LAYER_III;
+  config->mpeg.crc      = 0;
+  config->mpeg.ext      = 0;
+  config->mpeg.mode_ext = 0;
 
   config->mpeg.bits_per_slot     = 8;
 
@@ -76,6 +78,12 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
   config->sideinfo_len = (config->wave.channels==1) ? 168 : 288;
 
   return config;
+}
+
+void shine_read_only_config(shine_t s, shine_read_only_config_t *config)
+{
+  config->mpeg_version = s->mpeg.version;
+  config->mpeg_layer   = s->mpeg.layer;
 }
 
 int shine_find_samplerate_index(long freq)

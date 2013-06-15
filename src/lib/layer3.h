@@ -16,6 +16,19 @@ enum channels {
   PCM_STEREO = 2
 };
 
+enum mpeg_versions {
+  MPEG_I  = 3,
+  MPEG_II = 2,
+  MPEG_25 = 0
+};
+
+/* Only Layer III currently implemented. */
+enum mpeg_layers {
+  LAYER_I   = 3,
+  LAYER_II  = 2,
+  LAYER_III = 1
+};
+
 typedef struct {
     enum channels channels;
     long          samplerate;
@@ -49,6 +62,12 @@ typedef struct {
   shine_mpeg_t mpeg;
 } shine_config_t;
 
+/* Set of read-only variables. */
+typedef struct {
+  enum mpeg_versions mpeg_version;
+  enum mpeg_layers   mpeg_layer; /* Always III */
+} shine_read_only_config_t;
+
 /* Abtract type for the shine encoder handle. */
 typedef struct shine_global_flags *shine_t;
 
@@ -78,6 +97,9 @@ int shine_find_samplerate_index(long freq);
  * This function returns NULL if it was not able to allocate memory data for 
  * the encoder. */
 shine_t shine_initialise(shine_config_t *config);
+
+/* Fill up argument with read-only configuration variables. */
+void shine_read_only_config(shine_t s, shine_read_only_config_t *config);
 
 /* Encode audio data. Source data must have `samp_per_frames` audio samples per
  * channels. Mono encoder only expect one channel. 

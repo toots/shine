@@ -5,3 +5,4 @@ shine_find_samplerate_index
 shine_flush
 shine_initialise
 shine_set_config_mpeg_defaults
+shine_read_only_config
