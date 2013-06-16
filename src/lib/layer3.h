@@ -12,9 +12,25 @@ static long samplerates[9] = {
   11025, 12000, 8000   /* MPEG-2.5 */
 };
 
-static int  bitrates[17] = {
-  8,  16, 24, /* MPEG-II and MPEG-2.5 */
-  32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 /* MPEG-I, MPEG-II and MPEG-2.5 */
+static int bitrates[16][3] = {
+  /* MPEG version:
+   * I,  II,  2.5 */
+   {-1,  -1, -1},
+   { 32,  8,  8},
+   { 40, 16, 16},
+   { 48, 24, 24},
+   { 56, 32, 32},
+   { 64, 40, 40},
+   { 80, 48, 48},
+   { 96, 56, 56},
+   {112, 64, 64},
+   {128, 80, 80},
+   {160, 96, 96},
+   {192,112,112},
+   {224,128,128},
+   {256,144,144},
+   {320,160,160},
+   {-1,  -1, -1}
 };
 
 /* This is the struct used to tell the encoder about the input PCM */
@@ -82,13 +98,11 @@ typedef struct shine_global_flags *shine_t;
 /* Fill in a `mpeg_t` structure with default values. */
 void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg);
 
-/* Check if a given bitrate is supported by the encoder (see `bitrates` above for a list
- * of acceptable values. */
-int shine_find_bitrate_index(int bitr);
-
-/* Check if a given bitrate is supported by the encoder (see `samplerates` above for a list
- * of acceptable values. */
-int shine_find_samplerate_index(long freq);
+/* Check if a given bitrate and samplerate is supported by the encoder (see `samplerates` 
+ * and `bitrates` above for a list of acceptable values). 
+ *
+ * Returns -1 on error, 0 on success. */
+int shine_check_config(long freq, int bitr);
 
 /* Pass a pointer to a `config_t` structure and returns an initialized
  * encoder. 

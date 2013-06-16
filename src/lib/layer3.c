@@ -18,11 +18,62 @@ void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg)
   mpeg->original  = 1;
 }
 
+int shine_mpeg_version(int samplerate_index) {
+  /* Pick mpeg version according to samplerate index. */
+  if (samplerate_index < 3)
+    /* First 3 samplerates are for MPEG-I */
+    return MPEG_I;
+  else if (samplerate_index < 6)
+    /* Then it's MPEG-II */
+    return MPEG_II;
+  else
+    /* Finally, MPEG-2.5 */
+    return MPEG_25;
+}
+
+int shine_find_samplerate_index(long freq)
+{
+  int i;
+
+  for(i=0;i<9;i++)
+    if(freq==samplerates[i]) return i;
+
+  return -1; /* error - not a valid samplerate for encoder */
+}
+
+int shine_find_bitrate_index(int bitr, int mpeg_version)
+{
+  int i;
+
+  for(i=0;i<16;i++)
+    if(bitr==bitrates[i][3-mpeg_version]) return i;
+
+  return -1; /* error - not a valid samplerate for encoder */
+}
+
+int shine_check_config(long freq, int bitr)
+{
+  int samplerate_index, bitrate_index, mpeg_version;
+
+  samplerate_index = shine_find_samplerate_index(freq);
+  if (samplerate_index < 0) return -1;
+
+  mpeg_version = shine_mpeg_version(samplerate_index);
+
+  bitrate_index = shine_find_bitrate_index(bitr, mpeg_version);
+  if (bitrate_index < 0) return -1;
+
+  return 0;
+}
+
 /* Compute default encoding values. */
 shine_global_config *shine_initialise(shine_config_t *pub_config)
 {
   double avg_slots_per_frame;
   shine_global_config *config;
+
+  if (shine_check_config(pub_config->wave.samplerate, pub_config->mpeg.bitr) < 0)
+    return NULL;
 
   config = calloc(1,sizeof(shine_global_config));
   if (config == NULL)
@@ -67,24 +118,8 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
     config->mpeg.padding = 0;
 
   config->mpeg.samplerate_index = shine_find_samplerate_index(config->wave.samplerate);
-  config->mpeg.bitrate_index    = shine_find_bitrate_index(config->mpeg.bitr);
-
-  /* Pick mpeg version according to samplerate index. */
-  if (config->mpeg.samplerate_index < 3)
-    /* First 3 samplerates are for MPEG-I */
-    config->mpeg.version = MPEG_I;
-  else if (config->mpeg.samplerate_index < 6)
-    /* Then it's MPEG-II */
-    config->mpeg.version = MPEG_II;
-  else
-    /* Finally, MPEG-2.5 */
-    config->mpeg.version = MPEG_25;  
-
-  /* Impossible configuration. */
-  if (config->mpeg.bitrate_index < 3 && config->mpeg.version == MPEG_I) {
-    free(config);
-    return NULL;
-  }
+  config->mpeg.version          = shine_mpeg_version(config->mpeg.samplerate_index);
+  config->mpeg.bitrate_index    = shine_find_bitrate_index(config->mpeg.bitr, config->mpeg.version);
 
   shine_open_bit_stream(&config->bs, BUFFER_SIZE);
 
@@ -99,26 +134,6 @@ void shine_read_only_config(shine_t s, shine_read_only_config_t *config)
 {
   config->mpeg_version = s->mpeg.version;
   config->mpeg_layer   = s->mpeg.layer;
-}
-
-int shine_find_samplerate_index(long freq)
-{
-  int i;
-
-  for(i=0;i<9;i++)
-    if(freq==samplerates[i]) return i;
-
-  return -1; /* error - not a valid samplerate for encoder */
-}
-
-int shine_find_bitrate_index(int bitr)
-{
-  int i;
-
-  for(i=0;i<17;i++)
-    if(bitr==bitrates[i]) return i;
-
-  return -1; /* error - not a valid samplerate for encoder */
 }
 
 unsigned char *shine_encode_frame(shine_global_config *config, int16_t data[2][samp_per_frame], long *written)

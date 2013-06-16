@@ -168,10 +168,7 @@ int main(int argc, char **argv)
 	infile = wave.file;
 
 	/* See if samplerate is valid */
-	if (shine_find_samplerate_index(config.wave.samplerate) < 0) error("Unsupported samplerate");
-
-	/* See if bitrate is valid */
-	if (shine_find_bitrate_index(config.mpeg.bitr) < 0) error("Unsupported bitrate");
+	if (shine_check_config(config.wave.samplerate, config.mpeg.bitr) < 0) error("Unsupported samplerate/bitrate configuration.");
 
 	/* open the output file */
 	if (!strcmp(outfname, "-"))
