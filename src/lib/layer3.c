@@ -63,7 +63,7 @@ int shine_check_config(long freq, int bitr)
   bitrate_index = shine_find_bitrate_index(bitr, mpeg_version);
   if (bitrate_index < 0) return -1;
 
-  return 0;
+  return mpeg_version;
 }
 
 /* Compute default encoding values. */
@@ -128,12 +128,6 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
   config->sideinfo_len = (config->wave.channels==1) ? 168 : 288;
 
   return config;
-}
-
-void shine_read_only_config(shine_t s, shine_read_only_config_t *config)
-{
-  config->mpeg_version = s->mpeg.version;
-  config->mpeg_layer   = s->mpeg.layer;
 }
 
 unsigned char *shine_encode_frame(shine_global_config *config, int16_t data[2][samp_per_frame], long *written)

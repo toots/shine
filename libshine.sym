@@ -4,4 +4,3 @@ shine_check_config
 shine_flush
 shine_initialise
 shine_set_config_mpeg_defaults
-shine_read_only_config

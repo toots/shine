@@ -86,12 +86,6 @@ typedef struct {
   shine_mpeg_t mpeg;
 } shine_config_t;
 
-/* Set of read-only variables. */
-typedef struct {
-  enum mpeg_versions mpeg_version;
-  enum mpeg_layers   mpeg_layer; /* Always III for now. */
-} shine_read_only_config_t;
-
 /* Abtract type for the shine encoder handle. */
 typedef struct shine_global_flags *shine_t;
 
@@ -101,7 +95,7 @@ void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg);
 /* Check if a given bitrate and samplerate is supported by the encoder (see `samplerates` 
  * and `bitrates` above for a list of acceptable values). 
  *
- * Returns -1 on error, 0 on success. */
+ * Returns -1 on error, mpeg_version on success. */
 int shine_check_config(long freq, int bitr);
 
 /* Pass a pointer to a `config_t` structure and returns an initialized
@@ -119,9 +113,6 @@ int shine_check_config(long freq, int bitr);
  * This function returns NULL if it was not able to allocate memory data for 
  * the encoder. */
 shine_t shine_initialise(shine_config_t *config);
-
-/* Fill up argument with read-only configuration variables. */
-void shine_read_only_config(shine_t s, shine_read_only_config_t *config);
 
 /* Encode audio data. Source data must have `samp_per_frames` audio samples per
  * channels. Mono encoder only expect one channel. 
