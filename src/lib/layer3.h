@@ -6,8 +6,16 @@
 #define samp_per_frame  1152
 
 /* Valid samplerates and bitrates. */
-static long samplerates[6] = {44100, 48000, 32000, 11025, 12000, 8000};
-static int  bitrates[14]   = {32,40,48,56,64,80,96,112,128,160,192,224,256,320};
+static long samplerates[9] = {
+  44100, 48000, 32000, /* MPEG-I */
+  22050, 24000, 16000, /* MPEG-II */
+  11025, 12000, 8000   /* MPEG-2.5 */
+};
+
+static int  bitrates[17] = {
+  8,  16, 24, /* MPEG-II and MPEG-2.5 */
+  32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 /* MPEG-I, MPEG-II and MPEG-2.5 */
+};
 
 /* This is the struct used to tell the encoder about the input PCM */
 
@@ -65,7 +73,7 @@ typedef struct {
 /* Set of read-only variables. */
 typedef struct {
   enum mpeg_versions mpeg_version;
-  enum mpeg_layers   mpeg_layer; /* Always III */
+  enum mpeg_layers   mpeg_layer; /* Always III for now. */
 } shine_read_only_config_t;
 
 /* Abtract type for the shine encoder handle. */

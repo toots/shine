@@ -44,15 +44,13 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
   config->mpeg.original   = pub_config->mpeg.original; 
 
   /* Set default values. */
-  config->ResvMax       = 0;
-  config->ResvSize      = 0;
-  config->mpeg.version  = MPEG_I;
-  config->mpeg.layer    = LAYER_III;
-  config->mpeg.crc      = 0;
-  config->mpeg.ext      = 0;
-  config->mpeg.mode_ext = 0;
-
-  config->mpeg.bits_per_slot     = 8;
+  config->ResvMax            = 0;
+  config->ResvSize           = 0;
+  config->mpeg.layer         = LAYER_III;
+  config->mpeg.crc           = 0;
+  config->mpeg.ext           = 0;
+  config->mpeg.mode_ext      = 0;
+  config->mpeg.bits_per_slot = 8;
 
   /* Figure average number of 'slots' per frame. */
   avg_slots_per_frame = ((double)samp_per_frame /
@@ -69,7 +67,24 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
     config->mpeg.padding = 0;
 
   config->mpeg.samplerate_index = shine_find_samplerate_index(config->wave.samplerate);
-  config->mpeg.bitrate_index    = shine_find_bitrate_index(config->mpeg.bitr)+1;
+  config->mpeg.bitrate_index    = shine_find_bitrate_index(config->mpeg.bitr);
+
+  /* Pick mpeg version according to samplerate index. */
+  if (config->mpeg.samplerate_index < 3)
+    /* First 3 samplerates are for MPEG-I */
+    config->mpeg.version = MPEG_I;
+  else if (config->mpeg.samplerate_index < 6)
+    /* Then it's MPEG-II */
+    config->mpeg.version = MPEG_II;
+  else
+    /* Finally, MPEG-2.5 */
+    config->mpeg.version = MPEG_25;  
+
+  /* Impossible configuration. */
+  if (config->mpeg.bitrate_index < 3 && config->mpeg.version == MPEG_I) {
+    free(config);
+    return NULL;
+  }
 
   shine_open_bit_stream(&config->bs, BUFFER_SIZE);
 
@@ -90,7 +105,7 @@ int shine_find_samplerate_index(long freq)
 {
   int i;
 
-  for(i=0;i<6;i++)
+  for(i=0;i<9;i++)
     if(freq==samplerates[i]) return i;
 
   return -1; /* error - not a valid samplerate for encoder */
@@ -100,7 +115,7 @@ int shine_find_bitrate_index(int bitr)
 {
   int i;
 
-  for(i=0;i<14;i++)
+  for(i=0;i<17;i++)
     if(bitr==bitrates[i]) return i;
 
   return -1; /* error - not a valid samplerate for encoder */

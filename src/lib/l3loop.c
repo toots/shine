@@ -12,7 +12,7 @@
 #define CBLIMIT  21
 #define SFB_LMAX 22
 
-int *scalefac_band_long  = &shine_scale_fact_band_index[3].l[0];
+int *scalefac_band_long  = &shine_scale_fact_band_index[0].l[0];
 
 static void calc_scfsi(shine_psy_xmin_t *l3_xmin, int ch, int gr, shine_global_config *config);
 static int part2_length(shine_scalefac_t *scalefac, int gr, int ch, shine_side_info_t *si);
@@ -99,7 +99,7 @@ void shine_iteration_loop(shine_global_config *config)
   int ch, gr, i;
   int *ix;
 
-  scalefac_band_long  = &shine_scale_fact_band_index[config->mpeg.samplerate_index + 3].l[0];
+  scalefac_band_long  = &shine_scale_fact_band_index[config->mpeg.samplerate_index].l[0];
 
   for(ch=config->wave.channels; ch--; )
   {

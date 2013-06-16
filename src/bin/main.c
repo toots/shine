@@ -64,7 +64,7 @@ static void print_usage()
 	printf("Usage: shineenc [options] <infile> <outfile>\n\n");
 	printf("Options:\n");
 	printf(" -h            this help message\n");
-	printf(" -b <bitrate>  set the bitrate [32-320], default 128kbit\n");
+	printf(" -b <bitrate>  set the bitrate [8-320], default 128kbit\n");
 	printf(" -c            set copyright flag, default off\n");
 	printf(" -q            quiet mode\n");
 	printf(" -v            verbose mode\n");
@@ -191,6 +191,11 @@ int main(int argc, char **argv)
 
 	/* Initiate encoder */
 	s = shine_initialise(&config);
+
+  if (s == NULL) {
+    fprintf(stderr, "Invalid configuration\n");
+    exit(1);
+  }
 
   /* Print some info about the file about to be created (optional) */
   if (!quiet) check_config(&config, s);

@@ -3,6 +3,7 @@
 #include "types.h"
 #include "l3mdct.h"
 #include "l3loop.h"
+#include "layer3.h"
 #include "formatbits.h"
 #include "huffman.h"
 #include "bitstream.h"
@@ -170,20 +171,24 @@ static int encodeSideInfo( shine_global_config *config )
   int gr, ch, scfsi_band, region, bits_sent;
   shine_side_info_t  si = config->side_info;
 
+  int bitrate_offset = 1;
+  if (config->mpeg.version == MPEG_I)
+    bitrate_offset = -2;
+
   config->l3stream.headerPH->part->nrEntries = 0;
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, 0x7ff,                          11 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.version,            2 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.layer,              2 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, !config->mpeg.crc,               1 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.bitrate_index,      4 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.samplerate_index,   2 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.padding,            1 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.ext,                1 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.mode,               2 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.mode_ext,           2 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.copyright,          1 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.original,           1 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.emph,               2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, 0x7ff,                                      11 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.version,                        2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.layer,                          2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, !config->mpeg.crc,                           1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.bitrate_index + bitrate_offset, 4 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.samplerate_index % 3,           2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.padding,                        1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.ext,                            1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.mode,                           2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.mode_ext,                       2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.copyright,                      1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.original,                       1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.emph,                           2 );
 
   bits_sent = 32;
 
@@ -262,7 +267,7 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
   /* 1: Write the bigvalues */
   bigvalues = gi->big_values <<1;
 
-  int *scalefac = &shine_scale_fact_band_index[config->mpeg.samplerate_index+3].l[0];
+  int *scalefac = &shine_scale_fact_band_index[config->mpeg.samplerate_index].l[0];
   unsigned scalefac_index = 100;
 
   scalefac_index = gi->region0_count + 1;
