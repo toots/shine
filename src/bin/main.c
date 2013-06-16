@@ -132,15 +132,20 @@ static void check_config(shine_config_t *config)
 	printf("Encoding \"%s\" to \"%s\"\n", infname, outfname);
 }
 
+#define MAX_SAMPLES 1152
+
 int main(int argc, char **argv)
 {
 	wave_t         wave;
 	time_t         start_time, end_time;
-	int16_t        buffer[2][samp_per_frame];
+	int16_t        *buffer[2];
 	shine_config_t config;
 	shine_t        s;
 	long           written;
 	unsigned char  *data;
+
+  buffer[0] = malloc(sizeof(int16_t)*MAX_SAMPLES);
+  buffer[1] = malloc(sizeof(int16_t)*MAX_SAMPLES);
 
 	time(&start_time);
 
@@ -192,8 +197,10 @@ int main(int argc, char **argv)
   /* Print some info about the file about to be created (optional) */
   if (!quiet) check_config(&config);
 
+  int samp_per_frame = shine_samples_per_frame(s);
+
 	/* All the magic happens here */
-	while (wave_get(buffer, &wave, &config)) {
+	while (wave_get(buffer, &wave, &config, samp_per_frame)) {
 		data = shine_encode_frame(s, buffer, &written);
 		write_mp3(written, data, &config);
 	}
@@ -210,6 +217,10 @@ int main(int argc, char **argv)
 
 	/* Close the MP3 file */
 	fclose(outfile);
+
+  /* Free buffer. */
+  free(buffer[0]);
+  free(buffer[1]);
 
 	time(&end_time);
 	end_time -= start_time;

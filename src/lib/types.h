@@ -7,7 +7,7 @@
 
 #include <math.h>
 
-#define samp_per_frame2  576
+#define MAX_SAMPLES  576
 
 #include "bitstream.h"
 
@@ -134,6 +134,7 @@ typedef struct {
 typedef struct {
     int    version;
     int    layer;
+    int    samp_per_frame;
     int    mode;      /* + */ /* Stereo mode */
     int    bitr;      /* + */ /* Must conform to known bitrate - see Main.c */
     int    emph;      /* + */ /* De-emphasis */
@@ -197,8 +198,8 @@ typedef struct {
 
 typedef struct {
   long *xr;                    /* magnitudes of the spectral values */
-  long xrsq[samp_per_frame2];  /* xr squared */
-  long xrabs[samp_per_frame2]; /* xr absolute */
+  long xrsq[MAX_SAMPLES];  /* xr squared */
+  long xrabs[MAX_SAMPLES]; /* xr absolute */
   long xrmax;                  /* maximum of xrabs array */
   long en_tot[2]; /* gr */
   long en[2][21];
@@ -283,9 +284,9 @@ typedef struct shine_global_flags {
   shine_scalefac_t  scalefactor;
   int16_t       *buffer[2];
   double         pe[2][2];
-  int            l3_enc[2][2][samp_per_frame2];
+  int            l3_enc[2][2][MAX_SAMPLES];
   long           l3_sb_sample[2][3][18][SBLIMIT];
-  long           mdct_freq[2][2][samp_per_frame2];
+  long           mdct_freq[2][2][MAX_SAMPLES];
   int            ResvSize;
   int            ResvMax;
   formatbits_t   formatbits;

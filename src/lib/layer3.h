@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-#define samp_per_frame  1152
-
 /* Valid samplerates and bitrates. */
 static long samplerates[9] = {
   44100, 48000, 32000, /* MPEG-I */
@@ -12,25 +10,25 @@ static long samplerates[9] = {
   11025, 12000, 8000   /* MPEG-2.5 */
 };
 
-static int bitrates[16][3] = {
+static int bitrates[16][4] = {
   /* MPEG version:
-   * I,  II,  2.5 */
-   {-1,  -1, -1},
-   { 32,  8,  8},
-   { 40, 16, 16},
-   { 48, 24, 24},
-   { 56, 32, 32},
-   { 64, 40, 40},
-   { 80, 48, 48},
-   { 96, 56, 56},
-   {112, 64, 64},
-   {128, 80, 80},
-   {160, 96, 96},
-   {192,112,112},
-   {224,128,128},
-   {256,144,144},
-   {320,160,160},
-   {-1,  -1, -1}
+   * 2.5, reserved, II, I */
+   { -1,  -1,        -1,  -1},
+   { 8,   -1,         8,  32},
+   { 16,  -1,        16,  40},
+   { 24,  -1,        24,  48},
+   { 32,  -1,        32,  56},
+   { 40,  -1,        40,  64},
+   { 48,  -1,        48,  80},
+   { 56,  -1,        56,  96},
+   { 64,  -1,        64, 112},
+   { 80,  -1,        80, 128},
+   { 96,  -1,        96, 160},
+   {112,  -1,       112, 192},
+   {128,  -1,       128, 224},
+   {256,  -1,       144, 144},
+   {160,  -1,       160, 320},
+   { -1,  -1,        -1,  -1}
 };
 
 /* This is the struct used to tell the encoder about the input PCM */
@@ -114,14 +112,17 @@ int shine_check_config(long freq, int bitr);
  * the encoder. */
 shine_t shine_initialise(shine_config_t *config);
 
-/* Encode audio data. Source data must have `samp_per_frames` audio samples per
+/* Returns audio samples expected in each frame. */
+int shine_samples_per_frame(shine_t s);
+
+/* Encode audio data. Source data must have `shine_samples_per_frame(s)` audio samples per
  * channels. Mono encoder only expect one channel. 
  *
  * Returns a pointer to freshly encoded data while `written` contains the size of
  * available data. This pointer's memory is handled by the library and is only valid 
  * until the next call to `shine_encode_frame` or `shine_close` and may be NULL if no data
  * was written. */
-unsigned char *shine_encode_frame(shine_t s, int16_t data[2][samp_per_frame], long *written);
+unsigned char *shine_encode_frame(shine_t s, int16_t **data, long *written);
 
 /* Flush all data currently in the encoding buffer. Should be used before closing
  * the encoder, to make all encoded data has been written. */

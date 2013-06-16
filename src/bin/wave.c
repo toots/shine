@@ -177,19 +177,19 @@ int read_samples(int16_t *sample_buffer, int frame_size, FILE *file)
  * Expects an interleaved 16bit pcm stream from read_samples, which it
  * de-interleaves into buffer.
  */
-int wave_get(int16_t buffer[2][samp_per_frame], wave_t *wave, void *config_in)
+int wave_get(int16_t **buffer, wave_t *wave, void *config_in, int samp_per_frame)
 {
 	FILE *file = wave->file;
 
   static int16_t temp_buf[2304];
   int            samples_read;
   int            j;
-  shine_config_t      *config=config_in;
+  shine_config_t *config=config_in;
 
   switch(config->mpeg.mode)
   {
     case MODE_MONO  :
-      samples_read = read_samples(temp_buf,(int)samp_per_frame, file);
+      samples_read = read_samples(temp_buf,samp_per_frame, file);
       for(j=0;j<samp_per_frame;j++)
       {
         buffer[0][j] = temp_buf[j];
@@ -198,7 +198,7 @@ int wave_get(int16_t buffer[2][samp_per_frame], wave_t *wave, void *config_in)
       break;
 
     default: /* stereo */
-      samples_read = read_samples(temp_buf,(int)samp_per_frame<<1, file);
+      samples_read = read_samples(temp_buf,samp_per_frame<<1, file);
       for(j=0;j<samp_per_frame;j++)
       {
         buffer[0][j] = temp_buf[2*j];

@@ -9,6 +9,13 @@
 #include "formatbits.h"
 #include "l3bitstream.h"
 
+static int frame_sizes[4] = {
+  576,  /* MPEG 2.5 */
+   -1,  /* Reserved */
+  576,  /* MPEG II */
+  1152  /* MPEG I */
+};
+
 /* Set default values for important vars */
 void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg)
 {
@@ -46,7 +53,7 @@ int shine_find_bitrate_index(int bitr, int mpeg_version)
   int i;
 
   for(i=0;i<16;i++)
-    if(bitr==bitrates[i][3-mpeg_version]) return i;
+    if(bitr==bitrates[i][mpeg_version]) return i;
 
   return -1; /* error - not a valid samplerate for encoder */
 }
@@ -64,6 +71,11 @@ int shine_check_config(long freq, int bitr)
   if (bitrate_index < 0) return -1;
 
   return mpeg_version;
+}
+
+int shine_samples_per_frame(shine_t s)
+{
+  return frame_sizes[s->mpeg.version];
 }
 
 /* Compute default encoding values. */
@@ -95,16 +107,21 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
   config->mpeg.original   = pub_config->mpeg.original; 
 
   /* Set default values. */
-  config->ResvMax            = 0;
-  config->ResvSize           = 0;
-  config->mpeg.layer         = LAYER_III;
-  config->mpeg.crc           = 0;
-  config->mpeg.ext           = 0;
-  config->mpeg.mode_ext      = 0;
-  config->mpeg.bits_per_slot = 8;
+  config->ResvMax             = 0;
+  config->ResvSize            = 0;
+  config->mpeg.layer          = LAYER_III;
+  config->mpeg.crc            = 0;
+  config->mpeg.ext            = 0;
+  config->mpeg.mode_ext       = 0;
+  config->mpeg.bits_per_slot  = 8;
+
+  config->mpeg.samplerate_index = shine_find_samplerate_index(config->wave.samplerate);
+  config->mpeg.version          = shine_mpeg_version(config->mpeg.samplerate_index);
+  config->mpeg.bitrate_index    = shine_find_bitrate_index(config->mpeg.bitr, config->mpeg.version);
+  config->mpeg.samp_per_frame   = frame_sizes[config->mpeg.version];
 
   /* Figure average number of 'slots' per frame. */
-  avg_slots_per_frame = ((double)samp_per_frame /
+  avg_slots_per_frame = ((double)config->mpeg.samp_per_frame /
                         ((double)config->wave.samplerate/1000)) *
                         ((double)config->mpeg.bitr /
                          (double)config->mpeg.bits_per_slot);
@@ -117,10 +134,6 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
   if(config->mpeg.frac_slots_per_frame==0)
     config->mpeg.padding = 0;
 
-  config->mpeg.samplerate_index = shine_find_samplerate_index(config->wave.samplerate);
-  config->mpeg.version          = shine_mpeg_version(config->mpeg.samplerate_index);
-  config->mpeg.bitrate_index    = shine_find_bitrate_index(config->mpeg.bitr, config->mpeg.version);
-
   shine_open_bit_stream(&config->bs, BUFFER_SIZE);
 
   memset((char *)&config->side_info,0,sizeof(shine_side_info_t));
@@ -130,7 +143,7 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
   return config;
 }
 
-unsigned char *shine_encode_frame(shine_global_config *config, int16_t data[2][samp_per_frame], long *written)
+unsigned char *shine_encode_frame(shine_global_config *config, int16_t **data, long *written)
 {
   int i, gr, channel;
 
