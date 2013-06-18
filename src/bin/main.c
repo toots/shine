@@ -139,13 +139,13 @@ int main(int argc, char **argv)
 	wave_t         wave;
 	time_t         start_time, end_time;
 	int16_t        *buffer[2];
+  int16_t        chan1[MAX_SAMPLES], chan2[MAX_SAMPLES];
 	shine_config_t config;
 	shine_t        s;
 	long           written;
 	unsigned char  *data;
 
-  buffer[0] = malloc(sizeof(int16_t)*MAX_SAMPLES);
-  buffer[1] = malloc(sizeof(int16_t)*MAX_SAMPLES);
+  buffer[0] = chan1, buffer[1] = chan2;
 
 	time(&start_time);
 
@@ -217,10 +217,6 @@ int main(int argc, char **argv)
 
 	/* Close the MP3 file */
 	fclose(outfile);
-
-  /* Free buffer. */
-  free(buffer[0]);
-  free(buffer[1]);
 
 	time(&end_time);
 	end_time -= start_time;

@@ -12,8 +12,6 @@
 #define CBLIMIT  21
 #define SFB_LMAX 22
 
-int *scalefac_band_long  = &shine_scale_fact_band_index[0].l[0];
-
 static void calc_scfsi(shine_psy_xmin_t *l3_xmin, int ch, int gr, shine_global_config *config);
 static int part2_length(shine_scalefac_t *scalefac, int gr, int ch, shine_side_info_t *si);
 static int bin_search_StepSize(int desired_rate, int ix[MAX_SAMPLES], gr_info * cod_info, shine_global_config *config);
@@ -21,7 +19,7 @@ static int count_bit(int ix[MAX_SAMPLES], unsigned int start, unsigned int end, 
 static int bigv_bitcount(int ix[MAX_SAMPLES], gr_info *gi);
 static int new_choose_table( int ix[MAX_SAMPLES], unsigned int begin, unsigned int end );
 static void bigv_tab_select( int ix[MAX_SAMPLES], gr_info *cod_info );
-static void subdivide(gr_info *cod_info);
+static void subdivide(gr_info *cod_info, shine_global_config *config );
 static int count1_bitcount( int ix[ MAX_SAMPLES ], gr_info *cod_info );
 static void calc_runlen( int ix[MAX_SAMPLES], gr_info *cod_info, shine_global_config *config );
 static void calc_xmin(shine_psy_ratio_t *ratio, gr_info *cod_info, shine_psy_xmin_t *l3_xmin, int gr, int ch );
@@ -48,7 +46,7 @@ int shine_inner_loop(int ix[MAX_SAMPLES],
 
     calc_runlen(ix,cod_info,config);                 /* rzero,count1,big_values*/
     bits = c1bits = count1_bitcount(ix,cod_info);    /* count1_table selection*/
-    subdivide(cod_info);                             /* bigvalues sfb division */
+    subdivide(cod_info, config);                     /* bigvalues sfb division */
     bigv_tab_select(ix,cod_info);                    /* codebook selection*/
     bits += bvbits = bigv_bitcount( ix, cod_info );  /* bit count */
   }
@@ -98,8 +96,6 @@ void shine_iteration_loop(shine_global_config *config)
   int max_bits;
   int ch, gr, i;
   int *ix;
-
-  scalefac_band_long  = &shine_scale_fact_band_index[config->mpeg.samplerate_index].l[0];
 
   for(ch=config->wave.channels; ch--; )
   {
@@ -188,6 +184,9 @@ void calc_scfsi( shine_psy_xmin_t *l3_xmin, int ch, int gr,
   int sfb, start, end, i;
   int condition = 0;
   long temp;
+
+  int *scalefac_band_long = &shine_scale_fact_band_index[config->mpeg.samplerate_index].l[0];
+
   /* gr_info *cod_info = &l3_side->gr[gr].ch[ch].tt; */ /* Unused */
 
 /*
@@ -526,8 +525,10 @@ int count1_bitcount(int ix[MAX_SAMPLES], gr_info *cod_info)
  * ----------
  * presumable subdivides the bigvalue region which will use separate Huffman tables.
  */
-void subdivide(gr_info *cod_info)
+void subdivide(gr_info *cod_info, shine_global_config *config)
 {
+  int *scalefac_band_long  = &shine_scale_fact_band_index[config->mpeg.samplerate_index].l[0];
+
   static struct
   {
     unsigned region0_count;
@@ -849,7 +850,7 @@ int bin_search_StepSize(int desired_rate, int ix[MAX_SAMPLES],
     {
       calc_runlen(ix,cod_info, config);    /* rzero,count1,big_values */
       bit = count1_bitcount(ix, cod_info); /* count1_table selection */
-      subdivide(cod_info);                 /* bigvalues sfb division */
+      subdivide(cod_info, config);         /* bigvalues sfb division */
       bigv_tab_select(ix,cod_info);        /* codebook selection */
       bit += bigv_bitcount(ix,cod_info);   /* bit count */
     }
