@@ -65,6 +65,7 @@ static void print_usage()
 	printf("Options:\n");
 	printf(" -h            this help message\n");
 	printf(" -b <bitrate>  set the bitrate [8-320], default 128kbit\n");
+  printf(" -m            force encoder to operate in mono\n");
 	printf(" -c            set copyright flag, default off\n");
 	printf(" -q            quiet mode\n");
 	printf(" -v            verbose mode\n");
@@ -77,7 +78,7 @@ static void set_defaults(shine_config_t *config)
 }
 
 /* Parse command line arguments */
-static int parse_command(int argc, char** argv, shine_config_t *config)
+static int parse_command(int argc, char** argv, shine_config_t *config, int *force_mono)
 {
 	int i = 0;
 
@@ -88,6 +89,10 @@ static int parse_command(int argc, char** argv, shine_config_t *config)
 			case 'b':
 				config->mpeg.bitr = atoi(argv[++i]);
 				break;
+
+      case 'm':
+        *force_mono = 1;
+        break;
 
 			case 'c':
 				config->mpeg.copyright = 1;
@@ -137,6 +142,7 @@ static void check_config(shine_config_t *config)
 int main(int argc, char **argv)
 {
 	wave_t         wave;
+  int            force_mono = 0;
 	time_t         start_time, end_time;
 	int16_t        *buffer[2];
   int16_t        chan1[MAX_SAMPLES], chan2[MAX_SAMPLES];
@@ -152,7 +158,7 @@ int main(int argc, char **argv)
 	/* Set the default MPEG encoding paramters - basically init the struct */
 	set_defaults(&config);
 
-	if (!parse_command(argc, argv, &config)) {
+	if (!parse_command(argc, argv, &config, &force_mono)) {
 		print_usage();
 		exit(1);
 	}
@@ -166,6 +172,9 @@ int main(int argc, char **argv)
 		error("Could not open WAVE file");
 
 	infile = wave.file;
+
+  if (force_mono)
+    config.wave.channels = 1;
 
 	/* See if samplerate is valid */
 	if (shine_check_config(config.wave.samplerate, config.mpeg.bitr) < 0) error("Unsupported samplerate/bitrate configuration.");
@@ -200,7 +209,7 @@ int main(int argc, char **argv)
   int samp_per_frame = shine_samples_per_frame(s);
 
 	/* All the magic happens here */
-	while (wave_get(buffer, &wave, &config, samp_per_frame)) {
+	while (wave_get(buffer, &wave, force_mono, samp_per_frame)) {
 		data = shine_encode_frame(s, buffer, &written);
 		write_mp3(written, data, &config);
 	}

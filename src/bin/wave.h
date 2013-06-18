@@ -6,12 +6,13 @@
 
 typedef struct {
         FILE *file;
+        int  channels;
         long length;
 	long duration;
 } wave_t;
 
 bool wave_open(const char *fname, wave_t *wave, shine_config_t *config, int quiet);
-int  wave_get(int16_t **buffer, wave_t *wave, void *config_in, int samp_per_frame);
+int  wave_get(int16_t **buffer, wave_t *wave, int force_mono, int samp_per_frame);
 void wave_close(wave_t *wave);
 
 #endif
