@@ -51,7 +51,7 @@ void shine_mdct_sub(shine_global_config *config)
   long mdct_in[36];
   long bu,bd,*m;
 
-  for(gr=0; gr<2; gr++)
+  for(gr=0; gr<config->mpeg.granules_per_frame; gr++)
     for(ch=config->wave.channels; ch--; )
     {
       /* set up pointer to the part of config->mdct_freq we're using */

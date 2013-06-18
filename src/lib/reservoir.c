@@ -151,7 +151,7 @@ void shine_ResvFrameEnd(shine_global_config *config )
     else
     {
       /* plan b: distribute throughout the granules */
-      for (gr = 0; gr < 2; gr++ )
+      for (gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
         for (ch = 0; ch < config->wave.channels; ch++ )
         {
           int extraBits, bitsThisGr;

@@ -14,17 +14,17 @@
 
 static void calc_scfsi(shine_psy_xmin_t *l3_xmin, int ch, int gr, shine_global_config *config);
 static int part2_length(shine_scalefac_t *scalefac, int gr, int ch, shine_side_info_t *si);
-static int bin_search_StepSize(int desired_rate, int ix[MAX_SAMPLES], gr_info * cod_info, shine_global_config *config);
-static int count_bit(int ix[MAX_SAMPLES], unsigned int start, unsigned int end, unsigned int table );
-static int bigv_bitcount(int ix[MAX_SAMPLES], gr_info *gi);
-static int new_choose_table( int ix[MAX_SAMPLES], unsigned int begin, unsigned int end );
-static void bigv_tab_select( int ix[MAX_SAMPLES], gr_info *cod_info );
+static int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE], gr_info * cod_info, shine_global_config *config);
+static int count_bit(int ix[GRANULE_SIZE], unsigned int start, unsigned int end, unsigned int table );
+static int bigv_bitcount(int ix[GRANULE_SIZE], gr_info *gi);
+static int new_choose_table( int ix[GRANULE_SIZE], unsigned int begin, unsigned int end );
+static void bigv_tab_select( int ix[GRANULE_SIZE], gr_info *cod_info );
 static void subdivide(gr_info *cod_info, shine_global_config *config );
-static int count1_bitcount( int ix[ MAX_SAMPLES ], gr_info *cod_info );
-static void calc_runlen( int ix[MAX_SAMPLES], gr_info *cod_info, shine_global_config *config );
+static int count1_bitcount( int ix[ GRANULE_SIZE ], gr_info *cod_info );
+static void calc_runlen( int ix[GRANULE_SIZE], gr_info *cod_info );
 static void calc_xmin(shine_psy_ratio_t *ratio, gr_info *cod_info, shine_psy_xmin_t *l3_xmin, int gr, int ch );
-static int quantize(int ix[MAX_SAMPLES], int stepsize, shine_global_config *config);
-static int ix_max( int ix[MAX_SAMPLES], unsigned int begin, unsigned int end );
+static int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config);
+static int ix_max( int ix[GRANULE_SIZE], unsigned int begin, unsigned int end );
 
 /*
  * shine_inner_loop:
@@ -32,7 +32,7 @@ static int ix_max( int ix[MAX_SAMPLES], unsigned int begin, unsigned int end );
  * The code selects the best quantizerStepSize for a particular set
  * of scalefacs.
  */
-int shine_inner_loop(int ix[MAX_SAMPLES],
+int shine_inner_loop(int ix[GRANULE_SIZE],
                int max_bits, gr_info *cod_info, int gr, int ch,
                shine_global_config *config )
 {
@@ -44,7 +44,7 @@ int shine_inner_loop(int ix[MAX_SAMPLES],
   {
     while(quantize(ix,++cod_info->quantizerStepSize,config) > 8192); /* within table range? */
 
-    calc_runlen(ix,cod_info,config);                 /* rzero,count1,big_values*/
+    calc_runlen(ix,cod_info);                        /* rzero,count1,big_values*/
     bits = c1bits = count1_bitcount(ix,cod_info);    /* count1_table selection*/
     subdivide(cod_info, config);                     /* bigvalues sfb division */
     bigv_tab_select(ix,cod_info);                    /* codebook selection*/
@@ -64,7 +64,7 @@ int shine_inner_loop(int ix[MAX_SAMPLES],
 
 int shine_outer_loop( int max_bits,
                        shine_psy_xmin_t  *l3_xmin, /* the allowed distortion of the scalefactor */
-                       int ix[MAX_SAMPLES], /* vector of quantized values ix(0..575) */
+                       int ix[GRANULE_SIZE], /* vector of quantized values ix(0..575) */
                        int gr, int ch, shine_global_config *config)
 {
   int bits, huff_bits;
@@ -99,7 +99,7 @@ void shine_iteration_loop(shine_global_config *config)
 
   for(ch=config->wave.channels; ch--; )
   {
-    for(gr=0; gr<2; gr++)
+    for(gr=0; gr<config->mpeg.granules_per_frame; gr++)
     {
       /* setup pointers */
       ix = config->l3_enc[gr][ch];
@@ -108,7 +108,7 @@ void shine_iteration_loop(shine_global_config *config)
       /* Precalculate the square, abs,  and maximum,
        * for use later on.
        */
-      for (i=config->mpeg.samp_per_frame/2, config->l3loop.xrmax=0; i--;)
+      for (i=GRANULE_SIZE, config->l3loop.xrmax=0; i--;)
       {
         config->l3loop.xrsq[i] = mulsr(config->l3loop.xr[i],config->l3loop.xr[i]);
         config->l3loop.xrabs[i] = labs(config->l3loop.xr[i]);
@@ -202,7 +202,7 @@ void calc_scfsi( shine_psy_xmin_t *l3_xmin, int ch, int gr,
   scfsi_set = 0;
 
   /* the total energy of the granule */
-  for ( temp = 0, i =config->mpeg.samp_per_frame/2; i--;  )
+  for ( temp = 0, i =GRANULE_SIZE; i--;  )
     temp += config->l3loop.xrsq[i]>>10; /* a bit of scaling to avoid overflow, (not very good) */
   if ( temp )
     config->l3loop.en_tot[gr] = log((double)temp * 4.768371584e-7) / LN2; /* 1024 / 0x7fffffff */
@@ -390,7 +390,7 @@ void shine_loop_initialise(shine_global_config *config)
  * Function: Quantization of the vector xr ( -> ix).
  * Returns maximum value of ix.
  */
-int quantize(int ix[MAX_SAMPLES], int stepsize, shine_global_config *config )
+int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config )
 {
   int i, max, ln, scalei;
   double scale, dbl;
@@ -402,7 +402,7 @@ int quantize(int ix[MAX_SAMPLES], int stepsize, shine_global_config *config )
   if((mulr(config->l3loop.xrmax,scalei)) > 165140) /* 8192**(4/3) */
     max = 16384; /* no point in continuing, stepsize not big enough */
   else
-    for(i=0, max=0;i<config->mpeg.samp_per_frame/2;i++)
+    for(i=0, max=0;i<GRANULE_SIZE;i++)
     {
       /* This calculation is very sensitive. The multiply must round it's
        * result or bad things happen to the quality.
@@ -433,7 +433,7 @@ int quantize(int ix[MAX_SAMPLES], int stepsize, shine_global_config *config )
  * -------
  * Function: Calculate the maximum of ix from 0 to 575
  */
-int ix_max( int ix[MAX_SAMPLES], unsigned int begin, unsigned int end )
+int ix_max( int ix[GRANULE_SIZE], unsigned int begin, unsigned int end )
 {
   register int i;
   register int max = 0;
@@ -450,12 +450,12 @@ int ix_max( int ix[MAX_SAMPLES], unsigned int begin, unsigned int end )
  * Function: Calculation of rzero, count1, big_values
  * (Partitions ix into big values, quadruples and zeros).
  */
-void calc_runlen( int ix[MAX_SAMPLES], gr_info *cod_info, shine_global_config *config )
+void calc_runlen( int ix[GRANULE_SIZE], gr_info *cod_info )
 {
   int i;
   int rzero = 0;
 
-  for ( i = config->mpeg.samp_per_frame/2; i > 1; i -= 2 )
+  for ( i = GRANULE_SIZE; i > 1; i -= 2 )
     if ( !ix[i-1] && !ix[i-2] )
       rzero++;
     else
@@ -479,7 +479,7 @@ void calc_runlen( int ix[MAX_SAMPLES], gr_info *cod_info, shine_global_config *c
  * ----------------
  * Determines the number of bits to encode the quadruples.
  */
-int count1_bitcount(int ix[MAX_SAMPLES], gr_info *cod_info)
+int count1_bitcount(int ix[GRANULE_SIZE], gr_info *cod_info)
 {
   int p, i, k;
   int v, w, x, y, signbits;
@@ -609,7 +609,7 @@ void subdivide(gr_info *cod_info, shine_global_config *config)
  * ----------------
  * Function: Select huffman code tables for bigvalues regions
  */
-void bigv_tab_select( int ix[MAX_SAMPLES], gr_info *cod_info )
+void bigv_tab_select( int ix[GRANULE_SIZE], gr_info *cod_info )
 {
   cod_info->table_select[0] = 0;
   cod_info->table_select[1] = 0;
@@ -636,7 +636,7 @@ void bigv_tab_select( int ix[MAX_SAMPLES], gr_info *cod_info )
  * of the Huffman tables as defined in the IS (Table B.7), and will not work
  * with any arbitrary tables.
  */
-int new_choose_table( int ix[MAX_SAMPLES], unsigned int begin, unsigned int end )
+int new_choose_table( int ix[GRANULE_SIZE], unsigned int begin, unsigned int end )
 {
   int i, max;
   int choice[2];
@@ -738,7 +738,7 @@ int new_choose_table( int ix[MAX_SAMPLES], unsigned int begin, unsigned int end 
  * --------------
  * Function: Count the number of bits necessary to code the bigvalues region.
  */
-int bigv_bitcount(int ix[MAX_SAMPLES], gr_info *gi)
+int bigv_bitcount(int ix[GRANULE_SIZE], gr_info *gi)
 {
   int bits = 0;
   unsigned int table;
@@ -757,7 +757,7 @@ int bigv_bitcount(int ix[MAX_SAMPLES], gr_info *gi)
  * ----------
  * Function: Count the number of bits necessary to code the subregion.
  */
-int count_bit(int ix[MAX_SAMPLES],
+int count_bit(int ix[GRANULE_SIZE],
               unsigned int start,
               unsigned int end,
               unsigned int table )
@@ -830,7 +830,7 @@ int count_bit(int ix[MAX_SAMPLES],
  * with a call to bin_search gain defined below, which
  * returns a good starting quantizerStepSize.
  */
-int bin_search_StepSize(int desired_rate, int ix[MAX_SAMPLES],
+int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE],
                         gr_info * cod_info, shine_global_config *config)
 {
   int top,bot,next,last,bit;
@@ -848,7 +848,7 @@ int bin_search_StepSize(int desired_rate, int ix[MAX_SAMPLES],
       bit = 100000;  /* fail */
     else
     {
-      calc_runlen(ix,cod_info, config);    /* rzero,count1,big_values */
+      calc_runlen(ix,cod_info);            /* rzero,count1,big_values */
       bit = count1_bitcount(ix, cod_info); /* count1_table selection */
       subdivide(cod_info, config);         /* bigvalues sfb division */
       bigv_tab_select(ix,cod_info);        /* codebook selection */

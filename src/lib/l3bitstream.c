@@ -28,7 +28,7 @@ void shine_bitstream_initialise( shine_global_config *config )
       {
        config->l3stream.spectrumSIPH[gr][ch]   = shine_BF_newPartHolder( 32 );
        config->l3stream.scaleFactorsPH[gr][ch] = shine_BF_newPartHolder( 64 );
-       config->l3stream.codedDataPH[gr][ch]    = shine_BF_newPartHolder( MAX_SAMPLES );
+       config->l3stream.codedDataPH[gr][ch]    = shine_BF_newPartHolder( GRANULE_SIZE );
        config->l3stream.userSpectrumPH[gr][ch] = shine_BF_newPartHolder( 4 );
       }
   config->l3stream.userFrameDataPH = shine_BF_newPartHolder( 8 );
@@ -76,12 +76,12 @@ shine_format_bitstream(shine_global_config *config)
   int gr, ch, i;
   BF_FrameData *frameData = &config->l3stream.frameData;
 
-  for ( gr = 0; gr < 2; gr++ )
+  for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch =  0; ch < config->wave.channels; ch++ )
       {
         int *pi = &config->l3_enc[gr][ch][0];
         long *pr = &config->mdct_freq[gr][ch][0];
-        for ( i = 0; i < config->mpeg.samp_per_frame/2; i++, pr++, pi++ )
+        for ( i = 0; i < GRANULE_SIZE; i++, pr++, pi++ )
           {
             if ( (*pr < 0) && (*pi > 0) )
               *pi *= -1;
@@ -92,7 +92,7 @@ shine_format_bitstream(shine_global_config *config)
   encodeMainData( config );
 
   frameData->frameLength = config->mpeg.bits_per_frame;
-  frameData->nGranules   = 2;
+  frameData->nGranules   = config->mpeg.granules_per_frame;
   frameData->nChannels   = config->wave.channels;
   frameData->header      = config->l3stream.headerPH->part;
   frameData->frameSI     = config->l3stream.frameSIPH->part;
@@ -100,7 +100,7 @@ shine_format_bitstream(shine_global_config *config)
   for ( ch = 0; ch < config->wave.channels; ch++ )
     frameData->channelSI[ch] = config->l3stream.channelSIPH[ch]->part;
 
-  for ( gr = 0; gr < 2; gr++ )
+  for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch = 0; ch < config->wave.channels; ch++ )
       {
         frameData->spectrumSI[gr][ch]   = config->l3stream.spectrumSIPH[gr][ch]->part;
@@ -124,7 +124,7 @@ static void encodeMainData(shine_global_config *config)
   int gr, ch, sfb;
   shine_side_info_t  si = config->side_info;
 
-  for ( gr = 0; gr < 2; gr++ )
+  for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch = 0; ch < config->wave.channels; ch++ )
       {
         config->l3stream.scaleFactorsPH[gr][ch]->part->nrEntries = 0;
@@ -133,7 +133,7 @@ static void encodeMainData(shine_global_config *config)
 
 
 
-  for ( gr = 0; gr < 2; gr++ )
+  for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     {
       for ( ch = 0; ch < config->wave.channels; ch++ )
         {
@@ -193,7 +193,7 @@ static int encodeSideInfo( shine_global_config *config )
   for (ch = 0; ch < config->wave.channels; ch++ )
     config->l3stream.channelSIPH[ch]->part->nrEntries = 0;
 
-  for ( gr = 0; gr < 2; gr++ )
+  for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch = 0; ch < config->wave.channels; ch++ )
       config->l3stream.spectrumSIPH[gr][ch]->part->nrEntries = 0;
 
@@ -211,7 +211,7 @@ static int encodeSideInfo( shine_global_config *config )
         *pph = shine_BF_addEntry( *pph, si.scfsi[ch][scfsi_band], 1 );
       }
 
-  for ( gr = 0; gr < 2; gr++ )
+  for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch = 0; ch < config->wave.channels ; ch++ )
       {
         BF_PartHolder **pph = &config->l3stream.spectrumSIPH[gr][ch];
@@ -246,7 +246,7 @@ static int encodeSideInfo( shine_global_config *config )
 static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_global_config *config )
 {
   int shine_huffman_coder_count1( BF_PartHolder **pph, struct huffcodetab *h, int v, int w, int x, int y );
-  int bigv_bitcount( int ix[MAX_SAMPLES], gr_info *cod_info );
+  int bigv_bitcount( int ix[GRANULE_SIZE], gr_info *cod_info );
 
   int region1Start;
   int region2Start;

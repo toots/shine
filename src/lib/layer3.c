@@ -9,11 +9,11 @@
 #include "formatbits.h"
 #include "l3bitstream.h"
 
-static int frame_sizes[4] = {
-  576,  /* MPEG 2.5 */
+static int granules_per_frame[4] = {
+    1,  /* MPEG 2.5 */
    -1,  /* Reserved */
-  576,  /* MPEG II */
-  1152  /* MPEG I */
+    1,  /* MPEG II */
+    2  /* MPEG I */
 };
 
 /* Set default values for important vars */
@@ -75,7 +75,7 @@ int shine_check_config(long freq, int bitr)
 
 int shine_samples_per_frame(shine_t s)
 {
-  return frame_sizes[s->mpeg.version];
+  return s->mpeg.granules_per_frame * GRANULE_SIZE;
 }
 
 /* Compute default encoding values. */
@@ -115,13 +115,13 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
   config->mpeg.mode_ext       = 0;
   config->mpeg.bits_per_slot  = 8;
 
-  config->mpeg.samplerate_index = shine_find_samplerate_index(config->wave.samplerate);
-  config->mpeg.version          = shine_mpeg_version(config->mpeg.samplerate_index);
-  config->mpeg.bitrate_index    = shine_find_bitrate_index(config->mpeg.bitr, config->mpeg.version);
-  config->mpeg.samp_per_frame   = frame_sizes[config->mpeg.version];
+  config->mpeg.samplerate_index   = shine_find_samplerate_index(config->wave.samplerate);
+  config->mpeg.version            = shine_mpeg_version(config->mpeg.samplerate_index);
+  config->mpeg.bitrate_index      = shine_find_bitrate_index(config->mpeg.bitr, config->mpeg.version);
+  config->mpeg.granules_per_frame = granules_per_frame[config->mpeg.version];
 
   /* Figure average number of 'slots' per frame. */
-  avg_slots_per_frame = ((double)config->mpeg.samp_per_frame /
+  avg_slots_per_frame = ((double)config->mpeg.granules_per_frame * GRANULE_SIZE /
                         ((double)config->wave.samplerate/1000)) *
                         ((double)config->mpeg.bitr /
                          (double)config->mpeg.bits_per_slot);
@@ -169,7 +169,7 @@ unsigned char *shine_encode_frame(shine_global_config *config, int16_t **data, l
   config->mean_bits = (config->mpeg.bits_per_frame - config->sideinfo_len)>>1;
 
   /* polyphase filtering */
-  for(gr=0;gr<2;gr++)
+  for(gr=0;gr<config->mpeg.granules_per_frame;gr++)
     for(channel=config->wave.channels; channel--; )
       for(i=0;i<18;i++)
         shine_window_filter_subband(&config->buffer[channel], &config->l3_sb_sample[channel][gr+1][i][0] ,channel,config);
