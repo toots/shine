@@ -160,8 +160,6 @@ static void encodeMainData(shine_global_config *config)
     }
 }
 
-//static unsigned int crc = 0;
-
 static void encodeSideInfo( shine_global_config *config )
 {
   int gr, ch, scfsi_band, region;
@@ -191,20 +189,29 @@ static void encodeSideInfo( shine_global_config *config )
     for ( ch = 0; ch < config->wave.channels; ch++ )
       config->l3stream.spectrumSIPH[gr][ch]->part->nrEntries = 0;
 
-  /* main_data_begin has 9 bits in MPEG 1 */
-  config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, 0, 9 );
+  if ( config->mpeg.version == MPEG_I )
+    config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, 0, 9 );
+  else
+    config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, 0, 8 );
 
   if ( config->wave.channels == 2 )
-    config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 3 );
+    if ( config->mpeg.version == MPEG_I )
+      config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 3 );
+    else
+      config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 1 );
   else
-    config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 5 );
+    if ( config->mpeg.version == MPEG_I )
+      config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 5 );
+    else
+      config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 2 );
 
-  for ( ch = 0; ch < config->wave.channels; ch++ )
-    for ( scfsi_band = 0; scfsi_band < 4; scfsi_band++ )
-      {
-        BF_PartHolder **pph = &config->l3stream.channelSIPH[ch];
-        *pph = shine_BF_addEntry( *pph, si.scfsi[ch][scfsi_band], 1 );
-      }
+  if ( config->mpeg.version == MPEG_I )
+    for ( ch = 0; ch < config->wave.channels; ch++ )
+      for ( scfsi_band = 0; scfsi_band < 4; scfsi_band++ )
+        {
+          BF_PartHolder **pph = &config->l3stream.channelSIPH[ch];
+          *pph = shine_BF_addEntry( *pph, si.scfsi[ch][scfsi_band], 1 );
+        }
 
   for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch = 0; ch < config->wave.channels ; ch++ )
@@ -214,7 +221,10 @@ static void encodeSideInfo( shine_global_config *config )
         *pph = shine_BF_addEntry( *pph, gi->part2_3_length,        12 );
         *pph = shine_BF_addEntry( *pph, gi->big_values,            9 );
         *pph = shine_BF_addEntry( *pph, gi->global_gain,           8 );
-        *pph = shine_BF_addEntry( *pph, gi->scalefac_compress,     4 );
+        if ( config->mpeg.version == MPEG_I )
+          *pph = shine_BF_addEntry( *pph, gi->scalefac_compress,   4 );
+        else
+          *pph = shine_BF_addEntry( *pph, gi->scalefac_compress,   9 );
         *pph = shine_BF_addEntry( *pph, 0, 1 );
 
         for ( region = 0; region < 3; region++ )

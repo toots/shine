@@ -3,6 +3,7 @@
 #include "types.h"
 #include "tables.h"
 #include "l3loop.h"
+#include "layer3.h"
 #include "huffman.h"
 #include "bitstream.h"
 #include "l3bitstream.h"
@@ -125,7 +126,8 @@ void shine_iteration_loop(shine_global_config *config)
 
       calc_xmin(&config->ratio, cod_info, &l3_xmin, gr, ch );
 
-      calc_scfsi(&l3_xmin,ch,gr,config);
+      if ( config->mpeg.version == MPEG_I )
+        calc_scfsi(&l3_xmin,ch,gr,config);
 
       /* calculation of number of available bit( per granule ) */
       max_bits = shine_ResvMaxBits(&config->pe[gr][ch],config);
