@@ -122,8 +122,8 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
 
   /* Figure average number of 'slots' per frame. */
   avg_slots_per_frame = ((double)config->mpeg.granules_per_frame * GRANULE_SIZE /
-                        ((double)config->wave.samplerate/1000)) *
-                        ((double)config->mpeg.bitr /
+                        ((double)config->wave.samplerate)) *
+                        (1000*(double)config->mpeg.bitr /
                          (double)config->mpeg.bits_per_slot);
 
   config->mpeg.whole_slots_per_frame  = (int)avg_slots_per_frame;
@@ -138,7 +138,11 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
 
   memset((char *)&config->side_info,0,sizeof(shine_side_info_t));
 
-  config->sideinfo_len = (config->wave.channels==1) ? 168 : 288;
+  /* determine the mean bitrate for main data */
+  if (config->mpeg.granules_per_frame == 2) /* MPEG 1 */
+    config->sideinfo_len = 8 * ((config->wave.channels==1) ? 4 + 17 : 4 + 32);
+  else                /* MPEG 2 */
+    config->sideinfo_len = 8 * ((config->wave.channels==1) ? 4 + 9 : 4 + 17);
 
   return config;
 }

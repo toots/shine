@@ -11,6 +11,10 @@
 #define e        2.71828182845
 #define CBLIMIT  21
 #define SFB_LMAX 22
+#define en_tot_krit 10
+#define en_dif_krit 100
+#define en_scfsi_band_krit 10
+#define xm_scfsi_band_krit 10
 
 static void calc_scfsi(shine_psy_xmin_t *l3_xmin, int ch, int gr, shine_global_config *config);
 static int part2_length(shine_scalefac_t *scalefac, int gr, int ch, shine_side_info_t *si);
@@ -173,11 +177,6 @@ void calc_scfsi( shine_psy_xmin_t *l3_xmin, int ch, int gr,
   /* This is the scfsi_band table from 2.4.2.7 of the IS */
   static int scfsi_band_long[5] = { 0, 6, 11, 16, 21 };
 
-#define en_tot_krit 10
-#define en_dif_krit 100
-#define en_scfsi_band_krit 10
-#define xm_scfsi_band_krit 10
-
   int scfsi_band;
   unsigned scfsi_set;
 
@@ -187,16 +186,14 @@ void calc_scfsi( shine_psy_xmin_t *l3_xmin, int ch, int gr,
 
   int *scalefac_band_long = &shine_scale_fact_band_index[config->mpeg.samplerate_index].l[0];
 
-  /* gr_info *cod_info = &l3_side->gr[gr].ch[ch].tt; */ /* Unused */
+  /* note. it goes quite a bit faster if you uncomment the next bit and exit
+     early from scfsi, but you then loose the advantage of common scale factors.
 
-/*
- note. it goes quite a bit faster if you uncomment the next bit and exit
-       early from scfsi, but you then loose the advantage of common scale factors.
+  for(scfsi_band=0;scfsi_band<4;scfsi_band++)
+    l3_side->scfsi[ch][scfsi_band] = 0;
+  return;
 
-      for(scfsi_band=0;scfsi_band<4;scfsi_band++)
-         l3_side->scfsi[ch][scfsi_band] = 0;
-      return;
-*/
+  */
 
   config->l3loop.xrmaxl[gr] = config->l3loop.xrmax;
   scfsi_set = 0;

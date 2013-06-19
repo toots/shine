@@ -55,7 +55,7 @@ void shine_bitstream_close( shine_global_config *config )
   shine_BF_freePartHolder(config->l3stream.userFrameDataPH);
 }
 
-static int encodeSideInfo( shine_global_config *config );
+static void encodeSideInfo( shine_global_config *config );
 static void encodeMainData( shine_global_config *config );
 static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi , shine_global_config *config);
 
@@ -166,9 +166,9 @@ static void encodeMainData(shine_global_config *config)
 
 //static unsigned int crc = 0;
 
-static int encodeSideInfo( shine_global_config *config )
+static void encodeSideInfo( shine_global_config *config )
 {
-  int gr, ch, scfsi_band, region, bits_sent;
+  int gr, ch, scfsi_band, region;
   shine_side_info_t  si = config->side_info;
 
   config->l3stream.headerPH->part->nrEntries = 0;
@@ -185,8 +185,6 @@ static int encodeSideInfo( shine_global_config *config )
   config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.copyright,            1 );
   config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.original,             1 );
   config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.emph,                 2 );
-
-  bits_sent = 32;
 
   config->l3stream.frameSIPH->part->nrEntries = 0;
 
@@ -232,13 +230,6 @@ static int encodeSideInfo( shine_global_config *config )
         *pph = shine_BF_addEntry( *pph, gi->scalefac_scale,     1 );
         *pph = shine_BF_addEntry( *pph, gi->count1table_select, 1 );
       }
-
-  if ( config->wave.channels == 2 )
-    bits_sent += 256;
-  else
-    bits_sent += 136;
-
-  return bits_sent;
 }
 
 /* Note the discussion of huffmancodebits() on pages 28 and 29 of the IS, as

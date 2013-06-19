@@ -198,13 +198,13 @@ typedef struct {
 
 typedef struct {
   long *xr;                    /* magnitudes of the spectral values */
-  long xrsq[GRANULE_SIZE];  /* xr squared */
-  long xrabs[GRANULE_SIZE]; /* xr absolute */
+  long xrsq[GRANULE_SIZE];     /* xr squared */
+  long xrabs[GRANULE_SIZE];    /* xr absolute */
   long xrmax;                  /* maximum of xrabs array */
-  long en_tot[2]; /* gr */
-  long en[2][21];
-  long xm[2][21];
-  long xrmaxl[2];
+  long en_tot[MAX_GRANULES];   /* gr */
+  long en[MAX_GRANULES][21];
+  long xm[MAX_GRANULES][21];
+  long xrmaxl[MAX_GRANULES];
   double steptab[128]; /* 2**(-x/4)  for x = -127..0 */
   long steptabi[128];  /* 2**(-x/4)  for x = -127..0 */
   long int2idx[10000]; /* x**(3/4)   for x = 0..9999 */
@@ -217,10 +217,10 @@ typedef struct {
 } mdct_t;
 
 typedef struct {
-  int off[2];
+  int off[MAX_CHANNELS];
   long fl[SBLIMIT][64];
-  long x[2][HAN_SIZE];
-  long z[2][HAN_SIZE];
+  long x[MAX_CHANNELS][HAN_SIZE];
+  long z[MAX_CHANNELS][HAN_SIZE];
   long ew[HAN_SIZE];
 } subband_t; 
 
@@ -251,25 +251,25 @@ typedef struct {
     int main_data_begin; /* unsigned -> int */
     unsigned private_bits;
     int resvDrain;
-    unsigned scfsi[2][4];
+    unsigned scfsi[MAX_CHANNELS][4];
     struct {
         struct {
             gr_info tt;
-        } ch[2];
-    } gr[2];
+        } ch[MAX_CHANNELS];
+    } gr[MAX_GRANULES];
 } shine_side_info_t;
 
 typedef struct {
-    double  l[2][2][21];
+    double  l[MAX_GRANULES][MAX_CHANNELS][21];
 } shine_psy_ratio_t;
 
 typedef struct {
-        double  l[2][2][21];
+        double  l[MAX_GRANULES][MAX_CHANNELS][21];
 } shine_psy_xmin_t;
 
 typedef struct {
-    int l[2][2][22];            /* [cb] */
-    int s[2][2][13][3];         /* [window][cb] */
+    int l[MAX_GRANULES][MAX_CHANNELS][22];            /* [cb] */
+    int s[MAX_GRANULES][MAX_CHANNELS][13][3];         /* [window][cb] */
 } shine_scalefac_t;
 
 
@@ -282,11 +282,11 @@ typedef struct shine_global_flags {
   int            mean_bits;
   shine_psy_ratio_t ratio;
   shine_scalefac_t  scalefactor;
-  int16_t       *buffer[2];
-  double         pe[2][2];
-  int            l3_enc[2][2][GRANULE_SIZE];
-  long           l3_sb_sample[2][3][18][SBLIMIT];
-  long           mdct_freq[2][2][GRANULE_SIZE];
+  int16_t       *buffer[MAX_CHANNELS];
+  double         pe[MAX_GRANULES][MAX_CHANNELS];
+  int            l3_enc[MAX_GRANULES][MAX_CHANNELS][GRANULE_SIZE];
+  long           l3_sb_sample[MAX_CHANNELS][MAX_GRANULES+1][18][SBLIMIT];
+  long           mdct_freq[MAX_GRANULES][MAX_CHANNELS][GRANULE_SIZE];
   int            ResvSize;
   int            ResvMax;
   formatbits_t   formatbits;

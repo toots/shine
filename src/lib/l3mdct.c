@@ -104,6 +104,6 @@ void shine_mdct_sub(shine_global_config *config)
   for(ch=config->wave.channels ;ch--; )
     for(j=18; j--; )
       for(band=32; band--; )
-        config->l3_sb_sample[ch][0][j][band] = config->l3_sb_sample[ch][2][j][band];
+        config->l3_sb_sample[ch][0][j][band] = config->l3_sb_sample[ch][config->mpeg.granules_per_frame][j][band];
 }
 
