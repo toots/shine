@@ -41,9 +41,9 @@ typedef struct {
 } fmt_chunk_t;
 
 
-bool wave_get_chunk_header(FILE *file, const char id[4], riff_chunk_header_t *header)
+unsigned char wave_get_chunk_header(FILE *file, const char id[4], riff_chunk_header_t *header)
 {
-	bool found = false;
+	unsigned char found = 0;
 	uint32_t chunk_length;
 	long i;
 	char chunk_id[5] = "\0\0\0\0\0";
@@ -54,7 +54,7 @@ bool wave_get_chunk_header(FILE *file, const char id[4], riff_chunk_header_t *he
 	while(!found) {
 		if (fread(header, sizeof(riff_chunk_header_t), 1, file) != 1) {
 			if (feof(file))
-				return false;
+				return 0;
 			else
 				error("Read error");
 		}
@@ -67,7 +67,7 @@ bool wave_get_chunk_header(FILE *file, const char id[4], riff_chunk_header_t *he
 		}
 
 		if (strncmp(header->id, id, 4) == 0)
-			return true;
+			return 1;
 
 		/* move forward */
 		for (i = 0; i < chunk_length; i++)
@@ -75,7 +75,7 @@ bool wave_get_chunk_header(FILE *file, const char id[4], riff_chunk_header_t *he
 
 	}
 
-	return false;
+	return 1;
 }
 
 
@@ -91,7 +91,7 @@ void wave_close(wave_t *wave)
  * Opens and verifies the header of the Input Wave file. The file pointer is
  * left pointing to the start of the samples.
  */
-bool wave_open(const char *fname, wave_t *wave, shine_config_t *config, int quiet)
+unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config, int quiet)
 {
 	static char *channel_mappings[] = { NULL, "mono", "stereo" };
 	wave_chunk_t wave_chunk;
@@ -151,7 +151,7 @@ bool wave_open(const char *fname, wave_t *wave, shine_config_t *config, int quie
 		printf("%s, %s %ldHz %ldbit, duration: %02ld:%02ld:%02ld\n",
 			"WAVE PCM Data", channel_mappings[fmt_chunk.channels], (long)fmt_chunk.sample_rate, (long)fmt_chunk.depth,
 			(long)wave->duration / 3600, (long)(wave->duration / 60) % 60, (long)wave->duration % 60);
-	return true;
+	return 1;
 }
 
 /*

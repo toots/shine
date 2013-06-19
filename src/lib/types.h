@@ -27,9 +27,6 @@
 
 /* #define DEBUG if you want the library to dump info to stdout */
 
-#define false 0
-#define true 1
-
 #define PI          3.14159265358979
 #define PI4         0.78539816339745
 #define PI12        0.26179938779915
@@ -45,10 +42,6 @@
 #define SCALE       32768
 #define SBLIMIT     32
 
-#ifndef bool
-typedef unsigned char bool;
-#endif
-
 #ifndef MAX_CHANNELS
 #define MAX_CHANNELS 2
 #endif
@@ -63,8 +56,7 @@ typedef unsigned char bool;
   'length' bits of 'value' will be written to
   the bitstream msb-first.
 */
-typedef struct
-{
+typedef struct {
     unsigned long int value;
     unsigned int length;
 } BF_BitstreamElement;
@@ -76,8 +68,7 @@ typedef struct
   to the bitstream in the order it appears
   in the 'element' array.
 */
-typedef struct
-{
+typedef struct {
     unsigned long int nrEntries;
     BF_BitstreamElement *element;
 } BF_BitstreamPart;
@@ -92,8 +83,7 @@ typedef struct
   make local copies of that information (in formatBitstream.c)
 */
 
-typedef struct BF_FrameData
-{
+typedef struct BF_FrameData {
     int              frameLength;
     int              nGranules;
     int              nChannels;
@@ -113,14 +103,12 @@ typedef struct BF_FrameData
   check to see if your code agrees with the results
   of the call to the formatter.
 */
-typedef struct BF_FrameResults
-{
+typedef struct BF_FrameResults {
     int SILength;
     int mainDataLength;
 } BF_FrameResults;
 
-typedef struct BF_PartHolder
-{
+typedef struct BF_PartHolder {
     int max_elements;
     BF_BitstreamPart *part;
 } BF_PartHolder;
@@ -152,8 +140,7 @@ typedef struct {
     int    original;   /* + */
 } priv_shine_mpeg_t;
 
-typedef struct
-{
+typedef struct {
   int frameLength;
   int SILength;
   int nGranules;
@@ -164,8 +151,7 @@ typedef struct
   BF_PartHolder *spectrumSIPH[MAX_GRANULES][MAX_CHANNELS];
 } MYSideInfo;
 
-typedef struct side_info_link
-{
+typedef struct side_info_link {
     struct side_info_link *next;
     MYSideInfo           side_info;
 } side_info_link;
@@ -262,7 +248,7 @@ typedef struct {
 } shine_psy_ratio_t;
 
 typedef struct {
-        double  l[MAX_GRANULES][MAX_CHANNELS][21];
+    double  l[MAX_GRANULES][MAX_CHANNELS][21];
 } shine_psy_xmin_t;
 
 typedef struct {
