@@ -74,7 +74,6 @@ void
 shine_format_bitstream(shine_global_config *config)
 {
   int gr, ch, i;
-  BF_FrameData *frameData = &config->l3stream.frameData;
 
   for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch =  0; ch < config->wave.channels; ch++ )
@@ -91,24 +90,24 @@ shine_format_bitstream(shine_global_config *config)
   encodeSideInfo( config );
   encodeMainData( config );
 
-  frameData->frameLength = config->mpeg.bits_per_frame;
-  frameData->nGranules   = config->mpeg.granules_per_frame;
-  frameData->nChannels   = config->wave.channels;
-  frameData->header      = config->l3stream.headerPH->part;
-  frameData->frameSI     = config->l3stream.frameSIPH->part;
+  config->l3stream.frameData.frameLength = config->mpeg.bits_per_frame;
+  config->l3stream.frameData.nGranules   = config->mpeg.granules_per_frame;
+  config->l3stream.frameData.nChannels   = config->wave.channels;
+  config->l3stream.frameData.header      = config->l3stream.headerPH->part;
+  config->l3stream.frameData.frameSI     = config->l3stream.frameSIPH->part;
 
   for ( ch = 0; ch < config->wave.channels; ch++ )
-    frameData->channelSI[ch] = config->l3stream.channelSIPH[ch]->part;
+    config->l3stream.frameData.channelSI[ch] = config->l3stream.channelSIPH[ch]->part;
 
   for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch = 0; ch < config->wave.channels; ch++ )
       {
-        frameData->spectrumSI[gr][ch]   = config->l3stream.spectrumSIPH[gr][ch]->part;
-        frameData->scaleFactors[gr][ch] = config->l3stream.scaleFactorsPH[gr][ch]->part;
-        frameData->codedData[gr][ch]    = config->l3stream.codedDataPH[gr][ch]->part;
-        frameData->userSpectrum[gr][ch] = config->l3stream.userSpectrumPH[gr][ch]->part;
+        config->l3stream.frameData.spectrumSI[gr][ch]   = config->l3stream.spectrumSIPH[gr][ch]->part;
+        config->l3stream.frameData.scaleFactors[gr][ch] = config->l3stream.scaleFactorsPH[gr][ch]->part;
+        config->l3stream.frameData.codedData[gr][ch]    = config->l3stream.codedDataPH[gr][ch]->part;
+        config->l3stream.frameData.userSpectrum[gr][ch] = config->l3stream.userSpectrumPH[gr][ch]->part;
       }
-  frameData->userFrameData = config->l3stream.userFrameDataPH->part;
+  config->l3stream.frameData.userFrameData = config->l3stream.userFrameDataPH->part;
 
   shine_BF_BitstreamFrame(config);
 
