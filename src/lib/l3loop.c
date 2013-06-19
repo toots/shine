@@ -83,8 +83,6 @@ int shine_outer_loop( int max_bits,
   huff_bits = max_bits - cod_info->part2_length;
 
   bits = shine_inner_loop(ix, huff_bits, cod_info, gr, ch, config );
-
-  cod_info->part2_length   = part2_length(scalefac,gr,ch,side_info);
   cod_info->part2_3_length = cod_info->part2_length + bits;
 
   return cod_info->part2_3_length;
