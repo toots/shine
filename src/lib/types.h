@@ -117,7 +117,6 @@ typedef struct BF_FrameResults
 {
     int SILength;
     int mainDataLength;
-    int nextBackPtr;
 } BF_FrameResults;
 
 typedef struct BF_PartHolder
@@ -248,7 +247,6 @@ typedef struct {
 } gr_info;
 
 typedef struct {
-    int main_data_begin; /* unsigned -> int */
     unsigned private_bits;
     int resvDrain;
     unsigned scfsi[MAX_CHANNELS][4];

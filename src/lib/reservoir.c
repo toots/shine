@@ -13,24 +13,21 @@
  * shine_ResvFrameBegin:
  * ---------------
  * Called at the beginning of a frame. Updates the maximum
- * size of the reservoir, and checks to make sure main_data_begin
- * was set properly by the formatter
- */
+ * size of the reservoir. */
 void shine_ResvFrameBegin(int frameLength, shine_global_config *config)
 {
   int fullFrameBits;
-  int expectedResvSize, resvLimit;
+  int resvLimit;
   shine_side_info_t *l3_side = &config->side_info;
   int mean_bits = config->mean_bits;
 
-  resvLimit = 4088; /* main_data_begin has 9 bits in MPEG 1 */
+  resvLimit = 4088;
 
   /*
    * main_data_begin was set by the formatter to the
    * expected value for the next call -- this should
    * agree with our reservoir size
    */
-  expectedResvSize = l3_side->main_data_begin <<3;
   fullFrameBits = mean_bits<<1;
 
   /* determine maximum size of reservoir: config->ResvMax + frameLength <= 7680; */

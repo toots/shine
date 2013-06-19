@@ -354,8 +354,6 @@ void shine_loop_initialise(shine_global_config *config)
 {
   int i;
 
-  config->side_info.main_data_begin = 0;
-
   /* quantize: stepsize conversion, fourth root of 2 table.
    * The table is inverted (negative power) from the equation given
    * in the spec because it is quicker to do x*y than x/y.

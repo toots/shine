@@ -110,9 +110,6 @@ shine_format_bitstream(shine_global_config *config)
   config->l3stream.frameData.userFrameData = config->l3stream.userFrameDataPH->part;
 
   shine_BF_BitstreamFrame(config);
-
-  /* we set this here -- it will be tested in the next loops iteration */
-  config->side_info.main_data_begin = config->l3stream.frameResults.nextBackPtr;
 }
 
 static unsigned slen1_tab[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
@@ -194,7 +191,8 @@ static void encodeSideInfo( shine_global_config *config )
     for ( ch = 0; ch < config->wave.channels; ch++ )
       config->l3stream.spectrumSIPH[gr][ch]->part->nrEntries = 0;
 
-  config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.main_data_begin, 9 );
+  /* main_data_begin has 9 bits in MPEG 1 */
+  config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, 0, 9 );
 
   if ( config->wave.channels == 2 )
     config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 3 );
