@@ -21,7 +21,8 @@ void shine_ResvFrameBegin(int frameLength, shine_global_config *config)
   shine_side_info_t *l3_side = &config->side_info;
   int mean_bits = config->mean_bits;
 
-  resvLimit = 4088;
+  /* main_data_begin has 9 bits in MPEG-1, 8 bits MPEG-2 */
+  resvLimit = (8 * 256) * config->mpeg.granules_per_frame - 8;
 
   /*
    * main_data_begin was set by the formatter to the
