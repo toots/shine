@@ -18,7 +18,7 @@
 #define xm_scfsi_band_krit 10
 
 static void calc_scfsi(shine_psy_xmin_t *l3_xmin, int ch, int gr, shine_global_config *config);
-static int part2_length(shine_scalefac_t *scalefac, int gr, int ch, shine_side_info_t *si);
+static int part2_length(int gr, int ch, shine_global_config *config);
 static int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE], gr_info * cod_info, shine_global_config *config);
 static int count_bit(int ix[GRANULE_SIZE], unsigned int start, unsigned int end, unsigned int table );
 static int bigv_bitcount(int ix[GRANULE_SIZE], gr_info *gi);
@@ -73,13 +73,12 @@ int shine_outer_loop( int max_bits,
                        int gr, int ch, shine_global_config *config)
 {
   int bits, huff_bits;
-  shine_scalefac_t *scalefac   = &config->scalefactor;
   shine_side_info_t *side_info = &config->side_info; 
   gr_info *cod_info = &side_info->gr[gr].ch[ch].tt;
 
   cod_info->quantizerStepSize = bin_search_StepSize(max_bits,ix,cod_info, config);
 
-  cod_info->part2_length = part2_length(scalefac,gr,ch,side_info);
+  cod_info->part2_length = part2_length(gr,ch,config);
   huff_bits = max_bits - cod_info->part2_length;
 
   bits = shine_inner_loop(ix, huff_bits, cod_info, gr, ch, config );
@@ -286,12 +285,10 @@ static int slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
  * calculates the number of bits needed to encode the scalefacs in the
  * main data block.
  */
-int part2_length(shine_scalefac_t *scalefac,
-                 int gr, int ch,
-                 shine_side_info_t *si)
+int part2_length(int gr, int ch, shine_global_config *config)
 {
   int slen1, slen2, bits;
-  gr_info *gi = &si->gr[gr].ch[ch].tt;
+  gr_info *gi = &config->side_info.gr[gr].ch[ch].tt;
 
   bits = 0;
 
@@ -299,16 +296,16 @@ int part2_length(shine_scalefac_t *scalefac,
     slen1 = slen1_tab[ gi->scalefac_compress ];
     slen2 = slen2_tab[ gi->scalefac_compress ];
 
-    if ( !gr || !(si->scfsi[ch][0]) )
+    if ( !gr || !(config->side_info.scfsi[ch][0]) )
       bits += (6 * slen1);
 
-    if ( !gr || !(si->scfsi[ch][1]) )
+    if ( !gr || !(config->side_info.scfsi[ch][1]) )
       bits += (5 * slen1);
 
-    if ( !gr || !(si->scfsi[ch][2]) )
+    if ( !gr || !(config->side_info.scfsi[ch][2]) )
       bits += (5 * slen2);
 
-    if ( !gr || !(si->scfsi[ch][3]) )
+    if ( !gr || !(config->side_info.scfsi[ch][3]) )
       bits += (5 * slen2);
   }
   return bits;
