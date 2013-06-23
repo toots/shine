@@ -90,11 +90,8 @@ shine_format_bitstream(shine_global_config *config)
   encodeSideInfo( config );
   encodeMainData( config );
 
-  config->l3stream.frameData.frameLength = config->mpeg.bits_per_frame;
-  config->l3stream.frameData.nGranules   = config->mpeg.granules_per_frame;
-  config->l3stream.frameData.nChannels   = config->wave.channels;
-  config->l3stream.frameData.header      = config->l3stream.headerPH->part;
-  config->l3stream.frameData.frameSI     = config->l3stream.frameSIPH->part;
+  config->l3stream.frameData.header  = config->l3stream.headerPH->part;
+  config->l3stream.frameData.frameSI = config->l3stream.frameSIPH->part;
 
   for ( ch = 0; ch < config->wave.channels; ch++ )
     config->l3stream.frameData.channelSI[ch] = config->l3stream.channelSIPH[ch]->part;

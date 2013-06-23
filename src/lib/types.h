@@ -84,9 +84,6 @@ typedef struct {
 */
 
 typedef struct BF_FrameData {
-    int              frameLength;
-    int              nGranules;
-    int              nChannels;
     BF_BitstreamPart *header;
     BF_BitstreamPart *frameSI;
     BF_BitstreamPart *channelSI[MAX_CHANNELS];
@@ -141,10 +138,6 @@ typedef struct {
 } priv_shine_mpeg_t;
 
 typedef struct {
-  int frameLength;
-  int SILength;
-  int nGranules;
-  int nChannels;
   BF_PartHolder *headerPH;
   BF_PartHolder *frameSIPH;
   BF_PartHolder *channelSIPH[MAX_CHANNELS];
@@ -158,7 +151,6 @@ typedef struct side_info_link {
 
 typedef struct {
     int BitCount;
-    int ThisFrameSize;
     int BitsRemaining;
     side_info_link *side_queue_head;
     side_info_link *side_queue_free;
