@@ -94,17 +94,6 @@ typedef struct BF_FrameData {
     BF_BitstreamPart *userFrameData;
 } BF_FrameData;
 
-/*
-  This structure contains information provided by
-  the bitstream formatter. You can use this to
-  check to see if your code agrees with the results
-  of the call to the formatter.
-*/
-typedef struct BF_FrameResults {
-    int SILength;
-    int mainDataLength;
-} BF_FrameResults;
-
 typedef struct BF_PartHolder {
     int max_elements;
     BF_BitstreamPart *part;
@@ -157,8 +146,7 @@ typedef struct {
 } formatbits_t;
 
 typedef struct {
-  BF_FrameData    frameData;
-  BF_FrameResults frameResults;
+  BF_FrameData   frameData;
 
   BF_PartHolder *headerPH;
   BF_PartHolder *frameSIPH;
