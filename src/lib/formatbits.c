@@ -69,10 +69,11 @@ void shine_formatbits_close(shine_global_config *config)
 static void        store_side_info( shine_global_config *config );
 static MYSideInfo *side_info(shine_global_config *config);
 static int         write_side_info(shine_global_config *config);
+static int         WitePartSideInfo(BF_BitstreamPart *part, shine_global_config *config);
 
 static void        main_data( shine_global_config *config);
 static void        WriteMainDataBits( unsigned long int val, unsigned int nbits, shine_global_config *config);
-static int         WritePartMainData(BF_BitstreamPart *part, shine_global_config *config);
+static void        WritePartMainData(BF_BitstreamPart *part, shine_global_config *config);
 
 /*
  * BF_BitStreamFrame:
@@ -112,24 +113,19 @@ void shine_BF_BitstreamFrame(shine_global_config *config)
  * WritePartMainData:
  * ------------------
  */
-int WritePartMainData(BF_BitstreamPart *part, shine_global_config *config)
+static void WritePartMainData(BF_BitstreamPart *part, shine_global_config *config)
 {
   BF_BitstreamElement *ep;
-  int i, bits;
+  int i;
 
   /* assert(part); */
 
-  bits = 0;
   ep = part->element;
   for ( i = 0; i < part->nrEntries; i++, ep++ )
-    {
-      WriteMainDataBits( ep->value, ep->length, config );
-      bits += ep->length;
-    }
-  return bits;
+    WriteMainDataBits( ep->value, ep->length, config );
 }
 
-int shine_writePartSideInfo(BF_BitstreamPart *part, shine_global_config *config)
+static int WitePartSideInfo(BF_BitstreamPart *part, shine_global_config *config)
 {
   BF_BitstreamElement *ep;
   int i, bits;
@@ -167,8 +163,8 @@ static void main_data(shine_global_config *config)
 */
 
 static void WriteMainDataBits(unsigned long int val,
-                       unsigned int nbits,
-                       shine_global_config *config)
+                              unsigned int nbits,
+                              shine_global_config *config)
 {
   /* assert( nbits <= 32 ); */
   if (config->formatbits.BitCount == config->mpeg.bits_per_frame)
@@ -199,15 +195,16 @@ static int write_side_info(shine_global_config *config)
 
   bits = 0;
   si = side_info(config);
-  bits += shine_writePartSideInfo( si->headerPH->part,  config );
-  bits += shine_writePartSideInfo( si->frameSIPH->part, config );
+
+  bits += WitePartSideInfo( si->headerPH->part,  config );
+  bits += WitePartSideInfo( si->frameSIPH->part, config );
 
   for ( ch = 0; ch < config->wave.channels; ch++ )
-    bits += shine_writePartSideInfo( si->channelSIPH[ch]->part, config );
+    bits += WitePartSideInfo( si->channelSIPH[ch]->part, config );
 
   for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch = 0; ch < config->wave.channels; ch++ )
-      bits += shine_writePartSideInfo( si->spectrumSIPH[gr][ch]->part, config );
+      bits += WitePartSideInfo( si->spectrumSIPH[gr][ch]->part, config );
   return bits;
 }
 
