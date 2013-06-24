@@ -33,7 +33,7 @@
 void shine_formatbits_initialise(shine_global_config *config)
 {
   config->formatbits.BitCount        = 0;
-  config->formatbits.BitsRemaining   = 0;
+  config->formatbits.BitsRemaining   = config->mpeg.bits_per_frame;
   config->formatbits.side_queue_head = NULL;
   config->formatbits.side_queue_free = NULL;
 }
@@ -166,16 +166,18 @@ static void WriteMainDataBits(unsigned long int val,
                               unsigned int nbits,
                               shine_global_config *config)
 {
+  unsigned int extra;
+
   /* assert( nbits <= 32 ); */
   if (config->formatbits.BitCount == config->mpeg.bits_per_frame)
     {
-      config->formatbits.BitCount = write_side_info(config);
+      config->formatbits.BitCount      = write_side_info(config);
       config->formatbits.BitsRemaining = config->mpeg.bits_per_frame - config->formatbits.BitCount;
     }
   if (nbits == 0) return;
   if (nbits > config->formatbits.BitsRemaining)
     {
-      unsigned extra = val >> (nbits - config->formatbits.BitsRemaining);
+      extra  = val >> (nbits - config->formatbits.BitsRemaining);
       nbits -= config->formatbits.BitsRemaining;
       shine_putbits( &config->bs, extra, config->formatbits.BitsRemaining);
       config->formatbits.BitCount = write_side_info(config);
@@ -184,7 +186,8 @@ static void WriteMainDataBits(unsigned long int val,
     }
   else
     shine_putbits( &config->bs, val, nbits);
-  config->formatbits.BitCount += nbits;
+
+  config->formatbits.BitCount      += nbits;
   config->formatbits.BitsRemaining -= nbits;
 }
 

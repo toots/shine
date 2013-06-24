@@ -3,6 +3,7 @@
  */
 
 #include "types.h"
+#include "layer3.h"
 #include "l3loop.h"
 #include "huffman.h"
 #include "bitstream.h"
@@ -10,26 +11,17 @@
 #include "reservoir.h"
 
 /*
- * shine_ResvFrameBegin:
+ * ResvFrameBegin:
  * ---------------
  * Called at the beginning of a frame. Updates the maximum
  * size of the reservoir. */
-void shine_ResvFrameBegin(int frameLength, shine_global_config *config)
+static void ResvFrameBegin(int frameLength, shine_global_config *config)
 {
-  int fullFrameBits;
   int resvLimit;
   shine_side_info_t *l3_side = &config->side_info;
-  int mean_bits = config->mean_bits;
 
   /* main_data_begin has 9 bits in MPEG-1, 8 bits MPEG-2 */
   resvLimit = (8 * 256) * config->mpeg.granules_per_frame - 8;
-
-  /*
-   * main_data_begin was set by the formatter to the
-   * expected value for the next call -- this should
-   * agree with our reservoir size
-   */
-  fullFrameBits = mean_bits<<1;
 
   /* determine maximum size of reservoir: config->ResvMax + frameLength <= 7680; */
   if(frameLength>7680)
@@ -47,13 +39,13 @@ void shine_ResvFrameBegin(int frameLength, shine_global_config *config)
 }
 
 /*
- * shine_ResvMaxBits:
+ * shine_max_reservoir_bits:
  * ------------
  * Called at the beginning of each granule to get the max bit
  * allowance for the current granule based on reservoir size
  * and perceptual entropy.
  */
-int shine_ResvMaxBits (double *pe, shine_global_config *config )
+int shine_max_reservoir_bits (double *pe, shine_global_config *config )
 {
   int more_bits, max_bits, add_bits, over_bits;
   int mean_bits = config->mean_bits;
@@ -113,12 +105,11 @@ void shine_ResvFrameEnd(shine_global_config *config )
   int gr, ch, ancillary_pad, stuffingBits;
   int over_bits;
   shine_side_info_t *l3_side = &config->side_info;
-  int mean_bits = config->mean_bits;
 
   ancillary_pad = 0;
 
   /* just in case mean_bits is odd, this is necessary... */
-  if((config->wave.channels==2) && (mean_bits & 1))
+  if((config->wave.channels==2) && (config->mean_bits & 1))
     config->ResvSize += 1;
 
   over_bits = config->ResvSize - config->ResvMax;

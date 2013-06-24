@@ -112,7 +112,7 @@ void shine_iteration_loop(shine_global_config *config)
        */
       for (i=GRANULE_SIZE, config->l3loop.xrmax=0; i--;)
       {
-        config->l3loop.xrsq[i] = mulsr(config->l3loop.xr[i],config->l3loop.xr[i]);
+        config->l3loop.xrsq[i]  = mulsr(config->l3loop.xr[i],config->l3loop.xr[i]);
         config->l3loop.xrabs[i] = labs(config->l3loop.xr[i]);
         if(config->l3loop.xrabs[i]>config->l3loop.xrmax)
           config->l3loop.xrmax=config->l3loop.xrabs[i];
@@ -127,7 +127,7 @@ void shine_iteration_loop(shine_global_config *config)
         calc_scfsi(&l3_xmin,ch,gr,config);
 
       /* calculation of number of available bit( per granule ) */
-      max_bits = shine_ResvMaxBits(&config->pe[gr][ch],config);
+      max_bits = shine_max_reservoir_bits(&config->pe[gr][ch],config);
 
       /* reset of iteration variables */
       memset(config->scalefactor.l[gr][ch],0,22);
