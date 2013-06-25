@@ -11,34 +11,6 @@
 #include "reservoir.h"
 
 /*
- * ResvFrameBegin:
- * ---------------
- * Called at the beginning of a frame. Updates the maximum
- * size of the reservoir. */
-static void ResvFrameBegin(int frameLength, shine_global_config *config)
-{
-  int resvLimit;
-  shine_side_info_t *l3_side = &config->side_info;
-
-  /* main_data_begin has 9 bits in MPEG-1, 8 bits MPEG-2 */
-  resvLimit = (8 * 256) * config->mpeg.granules_per_frame - 8;
-
-  /* determine maximum size of reservoir: config->ResvMax + frameLength <= 7680; */
-  if(frameLength>7680)
-    config->ResvMax = 0;
-  else
-    config->ResvMax = 7680 - frameLength;
-
-  /*
-   * limit max size to resvLimit bits because
-   * main_data_begin cannot indicate a
-   * larger value
-   */
-  if(config->ResvMax>resvLimit)
-    config->ResvMax = resvLimit;
-}
-
-/*
  * shine_max_reservoir_bits:
  * ------------
  * Called at the beginning of each granule to get the max bit

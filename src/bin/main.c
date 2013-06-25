@@ -198,10 +198,7 @@ int main(int argc, char **argv)
 	/* Initiate encoder */
 	s = shine_initialise(&config);
 
-  if (s == NULL) {
-    fprintf(stderr, "Invalid configuration\n");
-    exit(1);
-  }
+  // assert(s != NULL);
 
   /* Print some info about the file about to be created (optional) */
   if (!quiet) check_config(&config);

@@ -4,13 +4,13 @@
 #include <stdint.h>
 
 /* Valid samplerates and bitrates. */
-static long samplerates[9] = {
+static const long samplerates[9] = {
   44100, 48000, 32000, /* MPEG-I */
   22050, 24000, 16000, /* MPEG-II */
   11025, 12000, 8000   /* MPEG-2.5 */
 };
 
-static int bitrates[16][4] = {
+static const int bitrates[16][4] = {
   /* MPEG version:
    * 2.5, reserved, II, I */
    { -1,  -1,        -1,  -1},

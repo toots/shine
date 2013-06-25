@@ -189,7 +189,6 @@ static void WriteMainDataBits(unsigned long int val,
 
 static int write_side_info(shine_global_config *config)
 {
-  MYSideInfo *si;
   int bits, ch, gr;
 
   bits = 0;
