@@ -133,16 +133,10 @@ typedef struct {
   BF_PartHolder *spectrumSIPH[MAX_GRANULES][MAX_CHANNELS];
 } MYSideInfo;
 
-typedef struct side_info_link {
-    struct side_info_link *next;
-    MYSideInfo           side_info;
-} side_info_link;
-
 typedef struct {
-    int BitCount;
-    int BitsRemaining;
-    side_info_link *side_queue_head;
-    side_info_link *side_queue_free;
+    int        BitCount;
+    int        BitsRemaining;
+    MYSideInfo side_info;
 } formatbits_t;
 
 typedef struct {
@@ -156,9 +150,6 @@ typedef struct {
   BF_PartHolder *codedDataPH[ MAX_GRANULES ][ MAX_CHANNELS ];
   BF_PartHolder *userSpectrumPH[ MAX_GRANULES ][ MAX_CHANNELS ];
   BF_PartHolder *userFrameDataPH;
-
-  side_info_link *side_queue_head;
-  side_info_link *side_queue_free;
 } l3stream_t;
 
 typedef struct {

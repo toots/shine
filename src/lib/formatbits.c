@@ -32,48 +32,44 @@
 
 void shine_formatbits_initialise(shine_global_config *config)
 {
-  config->formatbits.BitCount        = 0;
-  config->formatbits.BitsRemaining   = config->mpeg.bits_per_frame;
-  config->formatbits.side_queue_head = NULL;
-  config->formatbits.side_queue_free = NULL;
-}
-
-void shine_side_info_free(side_info_link *cur, shine_global_config *config)
-{
   int ch, gr;
 
-  side_info_link *next;
+  config->formatbits.BitCount            = 0;
+  config->formatbits.BitsRemaining       = config->mpeg.bits_per_frame;
+  config->formatbits.side_info.headerPH  = NULL;
+  config->formatbits.side_info.frameSIPH = NULL;
 
-  while (cur) {
-    shine_BF_freePartHolder(cur->side_info.headerPH);
-    shine_BF_freePartHolder(cur->side_info.frameSIPH);
-      for ( ch = 0; ch < config->wave.channels; ch++ )
-        shine_BF_freePartHolder(cur->side_info.channelSIPH[ch]);
-      for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
-        for ( ch = 0; ch < config->wave.channels; ch++ )
-          shine_BF_freePartHolder(cur->side_info.spectrumSIPH[gr][ch]);
-
-    next = cur->next;
-    free(cur);
-    cur  = next;
+  for ( ch = 0; ch < config->wave.channels; ch++ ) {
+    config->formatbits.side_info.channelSIPH[ch] = NULL;
+    for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
+      config->formatbits.side_info.spectrumSIPH[gr][ch] = NULL;
   }
 }
 
 void shine_formatbits_close(shine_global_config *config)
 {
-  shine_side_info_free(config->formatbits.side_queue_head, config);
-  shine_side_info_free(config->formatbits.side_queue_free, config);
+  int ch, gr;
+
+  shine_BF_freePartHolder(config->formatbits.side_info.headerPH);
+  shine_BF_freePartHolder(config->formatbits.side_info.frameSIPH);
+
+  for ( ch = 0; ch < config->wave.channels; ch++ ) {
+    shine_BF_freePartHolder(config->formatbits.side_info.channelSIPH[ch]);
+    for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
+      shine_BF_freePartHolder(config->formatbits.side_info.spectrumSIPH[gr][ch]);
+  }
 }
 
 /* forward declarations */
-static void        store_side_info( shine_global_config *config );
-static MYSideInfo *side_info(shine_global_config *config);
-static int         write_side_info(shine_global_config *config);
-static int         WitePartSideInfo(BF_BitstreamPart *part, shine_global_config *config);
+static void           store_side_info( shine_global_config *config );
+static int            write_side_info(shine_global_config *config);
+static int            WitePartSideInfo(BF_BitstreamPart *part, shine_global_config *config);
 
-static void        main_data( shine_global_config *config);
-static void        WriteMainDataBits( unsigned long int val, unsigned int nbits, shine_global_config *config);
-static void        WritePartMainData(BF_BitstreamPart *part, shine_global_config *config);
+static void           main_data( shine_global_config *config);
+static void           WriteMainDataBits( unsigned long int val, unsigned int nbits, shine_global_config *config);
+static void           WritePartMainData(BF_BitstreamPart *part, shine_global_config *config);
+
+static BF_PartHolder *BF_LoadHolderFromBitstreamPart( BF_PartHolder *theHolder, BF_BitstreamPart *thePart );
 
 /*
  * BF_BitStreamFrame:
@@ -197,91 +193,43 @@ static int write_side_info(shine_global_config *config)
   int bits, ch, gr;
 
   bits = 0;
-  si = side_info(config);
 
-  bits += WitePartSideInfo( si->headerPH->part,  config );
-  bits += WitePartSideInfo( si->frameSIPH->part, config );
+  bits += WitePartSideInfo( config->formatbits.side_info.headerPH->part,  config );
+  bits += WitePartSideInfo( config->formatbits.side_info.frameSIPH->part, config );
 
   for ( ch = 0; ch < config->wave.channels; ch++ )
-    bits += WitePartSideInfo( si->channelSIPH[ch]->part, config );
+    bits += WitePartSideInfo( config->formatbits.side_info.channelSIPH[ch]->part, config );
 
   for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch = 0; ch < config->wave.channels; ch++ )
-      bits += WitePartSideInfo( si->spectrumSIPH[gr][ch]->part, config );
+      bits += WitePartSideInfo( config->formatbits.side_info.spectrumSIPH[gr][ch]->part, config );
   return bits;
 }
 
 static void store_side_info(shine_global_config *config)
 {
   int ch, gr;
-  side_info_link *l = NULL;
-  /* obtain a side_info_link to store info */
-  side_info_link *f = config->formatbits.side_queue_free;
 
-  if (f == NULL)
-    { /* must allocate another */
-      l = (side_info_link *) calloc( 1, sizeof(side_info_link) );
-#ifdef DEBUG
-      static int n_si = 0;
-      n_si += 1;
-      printf("allocating side_info_link number %d, %p\n", n_si, l );
-#endif
-      l->next = NULL;
-      l->side_info.headerPH  = shine_BF_newPartHolder( config->l3stream.frameData.header->nrEntries );
-      l->side_info.frameSIPH = shine_BF_newPartHolder( config->l3stream.frameData.frameSI->nrEntries );
-      for ( ch = 0; ch < config->wave.channels; ch++ )
-        l->side_info.channelSIPH[ch] = shine_BF_newPartHolder( config->l3stream.frameData.channelSI[ch]->nrEntries );
-      for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
-        for ( ch = 0; ch < config->wave.channels; ch++ )
-          l->side_info.spectrumSIPH[gr][ch] = shine_BF_newPartHolder( config->l3stream.frameData.spectrumSI[gr][ch]->nrEntries );
-    }
-  else
-    { /* remove from the free list */
-      config->formatbits.side_queue_free = f->next;
-      f->next = NULL;
-      l = f;
-    }
+  if (config->formatbits.side_info.headerPH == NULL) { /* must allocate another */
+      config->formatbits.side_info.headerPH  = shine_BF_newPartHolder( config->l3stream.frameData.header->nrEntries );
+      config->formatbits.side_info.frameSIPH = shine_BF_newPartHolder( config->l3stream.frameData.frameSI->nrEntries );
+
+      for ( ch = 0; ch < config->wave.channels; ch++ ) {
+        config->formatbits.side_info.channelSIPH[ch] = shine_BF_newPartHolder( config->l3stream.frameData.channelSI[ch]->nrEntries );
+        for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
+          config->formatbits.side_info.spectrumSIPH[gr][ch] = shine_BF_newPartHolder( config->l3stream.frameData.spectrumSI[gr][ch]->nrEntries );
+      }
+  }
+
   /* copy data */
-  l->side_info.headerPH  = shine_BF_LoadHolderFromBitstreamPart( l->side_info.headerPH,  config->l3stream.frameData.header );
-  l->side_info.frameSIPH = shine_BF_LoadHolderFromBitstreamPart( l->side_info.frameSIPH, config->l3stream.frameData.frameSI );
+  config->formatbits.side_info.headerPH  = BF_LoadHolderFromBitstreamPart( config->formatbits.side_info.headerPH,  config->l3stream.frameData.header );
+  config->formatbits.side_info.frameSIPH = BF_LoadHolderFromBitstreamPart( config->formatbits.side_info.frameSIPH, config->l3stream.frameData.frameSI );
 
-  for ( ch = 0; ch < config->wave.channels; ch++ )
-    l->side_info.channelSIPH[ch] = shine_BF_LoadHolderFromBitstreamPart(l->side_info.channelSIPH[ch], config->l3stream.frameData.channelSI[ch]);
-
-  for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
-    for ( ch = 0; ch < config->wave.channels; ch++ )
-      l->side_info.spectrumSIPH[gr][ch] = shine_BF_LoadHolderFromBitstreamPart(l->side_info.spectrumSIPH[gr][ch], config->l3stream.frameData.spectrumSI[gr][ch]);
-  /* place at end of queue */
-  f = config->formatbits.side_queue_head;
-  if ( f == NULL )
-    {  /* empty queue */
-      config->formatbits.side_queue_head = l;
-    }
-  else
-    { /* find last element */
-      while ( f->next )
-        f = f->next;
-      f->next = l;
-    }
-}
-
-static MYSideInfo* side_info(shine_global_config *config)
-{
-  side_info_link *f = config->formatbits.side_queue_free;
-  side_info_link *l = config->formatbits.side_queue_head;
-
-  /* If we stop here it means you didn't provide enough headers to support the
-    amount of main data that was written. */
-  /* assert(l); */
-
-  /* update queue head */
-  config->formatbits.side_queue_head = l->next;
-
-  /* Append l to the free list. You can continue to use it until store_side_info
-    is called again, which will not happen again for this frame. */
-  config->formatbits.side_queue_free = l;
-  l->next = f;
-  return &l->side_info;
+  for ( ch = 0; ch < config->wave.channels; ch++ ) {
+    config->formatbits.side_info.channelSIPH[ch] = BF_LoadHolderFromBitstreamPart(config->formatbits.side_info.channelSIPH[ch], config->l3stream.frameData.channelSI[ch]);
+    for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
+      config->formatbits.side_info.spectrumSIPH[gr][ch] = BF_LoadHolderFromBitstreamPart(config->formatbits.side_info.spectrumSIPH[gr][ch], config->l3stream.frameData.spectrumSI[gr][ch]);
+  }
 }
 
 /* Allocate a new holder of a given size */
@@ -301,10 +249,10 @@ BF_PartHolder *shine_BF_newPartHolder(unsigned long int max_elements)
 BF_PartHolder *shine_BF_NewHolderFromBitstreamPart( BF_BitstreamPart *thePart )
 {
   BF_PartHolder *newHolder = shine_BF_newPartHolder( thePart->nrEntries );
-  return shine_BF_LoadHolderFromBitstreamPart( newHolder, thePart );
+  return BF_LoadHolderFromBitstreamPart( newHolder, thePart );
 }
 
-BF_PartHolder *shine_BF_LoadHolderFromBitstreamPart( BF_PartHolder *theHolder, BF_BitstreamPart *thePart )
+static BF_PartHolder *BF_LoadHolderFromBitstreamPart( BF_PartHolder *theHolder, BF_BitstreamPart *thePart )
 {
   BF_BitstreamElement *pElem;
   int i;
