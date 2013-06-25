@@ -46,8 +46,6 @@ enum mpeg_versions {
 
 /* Only Layer III currently implemented. */
 enum mpeg_layers {
-  LAYER_I   = 3,
-  LAYER_II  = 2,
   LAYER_III = 1
 };
 
