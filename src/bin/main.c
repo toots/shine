@@ -205,29 +205,29 @@ int main(int argc, char **argv)
 
   int samp_per_frame = shine_samples_per_frame(s);
 
-	/* All the magic happens here */
-	while (wave_get(buffer, &wave, force_mono, samp_per_frame)) {
-		data = shine_encode_frame(s, buffer, &written);
-		write_mp3(written, data, &config);
-	}
+  /* All the magic happens here */
+  while (wave_get(buffer, &wave, force_mono, samp_per_frame)) {
+    data = shine_encode_frame(s, buffer, &written);
+    write_mp3(written, data, &config);
+  }
 
-	/* Flush and write remaining data. */
-	data = shine_flush(s, &written);
-	write_mp3(written, data, &config);
+  /* Flush and write remaining data. */
+  data = shine_flush(s, &written);
+  write_mp3(written, data, &config);
 
-	/* Close encoder. */
-	shine_close(s);
+  /* Close encoder. */
+  shine_close(s);
 
-	/* Close the wave file (using the wav reader) */
-	wave_close(&wave);
+  /* Close the wave file (using the wav reader) */
+  wave_close(&wave);
 
-	/* Close the MP3 file */
-	fclose(outfile);
+  /* Close the MP3 file */
+  fclose(outfile);
 
-	time(&end_time);
-	end_time -= start_time;
-	if (!quiet)
-		printf("Finished in %02ld:%02ld:%02ld (%01.1fx realtime)\n", end_time / 3600, (end_time / 60) % 60, end_time % 60, (float)wave.duration / (float)end_time);
+  time(&end_time);
+  end_time -= start_time;
+  if (!quiet)
+    printf("Finished in %02ld:%02ld:%02ld (%01.1fx realtime)\n", end_time / 3600, (end_time / 60) % 60, end_time % 60, (float)wave.duration / (float)end_time);
 
-	return 0;
+  return 0;
 }
