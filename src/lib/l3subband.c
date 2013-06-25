@@ -16,11 +16,11 @@ void shine_subband_initialise(shine_global_config *config)
   int i,j;
   double filter;
 
-  config->subband.off[0] = config->subband.off[1] = 0;
-
-  for(i=2; i-- ; )
+  for(i=MAX_CHANNELS; i-- ; ) {
+    config->subband.off[i] = 0;
     for(j=HAN_SIZE; j--; )
       config->subband.x[i][j] = 0;
+  }
 
   for (i=SBLIMIT; i--; )
     for (j=64; j--; )
@@ -53,24 +53,24 @@ void shine_subband_initialise(shine_global_config *config)
  * picking out values from the windowed samples, and then multiplying
  * them by the filter matrix, producing 32 subband samples.
  */
-void shine_window_filter_subband(int16_t **buffer, long s[SBLIMIT] , int k, shine_global_config *config)
+void shine_window_filter_subband(int16_t **buffer, long s[SBLIMIT] , int ch, shine_global_config *config)
 {
   long y[64];
   int i,j;
 
   /* replace 32 oldest samples with 32 new samples */
   for (i=31;i>=0;i--)
-    config->subband.x[k][i+config->subband.off[k]] = ((long)*(*buffer)++) << 16;
+    config->subband.x[ch][i+config->subband.off[ch]] = ((long)*(*buffer)++) << 16;
 
   /* shift samples into proper window positions */
   for (i=HAN_SIZE; i--; )
-    config->subband.z[k][i] = mul(config->subband.x[k][(i+config->subband.off[k])&(HAN_SIZE-1)],config->subband.ew[i]);
+    config->subband.z[ch][i] = mul(config->subband.x[ch][(i+config->subband.off[ch])&(HAN_SIZE-1)],config->subband.ew[i]);
 
-  config->subband.off[k] = (config->subband.off[k] + 480) & (HAN_SIZE-1); /* offset is modulo (HAN_SIZE)*/
+  config->subband.off[ch] = (config->subband.off[ch] + 480) & (HAN_SIZE-1); /* offset is modulo (HAN_SIZE)*/
 
   for (i=64; i--; )
     for (j=8, y[i] = 0; j--; )
-      y[i] += config->subband.z[k][i+(j<<6)];
+      y[i] += config->subband.z[ch][i+(j<<6)];
 
   for (i=SBLIMIT; i--; )
     for (j=64, s[i]= 0; j--; )

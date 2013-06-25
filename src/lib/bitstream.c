@@ -53,8 +53,8 @@ void shine_open_bit_stream(bitstream_t *bs, int size)
   bs->buf_bit_idx=8;
   bs->totbit=0;
   bs->mode = WRITE_MODE;
-  bs->eob = false;
-  bs->eobs = false;
+  bs->eob = 0;
+  bs->eobs = 0;
 }
 
 /*close the device containing the bit stream */

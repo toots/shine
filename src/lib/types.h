@@ -7,7 +7,7 @@
 
 #include <math.h>
 
-#define samp_per_frame2  576
+#define GRANULE_SIZE  576
 
 #include "bitstream.h"
 
@@ -27,9 +27,6 @@
 
 /* #define DEBUG if you want the library to dump info to stdout */
 
-#define false 0
-#define true 1
-
 #define PI          3.14159265358979
 #define PI4         0.78539816339745
 #define PI12        0.26179938779915
@@ -45,10 +42,6 @@
 #define SCALE       32768
 #define SBLIMIT     32
 
-#ifndef bool
-typedef unsigned char bool;
-#endif
-
 #ifndef MAX_CHANNELS
 #define MAX_CHANNELS 2
 #endif
@@ -63,8 +56,7 @@ typedef unsigned char bool;
   'length' bits of 'value' will be written to
   the bitstream msb-first.
 */
-typedef struct
-{
+typedef struct {
     unsigned long int value;
     unsigned int length;
 } BF_BitstreamElement;
@@ -76,8 +68,7 @@ typedef struct
   to the bitstream in the order it appears
   in the 'element' array.
 */
-typedef struct
-{
+typedef struct {
     unsigned long int nrEntries;
     BF_BitstreamElement *element;
 } BF_BitstreamPart;
@@ -92,11 +83,7 @@ typedef struct
   make local copies of that information (in formatBitstream.c)
 */
 
-typedef struct BF_FrameData
-{
-    int              frameLength;
-    int              nGranules;
-    int              nChannels;
+typedef struct BF_FrameData {
     BF_BitstreamPart *header;
     BF_BitstreamPart *frameSI;
     BF_BitstreamPart *channelSI[MAX_CHANNELS];
@@ -107,21 +94,7 @@ typedef struct BF_FrameData
     BF_BitstreamPart *userFrameData;
 } BF_FrameData;
 
-/*
-  This structure contains information provided by
-  the bitstream formatter. You can use this to
-  check to see if your code agrees with the results
-  of the call to the formatter.
-*/
-typedef struct BF_FrameResults
-{
-    int SILength;
-    int mainDataLength;
-    int nextBackPtr;
-} BF_FrameResults;
-
-typedef struct BF_PartHolder
-{
+typedef struct BF_PartHolder {
     int max_elements;
     BF_BitstreamPart *part;
 } BF_PartHolder;
@@ -132,6 +105,9 @@ typedef struct {
 } priv_shine_wave_t;
 
 typedef struct {
+    int    version;
+    int    layer;
+    int    granules_per_frame;
     int    mode;      /* + */ /* Stereo mode */
     int    bitr;      /* + */ /* Must conform to known bitrate - see Main.c */
     int    emph;      /* + */ /* De-emphasis */
@@ -150,35 +126,21 @@ typedef struct {
     int    original;   /* + */
 } priv_shine_mpeg_t;
 
-typedef struct
-{
-  int frameLength;
-  int SILength;
-  int nGranules;
-  int nChannels;
+typedef struct {
   BF_PartHolder *headerPH;
   BF_PartHolder *frameSIPH;
   BF_PartHolder *channelSIPH[MAX_CHANNELS];
   BF_PartHolder *spectrumSIPH[MAX_GRANULES][MAX_CHANNELS];
 } MYSideInfo;
 
-typedef struct side_info_link
-{
-    struct side_info_link *next;
-    MYSideInfo           side_info;
-} side_info_link;
-
 typedef struct {
-    int BitCount;
-    int ThisFrameSize;
-    int BitsRemaining;
-    side_info_link *side_queue_head;
-    side_info_link *side_queue_free;
+    int        BitCount;
+    int        BitsRemaining;
+    MYSideInfo side_info;
 } formatbits_t;
 
 typedef struct {
-  BF_FrameData    frameData;
-  BF_FrameResults frameResults;
+  BF_FrameData   frameData;
 
   BF_PartHolder *headerPH;
   BF_PartHolder *frameSIPH;
@@ -188,20 +150,17 @@ typedef struct {
   BF_PartHolder *codedDataPH[ MAX_GRANULES ][ MAX_CHANNELS ];
   BF_PartHolder *userSpectrumPH[ MAX_GRANULES ][ MAX_CHANNELS ];
   BF_PartHolder *userFrameDataPH;
-
-  side_info_link *side_queue_head;
-  side_info_link *side_queue_free;
 } l3stream_t;
 
 typedef struct {
   long *xr;                    /* magnitudes of the spectral values */
-  long xrsq[samp_per_frame2];  /* xr squared */
-  long xrabs[samp_per_frame2]; /* xr absolute */
+  long xrsq[GRANULE_SIZE];     /* xr squared */
+  long xrabs[GRANULE_SIZE];    /* xr absolute */
   long xrmax;                  /* maximum of xrabs array */
-  long en_tot[2]; /* gr */
-  long en[2][21];
-  long xm[2][21];
-  long xrmaxl[2];
+  long en_tot[MAX_GRANULES];   /* gr */
+  long en[MAX_GRANULES][21];
+  long xm[MAX_GRANULES][21];
+  long xrmaxl[MAX_GRANULES];
   double steptab[128]; /* 2**(-x/4)  for x = -127..0 */
   long steptabi[128];  /* 2**(-x/4)  for x = -127..0 */
   long int2idx[10000]; /* x**(3/4)   for x = 0..9999 */
@@ -214,10 +173,10 @@ typedef struct {
 } mdct_t;
 
 typedef struct {
-  int off[2];
+  int off[MAX_CHANNELS];
   long fl[SBLIMIT][64];
-  long x[2][HAN_SIZE];
-  long z[2][HAN_SIZE];
+  long x[MAX_CHANNELS][HAN_SIZE];
+  long z[MAX_CHANNELS][HAN_SIZE];
   long ew[HAN_SIZE];
 } subband_t; 
 
@@ -245,28 +204,27 @@ typedef struct {
 } gr_info;
 
 typedef struct {
-    int main_data_begin; /* unsigned -> int */
     unsigned private_bits;
     int resvDrain;
-    unsigned scfsi[2][4];
+    unsigned scfsi[MAX_CHANNELS][4];
     struct {
         struct {
             gr_info tt;
-        } ch[2];
-    } gr[2];
+        } ch[MAX_CHANNELS];
+    } gr[MAX_GRANULES];
 } shine_side_info_t;
 
 typedef struct {
-    double  l[2][2][21];
+    double  l[MAX_GRANULES][MAX_CHANNELS][21];
 } shine_psy_ratio_t;
 
 typedef struct {
-        double  l[2][2][21];
+    double  l[MAX_GRANULES][MAX_CHANNELS][21];
 } shine_psy_xmin_t;
 
 typedef struct {
-    int l[2][2][22];            /* [cb] */
-    int s[2][2][13][3];         /* [window][cb] */
+    int l[MAX_GRANULES][MAX_CHANNELS][22];            /* [cb] */
+    int s[MAX_GRANULES][MAX_CHANNELS][13][3];         /* [window][cb] */
 } shine_scalefac_t;
 
 
@@ -279,11 +237,11 @@ typedef struct shine_global_flags {
   int            mean_bits;
   shine_psy_ratio_t ratio;
   shine_scalefac_t  scalefactor;
-  int16_t       *buffer[2];
-  double         pe[2][2];
-  int            l3_enc[2][2][samp_per_frame2];
-  long           l3_sb_sample[2][3][18][SBLIMIT];
-  long           mdct_freq[2][2][samp_per_frame2];
+  int16_t       *buffer[MAX_CHANNELS];
+  double         pe[MAX_GRANULES][MAX_CHANNELS];
+  int            l3_enc[MAX_GRANULES][MAX_CHANNELS][GRANULE_SIZE];
+  long           l3_sb_sample[MAX_CHANNELS][MAX_GRANULES+1][18][SBLIMIT];
+  long           mdct_freq[MAX_GRANULES][MAX_CHANNELS][GRANULE_SIZE];
   int            ResvSize;
   int            ResvMax;
   formatbits_t   formatbits;

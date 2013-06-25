@@ -41,9 +41,9 @@ typedef struct {
 } fmt_chunk_t;
 
 
-bool wave_get_chunk_header(FILE *file, const char id[4], riff_chunk_header_t *header)
+unsigned char wave_get_chunk_header(FILE *file, const char id[4], riff_chunk_header_t *header)
 {
-	bool found = false;
+	unsigned char found = 0;
 	uint32_t chunk_length;
 	long i;
 	char chunk_id[5] = "\0\0\0\0\0";
@@ -54,7 +54,7 @@ bool wave_get_chunk_header(FILE *file, const char id[4], riff_chunk_header_t *he
 	while(!found) {
 		if (fread(header, sizeof(riff_chunk_header_t), 1, file) != 1) {
 			if (feof(file))
-				return false;
+				return 0;
 			else
 				error("Read error");
 		}
@@ -67,7 +67,7 @@ bool wave_get_chunk_header(FILE *file, const char id[4], riff_chunk_header_t *he
 		}
 
 		if (strncmp(header->id, id, 4) == 0)
-			return true;
+			return 1;
 
 		/* move forward */
 		for (i = 0; i < chunk_length; i++)
@@ -75,7 +75,7 @@ bool wave_get_chunk_header(FILE *file, const char id[4], riff_chunk_header_t *he
 
 	}
 
-	return false;
+	return 1;
 }
 
 
@@ -91,7 +91,7 @@ void wave_close(wave_t *wave)
  * Opens and verifies the header of the Input Wave file. The file pointer is
  * left pointing to the start of the samples.
  */
-bool wave_open(const char *fname, wave_t *wave, shine_config_t *config, int quiet)
+unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config, int quiet)
 {
 	static char *channel_mappings[] = { NULL, "mono", "stereo" };
 	wave_chunk_t wave_chunk;
@@ -143,14 +143,15 @@ bool wave_open(const char *fname, wave_t *wave, shine_config_t *config, int quie
 	config->wave.channels   = fmt_chunk.channels;
 	config->wave.samplerate = fmt_chunk.sample_rate;
 
-        wave->length = data_chunk.length;
-  	wave->duration = data_chunk.length / fmt_chunk.byte_rate;
+  wave->channels = fmt_chunk.channels;
+  wave->length   = data_chunk.length;
+  wave->duration = data_chunk.length / fmt_chunk.byte_rate;
 
 	if (!quiet)
 		printf("%s, %s %ldHz %ldbit, duration: %02ld:%02ld:%02ld\n",
 			"WAVE PCM Data", channel_mappings[fmt_chunk.channels], (long)fmt_chunk.sample_rate, (long)fmt_chunk.depth,
 			(long)wave->duration / 3600, (long)(wave->duration / 60) % 60, (long)wave->duration % 60);
-	return true;
+	return 1;
 }
 
 /*
@@ -177,33 +178,36 @@ int read_samples(int16_t *sample_buffer, int frame_size, FILE *file)
  * Expects an interleaved 16bit pcm stream from read_samples, which it
  * de-interleaves into buffer.
  */
-int wave_get(int16_t buffer[2][samp_per_frame], wave_t *wave, void *config_in)
+int wave_get(int16_t **buffer, wave_t *wave, int force_mono, int samp_per_frame)
 {
 	FILE *file = wave->file;
 
   static int16_t temp_buf[2304];
   int            samples_read;
   int            j;
-  shine_config_t      *config=config_in;
 
-  switch(config->mpeg.mode)
-  {
-    case MODE_MONO  :
-      samples_read = read_samples(temp_buf,(int)samp_per_frame, file);
-      for(j=0;j<samp_per_frame;j++)
-      {
-        buffer[0][j] = temp_buf[j];
-        buffer[1][j] = 0;
-      }
-      break;
-
-    default: /* stereo */
-      samples_read = read_samples(temp_buf,(int)samp_per_frame<<1, file);
+  if (wave->channels == 1) {
+    samples_read = read_samples(temp_buf,samp_per_frame, file);
+    for(j=0;j<samp_per_frame;j++)
+    {
+      buffer[0][j] = temp_buf[j];
+      buffer[1][j] = 0;
+    }
+  } else {
+    samples_read = read_samples(temp_buf,samp_per_frame<<1, file);
+    if (!force_mono) {
       for(j=0;j<samp_per_frame;j++)
       {
         buffer[0][j] = temp_buf[2*j];
         buffer[1][j] = temp_buf[2*j+1];
       }
+    } else {
+      for(j=0;j<samp_per_frame;j++)
+      {
+        buffer[0][j] = (temp_buf[2*j] + temp_buf[2*j+1]) / 2;
+        buffer[1][j] = 0;
+      }
+    }
   }
   return samples_read;
 }

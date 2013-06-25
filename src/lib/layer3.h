@@ -3,17 +3,50 @@
 
 #include <stdint.h>
 
-#define samp_per_frame  1152
-
 /* Valid samplerates and bitrates. */
-static long samplerates[3] = {44100, 48000, 32000};
-static int  bitrates[14]   = {32,40,48,56,64,80,96,112,128,160,192,224,256,320};
+static const long samplerates[9] = {
+  44100, 48000, 32000, /* MPEG-I */
+  22050, 24000, 16000, /* MPEG-II */
+  11025, 12000, 8000   /* MPEG-2.5 */
+};
+
+static const int bitrates[16][4] = {
+  /* MPEG version:
+   * 2.5, reserved, II, I */
+   { -1,  -1,        -1,  -1},
+   { 8,   -1,         8,  32},
+   { 16,  -1,        16,  40},
+   { 24,  -1,        24,  48},
+   { 32,  -1,        32,  56},
+   { 40,  -1,        40,  64},
+   { 48,  -1,        48,  80},
+   { 56,  -1,        56,  96},
+   { 64,  -1,        64, 112},
+   { 80,  -1,        80, 128},
+   { 96,  -1,        96, 160},
+   {112,  -1,       112, 192},
+   {128,  -1,       128, 224},
+   {144,  -1,       144, 256},
+   {160,  -1,       160, 320},
+   { -1,  -1,        -1,  -1}
+};
 
 /* This is the struct used to tell the encoder about the input PCM */
 
 enum channels {
   PCM_MONO   = 1,
   PCM_STEREO = 2
+};
+
+enum mpeg_versions {
+  MPEG_I  = 3,
+  MPEG_II = 2,
+  MPEG_25 = 0
+};
+
+/* Only Layer III currently implemented. */
+enum mpeg_layers {
+  LAYER_III = 1
 };
 
 typedef struct {
@@ -55,13 +88,11 @@ typedef struct shine_global_flags *shine_t;
 /* Fill in a `mpeg_t` structure with default values. */
 void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg);
 
-/* Check if a given bitrate is supported by the encoder (see `bitrates` above for a list
- * of acceptable values. */
-int shine_find_bitrate_index(int bitr);
-
-/* Check if a given bitrate is supported by the encoder (see `samplerates` above for a list
- * of acceptable values. */
-int shine_find_samplerate_index(long freq);
+/* Check if a given bitrate and samplerate is supported by the encoder (see `samplerates` 
+ * and `bitrates` above for a list of acceptable values). 
+ *
+ * Returns -1 on error, mpeg_version on success. */
+int shine_check_config(long freq, int bitr);
 
 /* Pass a pointer to a `config_t` structure and returns an initialized
  * encoder. 
@@ -79,14 +110,17 @@ int shine_find_samplerate_index(long freq);
  * the encoder. */
 shine_t shine_initialise(shine_config_t *config);
 
-/* Encode audio data. Source data must have `samp_per_frames` audio samples per
+/* Returns audio samples expected in each frame. */
+int shine_samples_per_frame(shine_t s);
+
+/* Encode audio data. Source data must have `shine_samples_per_frame(s)` audio samples per
  * channels. Mono encoder only expect one channel. 
  *
  * Returns a pointer to freshly encoded data while `written` contains the size of
  * available data. This pointer's memory is handled by the library and is only valid 
  * until the next call to `shine_encode_frame` or `shine_close` and may be NULL if no data
  * was written. */
-unsigned char *shine_encode_frame(shine_t s, int16_t data[2][samp_per_frame], long *written);
+unsigned char *shine_encode_frame(shine_t s, int16_t **data, long *written);
 
 /* Flush all data currently in the encoding buffer. Should be used before closing
  * the encoder, to make all encoded data has been written. */
