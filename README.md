@@ -23,7 +23,7 @@ if (shine_check_config(config.wave.samplerate, config.mpeg.bitr) < 0)
 /* Initiate encoder */
 s = shine_initialise(&config);
 
-/* Number of samples to feed the encoder with. */
+/* Number of samples (per channel) to feed the encoder with. */
 int samples_per_pass = shine_samples_per_pass(s);
 
 /* All the magic happens here */
