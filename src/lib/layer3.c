@@ -170,7 +170,7 @@ unsigned char *shine_encode_frame(shine_global_config *config, int16_t **data, l
   }
 
   config->mpeg.bits_per_frame = 8*(config->mpeg.whole_slots_per_frame + config->mpeg.padding);
-  config->mean_bits = (config->mpeg.bits_per_frame - config->sideinfo_len)>>1;
+  config->mean_bits = (config->mpeg.bits_per_frame - config->sideinfo_len)/config->mpeg.granules_per_frame;
 
   /* polyphase filtering */
   for(gr=0;gr<config->mpeg.granules_per_frame;gr++)
