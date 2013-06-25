@@ -16,11 +16,18 @@ The encoding API should be quite straight forward:
   
 (...)
 
+/* See if samplerate and bitrate are valid */
+if (shine_check_config(config.wave.samplerate, config.mpeg.bitr) < 0)
+  error("Unsupported samplerate/bitrate configuration.");
+
 /* Initiate encoder */
 s = shine_initialise(&config);
 
+/* Number of samples to feed the encoder with. */
+int samples_per_pass = shine_samples_per_pass(s);
+
 /* All the magic happens here */
-while (read(buffer, infile) {
+while (read(buffer, infile, samples_per_pass) {
   data = shine_encode_frame(s,buffer,&written);
   write(data, written);
 }
@@ -106,7 +113,7 @@ the only work done on this fork consists of reorganizing the code and making a
 proper shared API out of it. Thus, the encoder may not be exempt of bugs.
 
 Also, the encoding algorithm is rather simple. In particular, it does not
-implement any Psychoacoustic Model.
+have any Psychoacoustic Model.
 
 A bit of history
 ----------------
