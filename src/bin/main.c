@@ -38,165 +38,165 @@ int _verbose = 0;
 
 int verbose()
 {
-	return _verbose;
+  return _verbose;
 }
 
 /* Write out the MP3 file */
 int write_mp3(long bytes, void *buffer, void *config)
 {
-	return fwrite(buffer, sizeof(unsigned char), bytes, outfile);
+  return fwrite(buffer, sizeof(unsigned char), bytes, outfile);
 }
 
 /* Output error message and exit */
 void error(char *s)
 {
-	fprintf(stderr, "Error: %s\n", s);
-	exit(1);
+  fprintf(stderr, "Error: %s\n", s);
+  exit(1);
 }
 
 static void print_name()
 {
-	printf("shineenc (Liquidsoap version)\n");
+  printf("shineenc (Liquidsoap version)\n");
 }
 
 static void print_usage()
 {
-	printf("Usage: shineenc [options] <infile> <outfile>\n\n");
-	printf("Options:\n");
-	printf(" -h            this help message\n");
-	printf(" -b <bitrate>  set the bitrate [8-320], default 128kbit\n");
+  printf("Usage: shineenc [options] <infile> <outfile>\n\n");
+  printf("Options:\n");
+  printf(" -h            this help message\n");
+  printf(" -b <bitrate>  set the bitrate [8-320], default 128kbit\n");
   printf(" -m            force encoder to operate in mono\n");
-	printf(" -c            set copyright flag, default off\n");
-	printf(" -q            quiet mode\n");
-	printf(" -v            verbose mode\n");
+  printf(" -c            set copyright flag, default off\n");
+  printf(" -q            quiet mode\n");
+  printf(" -v            verbose mode\n");
 }
 
 /* Use these default settings, can be overridden */
 static void set_defaults(shine_config_t *config)
 {
-	shine_set_config_mpeg_defaults(&config->mpeg);
+  shine_set_config_mpeg_defaults(&config->mpeg);
 }
 
 /* Parse command line arguments */
 static int parse_command(int argc, char** argv, shine_config_t *config, int *force_mono)
 {
-	int i = 0;
+  int i = 0;
 
-	if(argc < 3) return 0;
+  if(argc < 3) return 0;
 
-	while (argv[++i][0] == '-' && argv[i][1] != '\000' && argv[i][1] != ' ')
-		switch (argv[i][1]) {
-			case 'b':
-				config->mpeg.bitr = atoi(argv[++i]);
-				break;
+  while (argv[++i][0] == '-' && argv[i][1] != '\000' && argv[i][1] != ' ')
+    switch (argv[i][1]) {
+      case 'b':
+        config->mpeg.bitr = atoi(argv[++i]);
+        break;
 
       case 'm':
         *force_mono = 1;
         break;
 
-			case 'c':
-				config->mpeg.copyright = 1;
-				break;
+      case 'c':
+        config->mpeg.copyright = 1;
+        break;
 
-			case 'q':
-				quiet = 1;
-				_verbose = 0;
-				break;
+      case 'q':
+        quiet = 1;
+        _verbose = 0;
+        break;
 
-			case 'v':
-				_verbose = 1;
-				quiet = 0;
-				break;
+      case 'v':
+        _verbose = 1;
+        quiet = 0;
+        break;
 
-			case 'h':
-			default :
-				return 0;
-		}
+      case 'h':
+      default :
+        return 0;
+    }
 
-	if (argc - i != 2) return 0;
-	infname = argv[i++];
-	outfname = argv[i];
-	return 1;
+  if (argc - i != 2) return 0;
+  infname = argv[i++];
+  outfname = argv[i];
+  return 1;
 }
 
 /* Print some info about what we're going to encode */
 static void check_config(shine_config_t *config)
 {
   static char *version_names[4] = { "2.5", "reserved", "II", "I" };
-	static char *mode_names[4]    = { "stereo", "j-stereo", "dual-ch", "mono" };
-	static char *demp_names[4]    = { "none", "50/15us", "", "CITT" };
+  static char *mode_names[4]    = { "stereo", "j-stereo", "dual-ch", "mono" };
+  static char *demp_names[4]    = { "none", "50/15us", "", "CITT" };
 
-	printf("MPEG-%s layer III, %s  Psychoacoustic Model: Shine\n",
+  printf("MPEG-%s layer III, %s  Psychoacoustic Model: Shine\n",
     version_names[shine_check_config(config->wave.samplerate, config->mpeg.bitr)],
-		mode_names[config->mpeg.mode]);
-	printf("Bitrate: %d kbps  ", config->mpeg.bitr);
-	printf("De-emphasis: %s   %s %s\n",
-		demp_names[config->mpeg.emph],
-		((config->mpeg.original) ? "Original" : ""),
-		((config->mpeg.copyright) ? "(C)" : ""));
-	printf("Encoding \"%s\" to \"%s\"\n", infname, outfname);
+    mode_names[config->mpeg.mode]);
+  printf("Bitrate: %d kbps  ", config->mpeg.bitr);
+  printf("De-emphasis: %s   %s %s\n",
+    demp_names[config->mpeg.emph],
+    ((config->mpeg.original) ? "Original" : ""),
+    ((config->mpeg.copyright) ? "(C)" : ""));
+  printf("Encoding \"%s\" to \"%s\"\n", infname, outfname);
 }
 
 #define MAX_SAMPLES 1152
 
 int main(int argc, char **argv)
 {
-	wave_t         wave;
+  wave_t         wave;
   int            force_mono = 0;
-	time_t         start_time, end_time;
-	int16_t        *buffer[2];
+  time_t         start_time, end_time;
+  int16_t        *buffer[2];
   int16_t        chan1[MAX_SAMPLES], chan2[MAX_SAMPLES];
-	shine_config_t config;
-	shine_t        s;
-	long           written;
-	unsigned char  *data;
+  shine_config_t config;
+  shine_t        s;
+  long           written;
+  unsigned char  *data;
 
   buffer[0] = chan1, buffer[1] = chan2;
 
-	time(&start_time);
+  time(&start_time);
 
-	/* Set the default MPEG encoding paramters - basically init the struct */
-	set_defaults(&config);
+  /* Set the default MPEG encoding paramters - basically init the struct */
+  set_defaults(&config);
 
-	if (!parse_command(argc, argv, &config, &force_mono)) {
-		print_usage();
-		exit(1);
-	}
+  if (!parse_command(argc, argv, &config, &force_mono)) {
+    print_usage();
+    exit(1);
+  }
 
-	quiet = quiet || !strcmp(outfname, "-");
+  quiet = quiet || !strcmp(outfname, "-");
 
-	if (!quiet) print_name();
+  if (!quiet) print_name();
 
-	/* Open the input file and fill the config shine_wave_t header */
-	if (!wave_open(infname, &wave, &config, quiet))
-		error("Could not open WAVE file");
+  /* Open the input file and fill the config shine_wave_t header */
+  if (!wave_open(infname, &wave, &config, quiet))
+    error("Could not open WAVE file");
 
-	infile = wave.file;
+  infile = wave.file;
 
   if (force_mono)
     config.wave.channels = 1;
 
-	/* See if samplerate is valid */
-	if (shine_check_config(config.wave.samplerate, config.mpeg.bitr) < 0) error("Unsupported samplerate/bitrate configuration.");
+  /* See if samplerate is valid */
+  if (shine_check_config(config.wave.samplerate, config.mpeg.bitr) < 0) error("Unsupported samplerate/bitrate configuration.");
 
-	/* open the output file */
-	if (!strcmp(outfname, "-"))
-		outfile = stdout;
-	else
-		outfile = fopen(outfname, "wb");
-	if (!outfile) {
-		fprintf(stderr, "Could not create \"%s\".\n", outfname);
-		exit(1);
-	}
+  /* open the output file */
+  if (!strcmp(outfname, "-"))
+    outfile = stdout;
+  else
+    outfile = fopen(outfname, "wb");
+  if (!outfile) {
+    fprintf(stderr, "Could not create \"%s\".\n", outfname);
+    exit(1);
+  }
 
-	/* Set to stereo mode if wave data is stereo, mono otherwise. */
-	if (config.wave.channels > 1)
-		config.mpeg.mode = STEREO;
-	else
-		config.mpeg.mode = MONO;
+  /* Set to stereo mode if wave data is stereo, mono otherwise. */
+  if (config.wave.channels > 1)
+    config.mpeg.mode = STEREO;
+  else
+    config.mpeg.mode = MONO;
 
-	/* Initiate encoder */
-	s = shine_initialise(&config);
+  /* Initiate encoder */
+  s = shine_initialise(&config);
 
   // assert(s != NULL);
 
