@@ -111,7 +111,7 @@ int shine_check_config(long freq, int bitr);
 shine_t shine_initialise(shine_config_t *config);
 
 /* Maximun possible value for the function below. */
-#define MAX_SAMPLES 1152
+#define SHINE_MAX_SAMPLES 1152
 
 /* Returns audio samples expected in each frame. */
 int shine_samples_per_pass(shine_t s);

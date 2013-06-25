@@ -143,7 +143,7 @@ int main(int argc, char **argv)
   int            force_mono = 0;
   time_t         start_time, end_time;
   int16_t        *buffer[2];
-  int16_t        chan1[MAX_SAMPLES], chan2[MAX_SAMPLES];
+  int16_t        chan1[SHINE_MAX_SAMPLES], chan2[SHINE_MAX_SAMPLES];
   shine_config_t config;
   shine_t        s;
   long           written;
