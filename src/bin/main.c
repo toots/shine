@@ -176,8 +176,9 @@ int main(int argc, char **argv)
   if (force_mono)
     config.wave.channels = 1;
 
-  /* See if samplerate is valid */
-  if (shine_check_config(config.wave.samplerate, config.mpeg.bitr) < 0) error("Unsupported samplerate/bitrate configuration.");
+  /* See if samplerate and bitrate are valid */
+  if (shine_check_config(config.wave.samplerate, config.mpeg.bitr) < 0)
+    error("Unsupported samplerate/bitrate configuration.");
 
   /* open the output file */
   if (!strcmp(outfname, "-"))
@@ -203,10 +204,10 @@ int main(int argc, char **argv)
   /* Print some info about the file about to be created (optional) */
   if (!quiet) check_config(&config);
 
-  int samp_per_frame = shine_samples_per_frame(s);
+  int samples_per_pass = shine_samples_per_pass(s);
 
   /* All the magic happens here */
-  while (wave_get(buffer, &wave, force_mono, samp_per_frame)) {
+  while (wave_get(buffer, &wave, force_mono, samples_per_pass)) {
     data = shine_encode_frame(s, buffer, &written);
     write_mp3(written, data, &config);
   }

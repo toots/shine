@@ -73,7 +73,7 @@ int shine_check_config(long freq, int bitr)
   return mpeg_version;
 }
 
-int shine_samples_per_frame(shine_t s)
+int shine_samples_per_pass(shine_t s)
 {
   return s->mpeg.granules_per_frame * GRANULE_SIZE;
 }
