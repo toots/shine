@@ -137,8 +137,6 @@ static void check_config(shine_config_t *config)
   printf("Encoding \"%s\" to \"%s\"\n", infname, outfname);
 }
 
-#define MAX_SAMPLES 1152
-
 int main(int argc, char **argv)
 {
   wave_t         wave;
