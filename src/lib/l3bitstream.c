@@ -3,6 +3,7 @@
 #include "types.h"
 #include "l3mdct.h"
 #include "l3loop.h"
+#include "layer3.h"
 #include "formatbits.h"
 #include "huffman.h"
 #include "bitstream.h"
@@ -27,7 +28,7 @@ void shine_bitstream_initialise( shine_global_config *config )
       {
        config->l3stream.spectrumSIPH[gr][ch]   = shine_BF_newPartHolder( 32 );
        config->l3stream.scaleFactorsPH[gr][ch] = shine_BF_newPartHolder( 64 );
-       config->l3stream.codedDataPH[gr][ch]    = shine_BF_newPartHolder( samp_per_frame2 );
+       config->l3stream.codedDataPH[gr][ch]    = shine_BF_newPartHolder( GRANULE_SIZE );
        config->l3stream.userSpectrumPH[gr][ch] = shine_BF_newPartHolder( 4 );
       }
   config->l3stream.userFrameDataPH = shine_BF_newPartHolder( 8 );
@@ -54,7 +55,7 @@ void shine_bitstream_close( shine_global_config *config )
   shine_BF_freePartHolder(config->l3stream.userFrameDataPH);
 }
 
-static int encodeSideInfo( shine_global_config *config );
+static void encodeSideInfo( shine_global_config *config );
 static void encodeMainData( shine_global_config *config );
 static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi , shine_global_config *config);
 
@@ -73,14 +74,13 @@ void
 shine_format_bitstream(shine_global_config *config)
 {
   int gr, ch, i;
-  BF_FrameData *frameData = &config->l3stream.frameData;
 
-  for ( gr = 0; gr < 2; gr++ )
+  for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch =  0; ch < config->wave.channels; ch++ )
       {
         int *pi = &config->l3_enc[gr][ch][0];
         long *pr = &config->mdct_freq[gr][ch][0];
-        for ( i = 0; i < samp_per_frame2; i++, pr++, pi++ )
+        for ( i = 0; i < GRANULE_SIZE; i++, pr++, pi++ )
           {
             if ( (*pr < 0) && (*pi > 0) )
               *pi *= -1;
@@ -90,29 +90,23 @@ shine_format_bitstream(shine_global_config *config)
   encodeSideInfo( config );
   encodeMainData( config );
 
-  frameData->frameLength = config->mpeg.bits_per_frame;
-  frameData->nGranules   = 2;
-  frameData->nChannels   = config->wave.channels;
-  frameData->header      = config->l3stream.headerPH->part;
-  frameData->frameSI     = config->l3stream.frameSIPH->part;
+  config->l3stream.frameData.header  = config->l3stream.headerPH->part;
+  config->l3stream.frameData.frameSI = config->l3stream.frameSIPH->part;
 
   for ( ch = 0; ch < config->wave.channels; ch++ )
-    frameData->channelSI[ch] = config->l3stream.channelSIPH[ch]->part;
+    config->l3stream.frameData.channelSI[ch] = config->l3stream.channelSIPH[ch]->part;
 
-  for ( gr = 0; gr < 2; gr++ )
+  for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch = 0; ch < config->wave.channels; ch++ )
       {
-        frameData->spectrumSI[gr][ch]   = config->l3stream.spectrumSIPH[gr][ch]->part;
-        frameData->scaleFactors[gr][ch] = config->l3stream.scaleFactorsPH[gr][ch]->part;
-        frameData->codedData[gr][ch]    = config->l3stream.codedDataPH[gr][ch]->part;
-        frameData->userSpectrum[gr][ch] = config->l3stream.userSpectrumPH[gr][ch]->part;
+        config->l3stream.frameData.spectrumSI[gr][ch]   = config->l3stream.spectrumSIPH[gr][ch]->part;
+        config->l3stream.frameData.scaleFactors[gr][ch] = config->l3stream.scaleFactorsPH[gr][ch]->part;
+        config->l3stream.frameData.codedData[gr][ch]    = config->l3stream.codedDataPH[gr][ch]->part;
+        config->l3stream.frameData.userSpectrum[gr][ch] = config->l3stream.userSpectrumPH[gr][ch]->part;
       }
-  frameData->userFrameData = config->l3stream.userFrameDataPH->part;
+  config->l3stream.frameData.userFrameData = config->l3stream.userFrameDataPH->part;
 
   shine_BF_BitstreamFrame(config);
-
-  /* we set this here -- it will be tested in the next loops iteration */
-  config->side_info.main_data_begin = config->l3stream.frameResults.nextBackPtr;
 }
 
 static unsigned slen1_tab[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
@@ -123,7 +117,7 @@ static void encodeMainData(shine_global_config *config)
   int gr, ch, sfb;
   shine_side_info_t  si = config->side_info;
 
-  for ( gr = 0; gr < 2; gr++ )
+  for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch = 0; ch < config->wave.channels; ch++ )
       {
         config->l3stream.scaleFactorsPH[gr][ch]->part->nrEntries = 0;
@@ -132,7 +126,7 @@ static void encodeMainData(shine_global_config *config)
 
 
 
-  for ( gr = 0; gr < 2; gr++ )
+  for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     {
       for ( ch = 0; ch < config->wave.channels; ch++ )
         {
@@ -163,54 +157,60 @@ static void encodeMainData(shine_global_config *config)
     }
 }
 
-//static unsigned int crc = 0;
-
-static int encodeSideInfo( shine_global_config *config )
+static void encodeSideInfo( shine_global_config *config )
 {
-  int gr, ch, scfsi_band, region, bits_sent;
+  int gr, ch, scfsi_band, region;
   shine_side_info_t  si = config->side_info;
 
   config->l3stream.headerPH->part->nrEntries = 0;
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, 0xfff,                          12 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, 1,                               1 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, 1,                               2 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, !config->mpeg.crc,               1 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.bitrate_index,      4 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.samplerate_index,   2 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.padding,            1 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.ext,                1 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.mode,               2 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.mode_ext,           2 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.copyright,          1 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.original,           1 );
-  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.emph,               2 );
-
-  bits_sent = 32;
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, 0xfff,                             11 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.version,              2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.layer,                2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, !config->mpeg.crc,                 1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.bitrate_index,        4 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.samplerate_index % 3, 2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.padding,              1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.ext,                  1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.mode,                 2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.mode_ext,             2 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.copyright,            1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.original,             1 );
+  config->l3stream.headerPH = shine_BF_addEntry( config->l3stream.headerPH, config->mpeg.emph,                 2 );
 
   config->l3stream.frameSIPH->part->nrEntries = 0;
 
   for (ch = 0; ch < config->wave.channels; ch++ )
     config->l3stream.channelSIPH[ch]->part->nrEntries = 0;
 
-  for ( gr = 0; gr < 2; gr++ )
+  for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch = 0; ch < config->wave.channels; ch++ )
       config->l3stream.spectrumSIPH[gr][ch]->part->nrEntries = 0;
 
-  config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.main_data_begin, 9 );
+  if ( config->mpeg.version == MPEG_I )
+    config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, 0, 9 );
+  else
+    config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, 0, 8 );
 
   if ( config->wave.channels == 2 )
-    config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 3 );
+    if ( config->mpeg.version == MPEG_I )
+      config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 3 );
+    else
+      config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 2 );
   else
-    config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 5 );
+    if ( config->mpeg.version == MPEG_I )
+      config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 5 );
+    else
+      config->l3stream.frameSIPH = shine_BF_addEntry( config->l3stream.frameSIPH, si.private_bits, 1 );
 
-  for ( ch = 0; ch < config->wave.channels; ch++ )
-    for ( scfsi_band = 0; scfsi_band < 4; scfsi_band++ )
-      {
-        BF_PartHolder **pph = &config->l3stream.channelSIPH[ch];
-        *pph = shine_BF_addEntry( *pph, si.scfsi[ch][scfsi_band], 1 );
-      }
+  if ( config->mpeg.version == MPEG_I )
+    for ( ch = 0; ch < config->wave.channels; ch++ )
+      for ( scfsi_band = 0; scfsi_band < 4; scfsi_band++ )
+        {
+          BF_PartHolder **pph = &config->l3stream.channelSIPH[ch];
+          *pph = shine_BF_addEntry( *pph, si.scfsi[ch][scfsi_band], 1 );
+        }
 
-  for ( gr = 0; gr < 2; gr++ )
+  for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch = 0; ch < config->wave.channels ; ch++ )
       {
         BF_PartHolder **pph = &config->l3stream.spectrumSIPH[gr][ch];
@@ -218,7 +218,10 @@ static int encodeSideInfo( shine_global_config *config )
         *pph = shine_BF_addEntry( *pph, gi->part2_3_length,        12 );
         *pph = shine_BF_addEntry( *pph, gi->big_values,            9 );
         *pph = shine_BF_addEntry( *pph, gi->global_gain,           8 );
-        *pph = shine_BF_addEntry( *pph, gi->scalefac_compress,     4 );
+        if ( config->mpeg.version == MPEG_I )
+          *pph = shine_BF_addEntry( *pph, gi->scalefac_compress,   4 );
+        else
+          *pph = shine_BF_addEntry( *pph, gi->scalefac_compress,   9 );
         *pph = shine_BF_addEntry( *pph, 0, 1 );
 
         for ( region = 0; region < 3; region++ )
@@ -227,17 +230,11 @@ static int encodeSideInfo( shine_global_config *config )
         *pph = shine_BF_addEntry( *pph, gi->region0_count, 4 );
         *pph = shine_BF_addEntry( *pph, gi->region1_count, 3 );
 
-        *pph = shine_BF_addEntry( *pph, gi->preflag,            1 );
+        if ( config->mpeg.version == MPEG_I )
+          *pph = shine_BF_addEntry( *pph, gi->preflag,            1 );
         *pph = shine_BF_addEntry( *pph, gi->scalefac_scale,     1 );
         *pph = shine_BF_addEntry( *pph, gi->count1table_select, 1 );
       }
-
-  if ( config->wave.channels == 2 )
-    bits_sent += 256;
-  else
-    bits_sent += 136;
-
-  return bits_sent;
 }
 
 /* Note the discussion of huffmancodebits() on pages 28 and 29 of the IS, as
@@ -245,7 +242,7 @@ static int encodeSideInfo( shine_global_config *config )
 static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_global_config *config )
 {
   int shine_huffman_coder_count1( BF_PartHolder **pph, struct huffcodetab *h, int v, int w, int x, int y );
-  int bigv_bitcount( int ix[samp_per_frame2], gr_info *cod_info );
+  int bigv_bitcount( int ix[GRANULE_SIZE], gr_info *cod_info );
 
   int region1Start;
   int region2Start;
@@ -262,7 +259,7 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
   /* 1: Write the bigvalues */
   bigvalues = gi->big_values <<1;
 
-  int *scalefac = &shine_scale_fact_band_index[config->mpeg.samplerate_index+3].l[0];
+  int *scalefac = &shine_scale_fact_band_index[config->mpeg.samplerate_index].l[0];
   unsigned scalefac_index = 100;
 
   scalefac_index = gi->region0_count + 1;

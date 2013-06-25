@@ -14,13 +14,8 @@
   2012/26/07  toots@rastageeks.org      clarified license
 
 */
-#ifndef MAX_CHANNELS
-#define MAX_CHANNELS 2
-#endif
 
-#ifndef MAX_GRANULES
-#define MAX_GRANULES 2
-#endif
+#include "types.h"
 
 void shine_formatbits_initialise(shine_global_config *config);
 void shine_formatbits_close(shine_global_config *config);

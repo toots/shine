@@ -1,7 +1,7 @@
 shine_close
 shine_encode_frame
-shine_find_bitrate_index
-shine_find_samplerate_index
+shine_check_config
 shine_flush
 shine_initialise
 shine_set_config_mpeg_defaults
+shine_samples_per_frame
