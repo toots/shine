@@ -183,7 +183,7 @@ void calc_scfsi( shine_psy_xmin_t *l3_xmin, int ch, int gr,
   int condition = 0;
   long temp;
 
-  int *scalefac_band_long = &shine_scale_fact_band_index[config->mpeg.samplerate_index].l[0];
+  int *scalefac_band_long = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
 
   /* note. it goes quite a bit faster if you uncomment the next bit and exit
      early from scfsi, but you then loose the advantage of common scale factors.
@@ -519,7 +519,7 @@ int count1_bitcount(int ix[GRANULE_SIZE], gr_info *cod_info)
  */
 void subdivide(gr_info *cod_info, shine_global_config *config)
 {
-  int *scalefac_band_long  = &shine_scale_fact_band_index[config->mpeg.samplerate_index].l[0];
+  int *scalefac_band_long  = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
 
   static struct
   {

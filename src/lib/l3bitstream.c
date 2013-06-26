@@ -259,7 +259,7 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
   /* 1: Write the bigvalues */
   bigvalues = gi->big_values <<1;
 
-  int *scalefac = &shine_scale_fact_band_index[config->mpeg.samplerate_index].l[0];
+  int *scalefac = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
   unsigned scalefac_index = 100;
 
   scalefac_index = gi->region0_count + 1;
