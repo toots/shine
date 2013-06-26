@@ -27,14 +27,13 @@
 #include "main.h"
 #include "wave.h"
 
-/* RISC OS specifics */
-#define WAVE  0xfb1      /* Wave filetype */
-
 /* Some global vars. */
 char *infname, *outfname;
 FILE *infile, *outfile;
 int quiet = 0;
 int _verbose = 0;
+int stereo = STEREO;
+int force_mono = 0;
 
 int verbose()
 {
@@ -67,6 +66,8 @@ static void print_usage()
   printf(" -b <bitrate>  set the bitrate [8-320], default 128kbit\n");
   printf(" -m            force encoder to operate in mono\n");
   printf(" -c            set copyright flag, default off\n");
+  printf(" -j            encode in joint stereo (stereo data only)\n");
+  printf(" -d            encode in dual-channel (stereo data only)\n");
   printf(" -q            quiet mode\n");
   printf(" -v            verbose mode\n");
 }
@@ -78,7 +79,7 @@ static void set_defaults(shine_config_t *config)
 }
 
 /* Parse command line arguments */
-static int parse_command(int argc, char** argv, shine_config_t *config, int *force_mono)
+static int parse_command(int argc, char** argv, shine_config_t *config)
 {
   int i = 0;
 
@@ -91,7 +92,15 @@ static int parse_command(int argc, char** argv, shine_config_t *config, int *for
         break;
 
       case 'm':
-        *force_mono = 1;
+        force_mono = 1;
+        break;
+
+      case 'j':
+        stereo = JOINT_STEREO;
+        break;
+
+      case 'd':
+        stereo = DUAL_CHANNEL;
         break;
 
       case 'c':
@@ -123,7 +132,7 @@ static int parse_command(int argc, char** argv, shine_config_t *config, int *for
 static void check_config(shine_config_t *config)
 {
   static char *version_names[4] = { "2.5", "reserved", "II", "I" };
-  static char *mode_names[4]    = { "stereo", "j-stereo", "dual-ch", "mono" };
+  static char *mode_names[4]    = { "stereo", "joint-stereo", "dual-channel", "mono" };
   static char *demp_names[4]    = { "none", "50/15us", "", "CITT" };
 
   printf("MPEG-%s layer III, %s  Psychoacoustic Model: Shine\n",
@@ -140,7 +149,6 @@ static void check_config(shine_config_t *config)
 int main(int argc, char **argv)
 {
   wave_t         wave;
-  int            force_mono = 0;
   time_t         start_time, end_time;
   int16_t        *buffer[2];
   int16_t        chan1[SHINE_MAX_SAMPLES], chan2[SHINE_MAX_SAMPLES];
@@ -156,7 +164,7 @@ int main(int argc, char **argv)
   /* Set the default MPEG encoding paramters - basically init the struct */
   set_defaults(&config);
 
-  if (!parse_command(argc, argv, &config, &force_mono)) {
+  if (!parse_command(argc, argv, &config)) {
     print_usage();
     exit(1);
   }
@@ -190,7 +198,7 @@ int main(int argc, char **argv)
 
   /* Set to stereo mode if wave data is stereo, mono otherwise. */
   if (config.wave.channels > 1)
-    config.mpeg.mode = STEREO;
+    config.mpeg.mode = stereo;
   else
     config.mpeg.mode = MONO;
 
