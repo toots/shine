@@ -147,7 +147,7 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
   return config;
 }
 
-unsigned char *shine_encode_frame(shine_global_config *config, int16_t **data, long *written)
+unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, long *written)
 {
   int i, gr, channel;
 

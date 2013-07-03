@@ -1,5 +1,5 @@
 shine_close
-shine_encode_frame
+shine_encode_buffer
 shine_check_config
 shine_flush
 shine_initialise

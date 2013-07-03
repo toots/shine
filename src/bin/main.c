@@ -214,7 +214,7 @@ int main(int argc, char **argv)
 
   /* All the magic happens here */
   while (wave_get(buffer, &wave, force_mono, samples_per_pass)) {
-    data = shine_encode_frame(s, buffer, &written);
+    data = shine_encode_buffer(s, buffer, &written);
     write_mp3(written, data, &config);
   }
 
