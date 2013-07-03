@@ -28,7 +28,7 @@ int samples_per_pass = shine_samples_per_pass(s);
 
 /* All the magic happens here */
 while (read(buffer, infile, samples_per_pass)) {
-  data = shine_encode_frame(s,buffer,&written);
+  data = shine_encode_buffer(s,buffer,&written);
   write(data, written);
 }
 
