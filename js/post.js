@@ -8,7 +8,7 @@ var check_config     = Module.cwrap("shine_check_config", "number", ["number", "
 var init             = Module.cwrap("shine_js_init", "number", ["number", "number", "number", "number"]);
 var samples_per_pass = Module.cwrap("shine_samples_per_pass", "number", ["number"]);
 var encode_float     = Module.cwrap("shine_js_encode_float_buffer", "number", ["number", "number", "number"]);
-var flush            = Module.cwrap("shine_flush", "number", ["number"]);
+var flush            = Module.cwrap("shine_flush", "number", ["number", "number"]);
 var close            = Module.cwrap("shine_close", "number", ["number"]);
 
 function Shine(args) {
@@ -23,6 +23,7 @@ function Shine(args) {
   this._buffer = _malloc(this._channels * ptrLen);
   this._pcm = new Array(this._channels);
   this._rem = new Array(this._channels);
+  this._written = _malloc(int16Len);
 
   var _tmp, chan;
   for (chan=0; chan<this._channels; chan++) {
@@ -44,16 +45,13 @@ Shine.prototype._encodePass = function (data) {
   if (!this._handle)
     throw "Closed";
 
-  var _written = _malloc(int16Len);
-
   var chan;
   for (chan=0;chan<this._channels;chan++)
     this._pcm[chan].set(data[chan]);
 
-  var _buf = encode_float(this._handle, this._buffer, _written);
+  var _buf = encode_float(this._handle, this._buffer, this._written);
 
-  var written = getValue(_written, "i16"); 
-  _free(_written);
+  var written = getValue(this._written, "i16"); 
 
   return Module.HEAPU8.subarray(_buf, _buf+written);
 };
@@ -99,15 +97,14 @@ Shine.prototype.close = function () {
   if (!this._handle)
     throw "Closed";
 
-  var _written = _malloc(int16Len);
-  var _buf = flush(this._handle);
+  var _buf = flush(this._handle, this._written);
 
-  var written = getValue(_written, "i16");
+  var written = getValue(this._written, "i16");
   var encoded = new Uint8Array(written);
 
   encoded.set(Module.HEAPU8.subarray(_buf, _buf + written));
 
-  _free(_written);
+  _free(this._written);
   close(this._handle);
   this._handle = null;
 
