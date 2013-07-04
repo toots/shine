@@ -27,7 +27,7 @@ while (..) {
   ...
 }
 
-/. Flush and write remaining data.
+// Close and get remaining data.
 flushed = shine.close();
 ...
 ```
