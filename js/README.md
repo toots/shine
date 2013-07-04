@@ -1,8 +1,9 @@
 Shine encoder library for Javascript
 ====================================
 
-This directory contains a build of shine for Javascript, located in
-`dist/libshine.js` build using [kripken/emscripten](https://github.com/kripken/emscripten).
+This directory contains a build of shine for Javascript using 
+[kripken/emscripten](https://github.com/kripken/emscripten) and
+located in `dist/libshine.js`
 
 How to use?
 -----------
