@@ -16,7 +16,7 @@
     },
   "main": "test.coffee",
   "scripts": {
-    "test": "coffee ./test.coffee"
+    "test": "coffee ./encode.coffee && coffee ./rounds.coffee"
   },
   "engine": {"node": ">= 0.10.7", "npm": "1"},
   "dependencies": {

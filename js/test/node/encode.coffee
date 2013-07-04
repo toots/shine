@@ -1,13 +1,21 @@
-Shine    = require "../dist/libshine.js"
+Shine    = require "../../dist/libshine.js"
 {Reader} = require "wav"
 fs       = require "fs"
 
+console.log ""
+console.log "Executing encoding test"
+
 bitrate = 128
-str     = fs.createReadStream "./test.wav"
-fd      = fs.openSync "./test.mp3", "w"
+str     = fs.createReadStream "./encode.wav"
+fd      = fs.openSync "./encode.mp3", "w"
 reader  = new Reader
 
 str.pipe reader
+
+write = (encoded) ->
+  return unless encoded.length > 0
+  buf = new Buffer encoded
+  fs.writeSync fd, buf, 0, buf.length
 
 reader.on "format", (format) ->
   console.log "Got WAV file."
@@ -27,15 +35,11 @@ reader.on "format", (format) ->
 
     duration += parseFloat(samples) / samplerate
 
-    encoded = shine.encode convertInterleavedBuffer(buf, format.channels, samples)
-    
-    return unless encoded.length > 0
-
-    buf = new Buffer encoded
-  
-    fs.writeSync fd, buf, 0, buf.length
+    write shine.encode(convertInterleavedBuffer(buf, format.channels, samples))
 
   reader.on "end", ->
+    write shine.close()
+
     ended = new Date
     encodingTime = (ended.getTime() - started.getTime())/1000
     console.log "Done encoding."

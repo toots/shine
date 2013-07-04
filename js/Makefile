@@ -4,7 +4,7 @@ EMCC:=emcc
 EXPORTED_FUNCTIONS:='["_shine_check_config", "_shine_js_init",\
 	"_shine_samples_per_pass", "_shine_encode_buffer",\
   "_shine_flush", "_shine_close"]'
-CFLAGS:=-O2 -s USE_TYPED_ARRAYS=2 -s EXPORTED_FUNCTIONS=$(EXPORTED_FUNCTIONS)
+CFLAGS:=-O2 -s ASM_JS=1 -s USE_TYPED_ARRAYS=2 -s EXPORTED_FUNCTIONS=$(EXPORTED_FUNCTIONS)
 
 C_FILES:=$(wildcard ../src/lib/*.c) wrapper.c
 HEADER_FILES:=$(wildcard ../src/lib/*.h)

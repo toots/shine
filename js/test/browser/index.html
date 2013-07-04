@@ -1,0 +1,15 @@
+<script src="../../dist/libshine.js"></script>
+<script src="../lib/rounds.js"></script>
+<script>
+  var log = function (msg) {
+    var el = document.getElementById("output");
+    el.innerHTML = el.innerHTML + "<br>" + msg;
+  };
+
+  var load = function() {
+    run(Shine, log);
+  };
+
+  window.addEventListener("load", load, false);
+</script>
+<div id="output"></div>
