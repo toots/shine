@@ -23,8 +23,6 @@ while (..) {
   // data here is an array of channels.
   // Channels must have the same number of samples
   // and both be either Int16Array or Float32Array.
-  // No need to constain to samples_per_pass as in
-  // the C API.
   encoded = shine.encode(data);
   ...
 }
