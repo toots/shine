@@ -7,7 +7,7 @@ android/bin
 shine
 shine.pc
 m4
-Makefile
+/Makefile
 Makefile.in
 aclocal.m4
 autom4te.cache/
@@ -82,3 +82,5 @@ src/lib/tables.lo
 src/lib/tables.o
 shine-*.tar.gz
 *.bc
+*.mp3
+node_modules

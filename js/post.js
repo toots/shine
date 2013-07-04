@@ -1,13 +1,14 @@
 // libshine function wrappers
 
+var isNode = typeof process === "object" && typeof require === "function";
+
 var int16Len = Module.HEAP16.BYTES_PER_ELEMENT;
-var ptrLen = Module.HEAP32.BYTES_PER_ELEMENT;
-var floatLen = Module.HEAPF32.BYTES_PER_ELEMENT;
+var ptrLen   = Module.HEAP32.BYTES_PER_ELEMENT;
 
 var check_config     = Module.cwrap("shine_check_config", "number", ["number", "number"]);
 var init             = Module.cwrap("shine_js_init", "number", ["number", "number", "number", "number"]);
 var samples_per_pass = Module.cwrap("shine_samples_per_pass", "number", ["number"]);
-var encode_float     = Module.cwrap("shine_js_encode_float_buffer", "number", ["number", "number", "number"]);
+var encode_buffer    = Module.cwrap("shine_encode_buffer", "number", ["number", "number", "number"]);
 var flush            = Module.cwrap("shine_flush", "number", ["number", "number"]);
 var close            = Module.cwrap("shine_close", "number", ["number"]);
 
@@ -27,10 +28,10 @@ function Shine(args) {
 
   var _tmp, chan;
   for (chan=0; chan<this._channels; chan++) {
-    this._rem[chan] = new Float32Array;
-    _tmp = _malloc(this._samples_per_pass * floatLen);
+    this._rem[chan] = new Int16Array;
+    _tmp = _malloc(this._samples_per_pass * int16Len);
     setValue(this._buffer + chan*ptrLen, _tmp, "*")
-    this._pcm[chan] = Module.HEAPF32.subarray(_tmp/floatLen, _tmp/floatLen+this._samples_per_pass) 
+    this._pcm[chan] = Module.HEAP16.subarray(_tmp/int16Len, _tmp/int16Len+this._samples_per_pass) 
   }
 
   return this; 
@@ -49,7 +50,7 @@ Shine.prototype._encodePass = function (data) {
   for (chan=0;chan<this._channels;chan++)
     this._pcm[chan].set(data[chan]);
 
-  var _buf = encode_float(this._handle, this._buffer, this._written);
+  var _buf = encode_buffer(this._handle, this._buffer, this._written);
 
   var written = getValue(this._written, "i16"); 
 
@@ -63,13 +64,29 @@ function concat(ctr, a, b) {
   return ret;
 }
 
+function convertFloat32(buf) {
+  var ret = new Array(buf.length);
+  var samples = buf[0].length;
+  var chan, i;
+
+  for (chan=0;chan<buf.length;chan++) {
+    ret[chan] = new Int16Array(samples);
+    for (i=0;i<samples;i++)
+      ret[chan][i] = buf[chan][i] * 32767;
+  }
+  return ret;
+}
+
 Shine.prototype.encode = function (data) {
   var encoded = new Uint8Array;  
   var tmp = new Array(this._channels);
 
+  if (data instanceof Float32Array)
+    data = convertFloat32(data);
+
   var chan;
   for (chan=0;chan<this._channels; chan++)
-    this._rem[chan] = concat(Float32Array, this._rem[chan], data[chan]);
+    this._rem[chan] = concat(Int32Array, this._rem[chan], data[chan]);
 
   var i, enc;
   for (i=0;i<this._rem[0].length;i+=this._samples_per_pass) {
@@ -88,7 +105,7 @@ Shine.prototype.encode = function (data) {
     this._rem = tmp;
   else
     for (chan=0; chan<this._channels; chan++)
-      this._rem[chan] = new Float32Array;
+      this._rem[chan] = new Int32Array;
 
   return encoded;
 };
@@ -116,7 +133,9 @@ Shine.prototype.close = function () {
   return encoded;
 };
 
+if (isNode)
+  module.exports = Shine;
+
 return Shine;
 
 }).call(context)})();
-
