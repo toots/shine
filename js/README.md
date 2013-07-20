@@ -35,7 +35,7 @@ flushed = shine.close();
 How fast is it?
 ---------------
 
-You can run the test suite located in `test/`. As of now (03/07/2013), only firefox
+You can run the test suite located in `test/`. As of now (19/07/2013), only firefox
 seems to show performances decent enough for real-time encoding. However, if Chrome/V8 
 was to support [asm.js](http:asmjs.org), performances would probably greatly improve.
 
@@ -44,8 +44,8 @@ Chrome:
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64
-Encoding time: 4.88
-Encoding rate: 0.95X
+Encoding time: 3.67
+Encoding rate: 1.27X
 ```
 
 Firefox:
