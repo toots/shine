@@ -2,6 +2,8 @@ var channels = 2; // test.wav is stereo
 var samplerate = 44100; // ditto
 
 var runRoundsTest = function(Shine, log) {
+  log("Executing rounds test");
+
   var nPasses = 50;
   var frameSize = 4096;
   var data = new Array(channels);

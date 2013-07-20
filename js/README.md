@@ -41,6 +41,7 @@ was to support [asm.js](http:asmjs.org), performances would probably greatly imp
 
 Chrome:
 ```
+Executing encoding test
 Got WAV file.
 Encoding..
 Done encoding.
@@ -48,6 +49,7 @@ File duration: 5.57 seconds
 Encoding time: 17.11 seconds
 Encoding rate: 0.33X
 
+Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64
@@ -57,6 +59,7 @@ Encoding rate: 0.32X
 
 Firefox:
 ```
+Executing encoding test
 Got WAV file.
 Encoding..
 Done encoding.
@@ -64,6 +67,7 @@ File duration: 5.12 seconds
 Encoding time: 1.75 seconds
 Encoding rate: 2.92X
 
+Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64
@@ -73,6 +77,7 @@ Encoding rate: 4.37X
 
 Safari:
 ```
+Executing encoding test
 Got WAV file.
 Encoding..
 Done encoding.
@@ -80,6 +85,7 @@ File duration: 5.57 seconds
 Encoding time: 23.32 seconds
 Encoding rate: 0.24X
 
+Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64

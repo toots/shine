@@ -1,4 +1,6 @@
 function runEncodeTest(log, callback) {
+  log("Executing encoding test");
+
   var audioContext;
   if (typeof webkitAudioContext !== "undefined") {
     audioContext = new webkitAudioContext();
