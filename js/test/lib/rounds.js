@@ -1,7 +1,7 @@
 var channels = 2; // test.wav is stereo
 var samplerate = 44100; // ditto
 
-var run = function(Shine, log) {
+var runRoundsTest = function(Shine, log) {
   var nPasses = 50;
   var frameSize = 4096;
   var data = new Array(channels);
@@ -34,4 +34,4 @@ var run = function(Shine, log) {
 };
 
 if (typeof process === "object" && typeof require === "function")
-  module.exports = run;
+  module.exports = runRoundsTest;

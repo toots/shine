@@ -6,7 +6,7 @@ console.log ""
 console.log "Executing encoding test"
 
 bitrate = 128
-str     = fs.createReadStream "./encode.wav"
+str     = fs.createReadStream "../lib/encode.wav"
 fd      = fs.openSync "./encode.mp3", "w"
 reader  = new Reader
 

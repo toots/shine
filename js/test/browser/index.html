@@ -1,4 +1,5 @@
 <script src="../../dist/libshine.js"></script>
+<script src="encode.js"></script>
 <script src="../lib/rounds.js"></script>
 <script>
   var log = function (msg) {
@@ -7,9 +8,17 @@
   };
 
   var load = function() {
-    run(Shine, log);
+    runEncodeTest(log, function (blob) {
+      var link = document.getElementById("download-link");
+      link.href = URL.createObjectURL(blob);
+      link.download = "encoded.mp3";
+
+      log("");
+      runRoundsTest(Shine, log);
+    });
   };
 
   window.addEventListener("load", load, false);
 </script>
+<a href="#" id="download-link">Download encoded file</a>
 <div id="output"></div>

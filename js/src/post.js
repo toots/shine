@@ -58,6 +58,9 @@ Shine.prototype._encodePass = function (data) {
 };
 
 function concat(ctr, a, b) {
+  if (typeof b === "undefined") {
+    return a;
+  }
   var ret = new ctr(a.length+b.length);
   ret.set(a);
   ret.subarray(a.length).set(b);
