@@ -9,9 +9,11 @@
 
   var load = function() {
     runEncodeTest(log, function (blob) {
-      var link = document.getElementById("download-link");
-      link.href = URL.createObjectURL(blob);
-      link.download = "encoded.mp3";
+      if (typeof window.URL !== "undefined") {
+        var link = document.getElementById("download-link");
+        link.href = URL.createObjectURL(blob);
+        link.download = "encoded.mp3";
+      }
 
       log("");
       runRoundsTest(Shine, log);

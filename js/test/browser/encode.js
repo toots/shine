@@ -8,7 +8,7 @@ function runEncodeTest(log, callback) {
     audioContext = new AudioContext();
   }
 
-  var samplerate = audioContext.sampleRate;
+  var samplerate = 44100;
   var channels = 2;
   var bitrate = 128;
   var mode = Shine.STEREO;
