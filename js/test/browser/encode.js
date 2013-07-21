@@ -1,13 +1,6 @@
 function runEncodeTest(log, callback) {
   log("Executing encoding test");
 
-  var audioContext;
-  if (typeof webkitAudioContext !== "undefined") {
-    audioContext = new webkitAudioContext();
-  } else {
-    audioContext = new AudioContext();
-  }
-
   var samplerate = 44100;
   var channels = 2;
   var bitrate = 128;
