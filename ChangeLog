@@ -1,3 +1,8 @@
+3.0.0 (2013-07-21):
+======
+* Added support for MPEG-II and 2.5
+* Added Javascript build and API.
+
 2.0.0 (2013-04-07):
 ======
 * Prefix symbols to avoid name clash
