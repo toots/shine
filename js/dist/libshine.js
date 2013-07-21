@@ -3121,6 +3121,9 @@ Shine.prototype._encodePass = function (data) {
   return Module.HEAPU8.subarray(_buf, _buf+written);
 };
 function concat(ctr, a, b) {
+  if (typeof b === "undefined") {
+    return a;
+  }
   var ret = new ctr(a.length+b.length);
   ret.set(a);
   ret.subarray(a.length).set(b);
@@ -3138,9 +3141,11 @@ function convertFloat32(buf) {
   return ret;
 }
 Shine.prototype.encode = function (data) {
+  if (data.length != this._channels)
+    throw "Invalid data";
   var encoded = new Uint8Array;  
   var tmp = new Array(this._channels);
-  if (data instanceof Float32Array)
+  if (data[0] instanceof Float32Array)
     data = convertFloat32(data);
   var chan;
   for (chan=0;chan<this._channels; chan++)

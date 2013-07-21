@@ -81,10 +81,13 @@ function convertFloat32(buf) {
 }
 
 Shine.prototype.encode = function (data) {
+  if (data.length != this._channels)
+    throw "Invalid data";
+
   var encoded = new Uint8Array;  
   var tmp = new Array(this._channels);
 
-  if (data instanceof Float32Array)
+  if (data[0] instanceof Float32Array)
     data = convertFloat32(data);
 
   var chan;
