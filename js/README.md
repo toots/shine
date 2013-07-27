@@ -35,9 +35,8 @@ flushed = shine.close();
 How fast is it?
 ---------------
 
-You can run the test suite located in `test/`. As of now (19/07/2013), only firefox
-seems to show performances decent enough for real-time encoding. However, if Chrome/V8 
-was to support [asm.js](http:asmjs.org), performances would probably greatly improve.
+You can run the test suite located in `test/`. As of now (27/07/2013), only firefox
+and Chome Canary seem to show performances decent enough for real-time encoding.
 
 Chrome Canary:
 ```
