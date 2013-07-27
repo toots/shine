@@ -39,6 +39,24 @@ You can run the test suite located in `test/`. As of now (19/07/2013), only fire
 seems to show performances decent enough for real-time encoding. However, if Chrome/V8 
 was to support [asm.js](http:asmjs.org), performances would probably greatly improve.
 
+Chrome Canary:
+```
+Executing encoding test
+Got WAV file.
+Encoding..
+Done encoding.
+File duration: 5.57 seconds
+Encoding time: 4.88 seconds
+Encoding rate: 1.14X
+
+Executing rounds test
+Encoding 50 buffers of 4096 samples
+Done encoding
+Total duration: 4.64
+Encoding time: 2.54
+Encoding rate: 1.83X
+```
+
 Chrome:
 ```
 Executing encoding test
@@ -93,7 +111,7 @@ Encoding time: 7.07
 Encoding rate: 0.66X
 ```
 
-NodeJS:
+NodeJS, v0.10.7:
 ```
 Executing encoding test
 Got WAV file.
