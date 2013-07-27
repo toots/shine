@@ -18,7 +18,7 @@ function runEncodeTest(log, callback) {
   var encoded = [];
 
   var xhr = new XMLHttpRequest();
-  xhr.open("GET", "../lib/encode.wav", true);
+  xhr.open("GET", "encode.wav", true);
   xhr.responseType = "arraybuffer";
   xhr.onload = function() {
     var samples = xhr.response.byteLength / (2*channels);
