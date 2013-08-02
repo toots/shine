@@ -71,6 +71,10 @@ function concat(ctr, a, b) {
   return ret;
 }
 
+function clip(x) {
+  return (x > 1 ? 1 : (x < -1 ? -1 : x));
+}
+
 function convertFloat32(buf) {
   var ret = new Array(buf.length);
   var samples = buf[0].length;
@@ -79,7 +83,7 @@ function convertFloat32(buf) {
   for (chan=0;chan<buf.length;chan++) {
     ret[chan] = new Int16Array(samples);
     for (i=0;i<samples;i++) {
-      ret[chan][i] = parseInt(buf[chan][i] * 32767);
+      ret[chan][i] = parseInt(clip(buf[chan][i]) * 32767);
     }
   }
   return ret;
