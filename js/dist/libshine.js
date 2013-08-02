@@ -3155,18 +3155,21 @@ Shine.prototype.encode = function (data) {
   }
   var chan;
   for (chan=0;chan<this._channels; chan++) {
+    tmp[chan] = new Float32Array;
     this._rem[chan] = concat(Int16Array, this._rem[chan], data[chan]);
   }
   var i, enc;
   for (i=0;i<this._rem[0].length;i+=this._samples_per_pass) {
     for (chan=0; chan<this._channels; chan++) {
       tmp[chan] = this._rem[chan].subarray(i, i+this._samples_per_pass);
-     }
+    }
     if (tmp[0].length < this._samples_per_pass) {
       break;
     } else {
       enc = this._encodePass(tmp);
-      if (enc.length > 0) encoded = concat(Uint8Array, encoded, enc);   
+      if (enc.length > 0) {
+        encoded = concat(Uint8Array, encoded, enc);   
+      }
     }
   }
   if (tmp[0].length < this._samples_per_pass) {
