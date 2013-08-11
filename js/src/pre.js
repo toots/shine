@@ -1,4 +1,4 @@
-// libshine.js - port of libmp3lame to JavaScript using emscripten
+// libshine.js - port of libshine to JavaScript using emscripten
 // by Romain Beauxis <toots@rastageeks.org> from code by
 // Andreas Krennmair <ak@synflood.at>
 
