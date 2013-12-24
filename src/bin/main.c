@@ -43,7 +43,7 @@ int verbose()
 /* Write out the MP3 file */
 int write_mp3(long bytes, void *buffer, void *config)
 {
-  return fwrite(buffer, sizeof(unsigned char), bytes, outfile);
+  return fwrite(buffer, sizeof(unsigned char), bytes, outfile) / sizeof(unsigned char);
 }
 
 /* Output error message and exit */
@@ -215,7 +215,11 @@ int main(int argc, char **argv)
   /* All the magic happens here */
   while (wave_get(buffer, &wave, force_mono, samples_per_pass)) {
     data = shine_encode_buffer(s, buffer, &written);
-    write_mp3(written, data, &config);
+    if ( write_mp3(written, data, &config) != written )
+    {
+       fprintf(stderr, "shineenc: write error\n");
+       return 1;
+    }
   }
 
   /* Flush and write remaining data. */
