@@ -50,6 +50,9 @@ void shine_formatbits_close(shine_global_config *config)
 {
   int ch, gr;
 
+  if (config->formatbits.side_info.headerPH == NULL) /* Nothing to free */
+          return;
+
   shine_BF_freePartHolder(config->formatbits.side_info.headerPH);
   shine_BF_freePartHolder(config->formatbits.side_info.frameSIPH);
 
