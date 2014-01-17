@@ -292,6 +292,8 @@ BF_PartHolder *shine_BF_resizePartHolder( BF_PartHolder *oldPH, int max_elements
 
 BF_PartHolder *shine_BF_freePartHolder( BF_PartHolder *thePH )
 {
+  if (thePH == NULL) return NULL;
+
   free( thePH->part->element );
   free( thePH->part );
   free( thePH );
