@@ -50,16 +50,19 @@ void shine_formatbits_close(shine_global_config *config)
 {
   int ch, gr;
 
-  if (config->formatbits.side_info.headerPH == NULL) /* Nothing to free */
-          return;
-
-  shine_BF_freePartHolder(config->formatbits.side_info.headerPH);
-  shine_BF_freePartHolder(config->formatbits.side_info.frameSIPH);
+  if (config->formatbits.side_info.headerPH != NULL)
+    shine_BF_freePartHolder(config->formatbits.side_info.headerPH);
+    
+  if (config->formatbits.side_info.frameSIPH != NULL)
+    shine_BF_freePartHolder(config->formatbits.side_info.frameSIPH);
 
   for ( ch = 0; ch < config->wave.channels; ch++ ) {
-    shine_BF_freePartHolder(config->formatbits.side_info.channelSIPH[ch]);
+    if (config->formatbits.side_info.channelSIPH[ch] != NULL)
+      shine_BF_freePartHolder(config->formatbits.side_info.channelSIPH[ch]);
+        
     for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
-      shine_BF_freePartHolder(config->formatbits.side_info.spectrumSIPH[gr][ch]);
+      if (config->formatbits.side_info.spectrumSIPH[gr][ch] != NULL)
+        shine_BF_freePartHolder(config->formatbits.side_info.spectrumSIPH[gr][ch]);
   }
 }
 
