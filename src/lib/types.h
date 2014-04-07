@@ -36,7 +36,7 @@
 #define LN2         0.69314718
 #define LN_TO_LOG10 0.2302585093
 #define BLKSIZE     1024
-#define HAN_SIZE    512
+#define HAN_SIZE    512 /* for loop unrolling, require that HAN_SIZE%8==0 */
 #define SCALE_BLOCK 12
 #define SCALE_RANGE 64
 #define SCALE       32768
