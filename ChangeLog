@@ -1,3 +1,12 @@
+3.0.1 (xx):
+=====
+* Fixed WAV file parsing.
+* Explicitely unroll some loops
+  to enhance encoding speed. Thanks
+	to @ckthomas on github for these
+	changes!
+* Add -funroll-loops to CFLAGS
+
 3.0.0 (2013-07-21):
 ======
 * Added support for MPEG-II and 2.5

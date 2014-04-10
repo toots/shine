@@ -1,6 +1,7 @@
 *.swp
 obj
 libs
+compile
 android/lib
 android/include
 android/bin
