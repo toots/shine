@@ -40,13 +40,20 @@ typedef struct {
   uint16_t depth;        /* bits per sample = 16 for MS PCM (format specific) */
 } fmt_chunk_t;
 
+void wave_seek(FILE *file, int has_seek, uint32_t bytes) {
+  uint32_t i;
+  if (has_seek == 1)
+    fseek(file, bytes, SEEK_CUR);
+  else {
+    for (i = 0; i < bytes; i++)
+      getc(file);
+  }
+}
 
-unsigned char wave_get_chunk_header(FILE *file, const char id[4], riff_chunk_header_t *header)
+unsigned char wave_get_chunk_header(FILE *file, int has_seek, const char id[4], riff_chunk_header_t *header)
 {
   unsigned char found = 0;
   uint32_t chunk_length;
-  long i;
-  char chunk_id[5] = "\0\0\0\0\0";
 
   if (verbose())
     fprintf(stderr, "Looking for chunk '%s'\n", id);
@@ -62,17 +69,13 @@ unsigned char wave_get_chunk_header(FILE *file, const char id[4], riff_chunk_hea
     /* chunks must be word-aligned, chunk data doesn't need to */
     chunk_length = header->length + header->length % 2;
     if (verbose()) {
-      memcpy(chunk_id, &header->id, 4);
-      fprintf(stderr, "Found chunk '%s', length: %u\n", chunk_id, header->length);
+      fprintf(stderr, "Found chunk '%.4s', length: %u\n", header->id, header->length);
     }
 
     if (strncmp(header->id, id, 4) == 0)
       return 1;
-
-    /* move forward */
-    for (i = 0; i < chunk_length; i++)
-      getc(file);
-
+    
+    wave_seek(file, has_seek, chunk_length);
   }
 
   return 1;
@@ -97,12 +100,16 @@ unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config,
   wave_chunk_t wave_chunk;
   fmt_chunk_t fmt_chunk;
   riff_chunk_header_t data_chunk;
+  uint32_t fmt_data, fmt_length;
 
-  if (!strcmp(fname, "-"))
+  if (!strcmp(fname, "-")) {
      /* TODO: support raw PCM stream with commandline parameters specifying format */
     wave->file = stdin;
-  else
+    wave->has_seek = 0;
+  } else {
     wave->file = fopen(fname, "rb");
+    wave->has_seek = 1;
+  }
 
   if (!wave->file)
     error("Unable to open file");
@@ -117,11 +124,12 @@ unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config,
     error("Not a WAVE audio file");
 
   /* Check the fmt chunk */
-  if (!wave_get_chunk_header(wave->file, "fmt ", (riff_chunk_header_t *)&fmt_chunk))
+  if (!wave_get_chunk_header(wave->file, wave->has_seek, "fmt ", (riff_chunk_header_t *)&fmt_chunk))
     error("WAVE fmt chunk not found");
 
-  if(fread(&fmt_chunk.format,
-    sizeof(fmt_chunk_t) - sizeof(riff_chunk_header_t), 1, wave->file) != 1)
+  fmt_data = sizeof(fmt_chunk_t) - sizeof(riff_chunk_header_t);
+
+  if(fread(&fmt_chunk.format, fmt_data, 1, wave->file) != 1)
     error("Read error");
 
   if (verbose())
@@ -136,8 +144,13 @@ unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config,
   if (fmt_chunk.depth != 16)
     error("Unsupported PCM bit depth");
 
+  // Skip remaining data.
+  fmt_length = fmt_chunk.header.length + fmt_chunk.header.length % 2;
+  if (fmt_length > fmt_data)
+    wave_seek(wave->file, wave->has_seek, fmt_length - fmt_data);
+
   /* Position the file pointer at the data chunk */
-  if (!wave_get_chunk_header(wave->file, "data", &data_chunk))
+  if (!wave_get_chunk_header(wave->file, wave->has_seek, "data", &data_chunk))
     error("WAVE data chunk not found");
 
   config->wave.channels   = fmt_chunk.channels;

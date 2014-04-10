@@ -5,6 +5,7 @@
 
 typedef struct {
         FILE *file;
+        int  has_seek;
         int  channels;
         long length;
 	long duration;
