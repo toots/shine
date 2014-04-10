@@ -49,7 +49,7 @@ void shine_mdct_sub(shine_global_config *config)
 
   int  ch,gr,band,j,k;
   long mdct_in[36];
-  long bu,bd,*m;
+  long bu,bd;
 
   for(gr=0; gr<config->mpeg.granules_per_frame; gr++)
     for(ch=config->wave.channels; ch--; )
@@ -80,9 +80,23 @@ void shine_mdct_sub(shine_global_config *config)
          */
         for(k=18; k--; )
         {
-          m = &mdct_enc[band][k];
-          for(j=36, *m=0; j--; )
-            *m += mul(mdct_in[j],config->mdct.cos_l[k][j]);
+          long vm = 0;
+          long* cos_l_ptr = config->mdct.cos_l[k] + 36;
+          long* mdct_in_ptr = mdct_in + 36;
+          /* loop unrolling: 9 steps each */
+          while(mdct_in_ptr != mdct_in)
+          {
+            vm += mul(*--mdct_in_ptr,*--cos_l_ptr);
+            vm += mul(*--mdct_in_ptr,*--cos_l_ptr);
+            vm += mul(*--mdct_in_ptr,*--cos_l_ptr);
+            vm += mul(*--mdct_in_ptr,*--cos_l_ptr);
+            vm += mul(*--mdct_in_ptr,*--cos_l_ptr);
+            vm += mul(*--mdct_in_ptr,*--cos_l_ptr);
+            vm += mul(*--mdct_in_ptr,*--cos_l_ptr);
+            vm += mul(*--mdct_in_ptr,*--cos_l_ptr);
+            vm += mul(*--mdct_in_ptr,*--cos_l_ptr);
+          }
+          mdct_enc[band][k] = vm;
         }
       }
 
