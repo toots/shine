@@ -5,7 +5,7 @@ EXTRA_DIST = ChangeLog src/lib/*.h src/bin/*.h README* libshine.sym js
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS  = -I m4
 
-CFLAGS = @CFLAGS@ -fno-exceptions -Wall -O2 -fsigned-char
+CFLAGS = @CFLAGS@ -funroll-loops -fno-exceptions -Wall -O2 -fsigned-char
 
 lib_LTLIBRARIES      = libshine.la
 libshine_la_SOURCES  = src/lib/bitstream.c src/lib/formatbits.c src/lib/huffman.c \
