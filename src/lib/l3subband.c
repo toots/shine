@@ -18,8 +18,7 @@ void shine_subband_initialise(shine_global_config *config)
 
   for(i=MAX_CHANNELS; i-- ; ) {
     config->subband.off[i] = 0;
-    for(j=HAN_SIZE; j--; )
-      config->subband.x[i][j] = 0;
+    memset(config->subband.x[i], 0, sizeof(config->subband.x[i]));
   }
 
   for (i=SBLIMIT; i--; )

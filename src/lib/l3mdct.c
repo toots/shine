@@ -125,8 +125,6 @@ void shine_mdct_sub(shine_global_config *config)
 
   /* Save latest granule's subband samples to be used in the next mdct call */
   for(ch=config->wave.channels ;ch--; )
-    for(j=18; j--; )
-      for(band=32; band--; )
-        config->l3_sb_sample[ch][0][j][band] = config->l3_sb_sample[ch][config->mpeg.granules_per_frame][j][band];
+    memcpy(config->l3_sb_sample[ch][0], config->l3_sb_sample[ch][config->mpeg.granules_per_frame], sizeof(config->l3_sb_sample[0][0]));
 }
 

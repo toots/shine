@@ -271,7 +271,7 @@ static BF_PartHolder *BF_LoadHolderFromBitstreamPart( BF_PartHolder *theHolder, 
   and frees the old one after copying the data. */
 BF_PartHolder *shine_BF_resizePartHolder( BF_PartHolder *oldPH, int max_elements )
 {
-  int elems, i;
+  int elems;
   BF_PartHolder *newPH;
 
 #ifdef DEBUG
@@ -283,8 +283,7 @@ BF_PartHolder *shine_BF_resizePartHolder( BF_PartHolder *oldPH, int max_elements
   /* copy values from old to new */
   elems = (oldPH->max_elements > max_elements) ? max_elements : oldPH->max_elements;
   newPH->part->nrEntries = elems;
-  for ( i = 0; i < elems; i++ )
-    newPH->part->element[i] = oldPH->part->element[i];
+  memcpy(newPH->part->element, oldPH->part->element, elems * sizeof(newPH->part->element[0]));
 
   /* free old holder */
   shine_BF_freePartHolder( oldPH );
