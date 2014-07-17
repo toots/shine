@@ -109,9 +109,6 @@ shine_format_bitstream(shine_global_config *config)
   shine_BF_BitstreamFrame(config);
 }
 
-static const unsigned slen1_tab[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
-static const unsigned slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
-
 static void encodeMainData(shine_global_config *config)
 {
   int gr, ch, sfb;

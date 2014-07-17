@@ -275,10 +275,6 @@ void calc_scfsi( shine_psy_xmin_t *l3_xmin, int ch, int gr,
 
 }
 
-/* these used in next two functions */
-static const int slen1_tab[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
-static const int slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
-
 /*
  * part2_length:
  * -------------

@@ -1,6 +1,7 @@
 /* layer3.c */
 
 #include "types.h"
+#include "tables.h"
 #include "layer3.h"
 #include "l3subband.h"
 #include "l3mdct.h"
