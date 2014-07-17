@@ -20,6 +20,9 @@
 #include "mult_sarm_gcc.h"
 #endif
 */
+#if defined(__mips__)
+#include "mult_mips_gcc.h"
+#endif
 #include "mult_noarch_gcc.h"
 
 #ifndef SWAB32

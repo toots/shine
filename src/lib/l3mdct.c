@@ -58,7 +58,6 @@ void shine_mdct_sub(shine_global_config *config)
 
   int  ch,gr,band,j,k;
   long mdct_in[36];
-  long bu,bd;
 
   for(gr=0; gr<config->mpeg.granules_per_frame; gr++)
     for(ch=config->wave.channels; ch--; )
@@ -113,13 +112,7 @@ void shine_mdct_sub(shine_global_config *config)
       for(band=31; band--; )
         for(k=8; k--; )
         {
-          /* must left justify result of multiplication here because the centre
-           * two values in each block are not touched.
-           */
-          bu = muls(mdct_enc[band][17-k],mdct_cs[k]) + muls(mdct_enc[band+1][k],mdct_ca[k]);
-          bd = muls(mdct_enc[band+1][k],mdct_cs[k]) - muls(mdct_enc[band][17-k],mdct_ca[k]);
-          mdct_enc[band][17-k] = bu;
-          mdct_enc[band+1][k]  = bd;
+          cmuls(mdct_enc[band+1][k], mdct_enc[band][17-k], mdct_enc[band+1][k], mdct_enc[band][17-k], mdct_cs[k], mdct_ca[k]);
         }
     }
 
