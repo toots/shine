@@ -238,10 +238,10 @@ typedef struct shine_global_flags {
   shine_psy_ratio_t ratio;
   shine_scalefac_t  scalefactor;
   int16_t       *buffer[MAX_CHANNELS];
-  double         pe[MAX_GRANULES][MAX_CHANNELS];
-  int            l3_enc[MAX_GRANULES][MAX_CHANNELS][GRANULE_SIZE];
+  double         pe[MAX_CHANNELS][MAX_GRANULES];
+  int            l3_enc[MAX_CHANNELS][MAX_GRANULES][GRANULE_SIZE];
   long           l3_sb_sample[MAX_CHANNELS][MAX_GRANULES+1][18][SBLIMIT];
-  long           mdct_freq[MAX_GRANULES][MAX_CHANNELS][GRANULE_SIZE];
+  long           mdct_freq[MAX_CHANNELS][MAX_GRANULES][GRANULE_SIZE];
   int            ResvSize;
   int            ResvMax;
   formatbits_t   formatbits;
