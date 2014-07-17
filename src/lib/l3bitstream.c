@@ -247,11 +247,8 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
   int v, w, x, y, bits, cbits, xbits, stuffingBits;
   unsigned int code, ext;
   const struct huffcodetab *h;
-  int bvbits, c1bits, tablezeros, r0, r1, r2, rt, *pr;
+  int tablezeros = 0, r[3] = { 0 }, rt, *pr;
   int bitsWritten = 0;
-  //int idx = 0;
-  tablezeros = 0;
-  r0 = r1 = r2 = 0;
 
   /* 1: Write the bigvalues */
   bigvalues = gi->big_values <<1;
@@ -266,24 +263,10 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
 
   for ( i = 0; i < bigvalues; i += 2 )
     {
-      unsigned tableindex = 100;
       /* get table pointer */
-      if ( i < region1Start )
-        {
-          tableindex = gi->table_select[0];
-          pr = &r0;
-        }
-      else
-        if ( i < region2Start )
-          {
-            tableindex = gi->table_select[1];
-            pr = &r1;
-          }
-        else
-          {
-            tableindex = gi->table_select[2];
-            pr = &r2;
-          }
+      int idx = (i >= region1Start) + (i >= region2Start);
+      unsigned tableindex = gi->table_select[idx];
+      pr = &r[idx];
       h = &shine_huffman_table[ tableindex ];
       /* get huffman code */
       x = ix[i];
