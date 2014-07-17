@@ -75,15 +75,15 @@ shine_format_bitstream(shine_global_config *config)
 {
   int gr, ch, i;
 
-  for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
-    for ( ch =  0; ch < config->wave.channels; ch++ )
+  for ( ch =  0; ch < config->wave.channels; ch++ )
+    for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
       {
-        int *pi = &config->l3_enc[gr][ch][0];
-        long *pr = &config->mdct_freq[gr][ch][0];
-        for ( i = 0; i < GRANULE_SIZE; i++, pr++, pi++ )
+        int *pi = &config->l3_enc[ch][gr][0];
+        long *pr = &config->mdct_freq[ch][gr][0];
+        for ( i = 0; i < GRANULE_SIZE; i++ )
           {
-            if ( (*pr < 0) && (*pi > 0) )
-              *pi *= -1;
+            if ( (pr[i] < 0) && (pi[i] > 0) )
+              pi[i] *= -1;
           }
       }
 
@@ -121,8 +121,6 @@ static void encodeMainData(shine_global_config *config)
         config->l3stream.codedDataPH[gr][ch]->part->nrEntries = 0;
       }
 
-
-
   for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     {
       for ( ch = 0; ch < config->wave.channels; ch++ )
@@ -131,7 +129,7 @@ static void encodeMainData(shine_global_config *config)
           gr_info *gi = &(si.gr[gr].ch[ch].tt);
           unsigned slen1 = slen1_tab[ gi->scalefac_compress ];
           unsigned slen2 = slen2_tab[ gi->scalefac_compress ];
-          int *ix = &config->l3_enc[gr][ch][0];
+          int *ix = &config->l3_enc[ch][gr][0];
 
           if ( (gr == 0) || (si.scfsi[ch][0] == 0) )
             for ( sfb = 0; sfb < 6; sfb++ )

@@ -104,8 +104,8 @@ void shine_iteration_loop(shine_global_config *config)
     for(gr=0; gr<config->mpeg.granules_per_frame; gr++)
     {
       /* setup pointers */
-      ix = config->l3_enc[gr][ch];
-      config->l3loop.xr = config->mdct_freq[gr][ch];
+      ix = config->l3_enc[ch][gr];
+      config->l3loop.xr = config->mdct_freq[ch][gr];
 
       /* Precalculate the square, abs,  and maximum,
        * for use later on.
@@ -127,11 +127,11 @@ void shine_iteration_loop(shine_global_config *config)
         calc_scfsi(&l3_xmin,ch,gr,config);
 
       /* calculation of number of available bit( per granule ) */
-      max_bits = shine_max_reservoir_bits(&config->pe[gr][ch],config);
+      max_bits = shine_max_reservoir_bits(&config->pe[ch][gr],config);
 
       /* reset of iteration variables */
-      memset(config->scalefactor.l[gr][ch],0,22);
-      memset(config->scalefactor.s[gr][ch],0,14);
+      memset(config->scalefactor.l[gr][ch],0,sizeof(config->scalefactor.l[gr][ch]));
+      memset(config->scalefactor.s[gr][ch],0,sizeof(config->scalefactor.s[gr][ch]));
 
       for ( i=4; i--; )
         cod_info->slen[i] = 0;
@@ -272,7 +272,6 @@ void calc_scfsi( shine_psy_xmin_t *l3_xmin, int ch, int gr,
       for(scfsi_band=0;scfsi_band<4;scfsi_band++)
          l3_side->scfsi[ch][scfsi_band] = 0;
   } /* if gr == 1 */
-
 }
 
 /*
@@ -414,7 +413,7 @@ int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config )
     }
 
   return max;
- }
+}
 
 /*
  * ix_max:

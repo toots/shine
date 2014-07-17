@@ -2,31 +2,29 @@
 
 #include "types.h"
 #include "l3mdct.h"
+#include "l3subband.h"
 
 /* This is table B.9: coefficients for aliasing reduction */
 #define MDCT_CA(coef)	(long)(coef / sqrt(1.0 + (coef * coef)) * 0x7fffffff)
 #define MDCT_CS(coef)	(long)(1.0  / sqrt(1.0 + (coef * coef)) * 0x7fffffff)
 
-static const long mdct_ca[8] = {
-	MDCT_CA(-0.6),
-	MDCT_CA(-0.535),
-	MDCT_CA(-0.33),
-	MDCT_CA(-0.185),
-	MDCT_CA(-0.095),
-	MDCT_CA(-0.041),
-	MDCT_CA(-0.0142),
-	MDCT_CA(-0.0037),
-};
-static const long mdct_cs[8] = {
-	MDCT_CS(-0.6),
-	MDCT_CS(-0.535),
-	MDCT_CS(-0.33),
-	MDCT_CS(-0.185),
-	MDCT_CS(-0.095),
-	MDCT_CS(-0.041),
-	MDCT_CS(-0.0142),
-	MDCT_CS(-0.0037),
-};
+#define MDCT_CA0	MDCT_CA(-0.6)
+#define MDCT_CA1	MDCT_CA(-0.535)
+#define MDCT_CA2	MDCT_CA(-0.33)
+#define MDCT_CA3	MDCT_CA(-0.185)
+#define MDCT_CA4	MDCT_CA(-0.095)
+#define MDCT_CA5	MDCT_CA(-0.041)
+#define MDCT_CA6	MDCT_CA(-0.0142)
+#define MDCT_CA7	MDCT_CA(-0.0037)
+
+#define MDCT_CS0	MDCT_CS(-0.6)
+#define MDCT_CS1	MDCT_CS(-0.535)
+#define MDCT_CS2	MDCT_CS(-0.33)
+#define MDCT_CS3	MDCT_CS(-0.185)
+#define MDCT_CS4	MDCT_CS(-0.095)
+#define MDCT_CS5	MDCT_CS(-0.041)
+#define MDCT_CS6	MDCT_CS(-0.0142)
+#define MDCT_CS7	MDCT_CS(-0.0037)
 
 /*
  * shine_mdct_initialise:
@@ -59,25 +57,31 @@ void shine_mdct_sub(shine_global_config *config)
   int  ch,gr,band,j,k;
   long mdct_in[36];
 
-  for(gr=0; gr<config->mpeg.granules_per_frame; gr++)
-    for(ch=config->wave.channels; ch--; )
+  for(ch=config->wave.channels; ch--; )
+  {
+    for(gr=0; gr<config->mpeg.granules_per_frame; gr++)
     {
       /* set up pointer to the part of config->mdct_freq we're using */
-      mdct_enc = (long (*)[18]) config->mdct_freq[gr][ch];
+      mdct_enc = (long (*)[18]) config->mdct_freq[ch][gr];
 
-      /* Compensate for inversion in the analysis filter
-       * (every odd index of band AND k)
-       */
-      for(band=1; band<=31; band+=2 )
-        for(k=1; k<=17; k+=2 )
-          config->l3_sb_sample[ch][gr+1][k][band] *= -1;
+      /* polyphase filtering */
+      for(k=0; k<18; k+=2)
+      {
+      	shine_window_filter_subband(&config->buffer[ch], &config->l3_sb_sample[ch][gr+1][k  ][0], ch, config);
+      	shine_window_filter_subband(&config->buffer[ch], &config->l3_sb_sample[ch][gr+1][k+1][0], ch, config);
+        /* Compensate for inversion in the analysis filter
+         * (every odd index of band AND k)
+         */
+        for(band=1; band<32; band+=2)
+          config->l3_sb_sample[ch][gr+1][k+1][band] *= -1;
+      }
 
       /* Perform imdct of 18 previous subband samples + 18 current subband samples */
-      for(band=32; band--; )
+      for(band=0; band<32; band++)
       {
         for(k=18; k--; )
         {
-          mdct_in[k]    = config->l3_sb_sample[ch][ gr ][k][band];
+          mdct_in[k   ] = config->l3_sb_sample[ch][gr  ][k][band];
           mdct_in[k+18] = config->l3_sb_sample[ch][gr+1][k][band];
         }
 
@@ -102,18 +106,23 @@ void shine_mdct_sub(shine_global_config *config)
           mulz(vm);
           mdct_enc[band][k] = vm;
         }
-      }
 
-      /* Perform aliasing reduction butterfly */
-      for(band=31; band--; )
-        for(k=8; k--; )
+        /* Perform aliasing reduction butterfly */
+        if (band != 0)
         {
-          cmuls(mdct_enc[band+1][k], mdct_enc[band][17-k], mdct_enc[band+1][k], mdct_enc[band][17-k], mdct_cs[k], mdct_ca[k]);
+          cmuls(mdct_enc[band][0], mdct_enc[band-1][17-0], mdct_enc[band][0], mdct_enc[band-1][17-0], MDCT_CS0, MDCT_CA0);
+          cmuls(mdct_enc[band][1], mdct_enc[band-1][17-1], mdct_enc[band][1], mdct_enc[band-1][17-1], MDCT_CS1, MDCT_CA1);
+          cmuls(mdct_enc[band][2], mdct_enc[band-1][17-2], mdct_enc[band][2], mdct_enc[band-1][17-2], MDCT_CS2, MDCT_CA2);
+          cmuls(mdct_enc[band][3], mdct_enc[band-1][17-3], mdct_enc[band][3], mdct_enc[band-1][17-3], MDCT_CS3, MDCT_CA3);
+          cmuls(mdct_enc[band][4], mdct_enc[band-1][17-4], mdct_enc[band][4], mdct_enc[band-1][17-4], MDCT_CS4, MDCT_CA4);
+          cmuls(mdct_enc[band][5], mdct_enc[band-1][17-5], mdct_enc[band][5], mdct_enc[band-1][17-5], MDCT_CS5, MDCT_CA5);
+          cmuls(mdct_enc[band][6], mdct_enc[band-1][17-6], mdct_enc[band][6], mdct_enc[band-1][17-6], MDCT_CS6, MDCT_CA6);
+          cmuls(mdct_enc[band][7], mdct_enc[band-1][17-7], mdct_enc[band][7], mdct_enc[band-1][17-7], MDCT_CS7, MDCT_CA7);
         }
+      }
     }
 
-  /* Save latest granule's subband samples to be used in the next mdct call */
-  for(ch=config->wave.channels ;ch--; )
+    /* Save latest granule's subband samples to be used in the next mdct call */
     memcpy(config->l3_sb_sample[ch][0], config->l3_sb_sample[ch][config->mpeg.granules_per_frame], sizeof(config->l3_sb_sample[0][0]));
+  }
 }
-

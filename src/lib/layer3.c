@@ -150,8 +150,6 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
 
 unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, long *written)
 {
-  int i, gr, channel;
-
   config->buffer[0] = data[0];
   if (config->wave.channels == 2)
     config->buffer[1] = data[1];
@@ -172,12 +170,6 @@ unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, 
 
   config->mpeg.bits_per_frame = 8*(config->mpeg.whole_slots_per_frame + config->mpeg.padding);
   config->mean_bits = (config->mpeg.bits_per_frame - config->sideinfo_len)/config->mpeg.granules_per_frame;
-
-  /* polyphase filtering */
-  for(gr=0;gr<config->mpeg.granules_per_frame;gr++)
-    for(channel=config->wave.channels; channel--; )
-      for(i=0;i<18;i++)
-        shine_window_filter_subband(&config->buffer[channel], &config->l3_sb_sample[channel][gr+1][i][0] ,channel,config);
 
   /* apply mdct to the polyphase output */
   shine_mdct_sub(config);
