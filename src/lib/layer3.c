@@ -196,7 +196,6 @@ unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, 
 }
 
 unsigned char *shine_flush(shine_global_config *config, long *written) {
-  shine_empty_buffer(&config->bs, MINIMUM);
   *written = config->bs.data_position;
   config->bs.data_position = 0;
 

@@ -18,12 +18,13 @@
  
 #if defined(__arm__)
 #include "mult_sarm_gcc.h"
-#else
+#endif
 */
-
 #include "mult_noarch_gcc.h"
 
-/* #endif */
+#ifndef SWAB32
+#define SWAB32(x)	(((unsigned int)(x) >> 24) | (((unsigned int)(x) >> 8) & 0xff00) | (((unsigned int)(x) & 0xff00) << 8) | ((unsigned int)(x) << 24))
+#endif
 
 /* #define DEBUG if you want the library to dump info to stdout */
 

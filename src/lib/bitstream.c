@@ -14,54 +14,21 @@
 #include <malloc.h>
 #endif
 
-/*
- * shine_empty_buffer
- * ------------
- * empty the buffer to the output device when the buffer becomes full
- */
-void shine_empty_buffer(bitstream_t *bs, int minimum)
-{
-  int total = bs->buf_size-minimum;
-  int i;
-
-  if (bs->data_size-bs->data_position < total) {
-    bs->data = realloc(bs->data, sizeof(unsigned char)*(total+bs->data_position));
-    bs->data_size = total+bs->data_position; 
-  }
- 
-  for (i=minimum;i<bs->buf_size;i++)
-    bs->data[bs->data_position+bs->buf_size-1-i] = bs->buf[i];
-
-  bs->data_position += total; 
-
-  for (i=0;i<minimum; i++)
-    bs->buf[bs->buf_size - minimum + i] = bs->buf[i];
-
-  bs->buf_byte_idx = bs->buf_size -1 - minimum;
-  bs->buf_bit_idx = 8;
-}
-
 /* open the device to write the bit stream into it */
 void shine_open_bit_stream(bitstream_t *bs, int size)
 {
-  bs->data = NULL;
-  bs->data_size = 0;
+  bs->data = (unsigned char *)malloc(size*sizeof(unsigned char));
+  bs->data_size = size;
   bs->data_position = 0;
-  bs->buf = (unsigned char *)malloc(size*sizeof(unsigned char));
-  bs->buf_size = size;
-  bs->buf_byte_idx = size-1;
-  bs->buf_bit_idx=8;
-  bs->totbit=0;
-  bs->mode = WRITE_MODE;
-  bs->eob = 0;
-  bs->eobs = 0;
+  bs->cache = 0;
+  bs->cache_bits = 32;
 }
 
 /*close the device containing the bit stream */
 void shine_close_bit_stream(bitstream_t *bs)
 {
-  if (bs->data) free(bs->data);
-  free(bs->buf);
+  if (bs->data)
+    free(bs->data);
 }
 
 /*
@@ -74,37 +41,32 @@ void shine_close_bit_stream(bitstream_t *bs)
  */
 void shine_putbits(bitstream_t *bs, unsigned long int val, unsigned int N)
 {
-  static const int putmask[9]={0x0, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f, 0xff};
-  register int j = N;
-  register int k, tmp;
+	const unsigned int endian = 1;
 
-  #ifdef DEBUG
-  if (N > MAX_LENGTH)
-    printf("Cannot read or write more than %d bits at a time.\n", MAX_LENGTH);
-  #endif
+#ifdef DEBUG
+	if (N > 32)
+		printf("Cannot read or write more than %d bits at a time.\n", 32);
+#endif
+	if (N < 32)
+		val &= ((1UL << N) - 1);
 
-  bs->totbit += N;
-  while (j > 0)
-  {
-    k = MIN(j, bs->buf_bit_idx);
-    tmp = val >> (j-k);
-    bs->buf[bs->buf_byte_idx] |= (tmp&putmask[k]) << (bs->buf_bit_idx-k);
-    bs->buf_bit_idx -= k;
-    if (!bs->buf_bit_idx)
-    {
-      bs->buf_bit_idx = 8;
-      bs->buf_byte_idx--;
-      if (bs->buf_byte_idx < 0)
-        shine_empty_buffer(bs, MINIMUM);
-      bs->buf[bs->buf_byte_idx] = 0;
-    }
-    j -= k;
-  }
+	if (bs->cache_bits >= N) {
+		bs->cache_bits -= N;
+		bs->cache |= val << bs->cache_bits;
+	} else {
+		if (bs->data_position + sizeof(unsigned int) >= bs->data_size) {
+			bs->data = (unsigned char *)realloc(bs->data, bs->data_size + (bs->data_size / 2));
+			bs->data_size += (bs->data_size / 2);
+		}
+
+		N -= bs->cache_bits;
+		bs->cache |= val >> N;
+		if (*((unsigned char*)&endian))
+			*(unsigned int*)(bs->data + bs->data_position) = SWAB32(bs->cache);
+		else
+			*(unsigned int*)(bs->data + bs->data_position) = bs->cache;
+		bs->data_position += sizeof(unsigned int);
+		bs->cache_bits = 32 - N;
+		bs->cache = val << bs->cache_bits;
+	}
 }
-
-/*return the current bit stream length (in bits)*/
-unsigned long shine_sstell(bitstream_t *bs)
-{
-  return(bs->totbit);
-}
-
