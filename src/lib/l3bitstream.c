@@ -283,7 +283,6 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
           *pr = 0;
         }
     }
-  bvbits = bitsWritten;
 
   /* 2: Write count1 area */
   h = &shine_huffman_table[gi->count1table_select + 32];
@@ -296,7 +295,6 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
       y = ix[i+3];
       bitsWritten += shine_huffman_coder_count1( pph, h, v, w, x, y );
     }
-  c1bits = bitsWritten - bvbits;
   if ( (stuffingBits = gi->part2_3_length - gi->part2_length - bitsWritten) )
     {
       int stuffingWords = stuffingBits / 32;
@@ -362,7 +360,7 @@ int shine_huffman_coder_count1( BF_PartHolder **pph, const struct huffcodetab *h
 int shine_HuffmanCode(int table_select, int x, int y, unsigned int *code,
                 unsigned int *ext, int *cbits, int *xbits )
 {
-  unsigned signx, signy, linbitsx, linbitsy, linbits, xlen, ylen, idx;
+  unsigned signx, signy, linbitsx, linbitsy, linbits, ylen, idx;
   const struct huffcodetab *h;
 
   *cbits = 0;
@@ -375,7 +373,6 @@ int shine_HuffmanCode(int table_select, int x, int y, unsigned int *code,
   signx = shine_abs_and_sign( &x );
   signy = shine_abs_and_sign( &y );
   h = &(shine_huffman_table[table_select]);
-  xlen = h->xlen;
   ylen = h->ylen;
   linbits = h->linbits;
   linbitsx = linbitsy = 0;
