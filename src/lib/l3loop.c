@@ -174,7 +174,7 @@ void calc_scfsi( shine_psy_xmin_t *l3_xmin, int ch, int gr,
 {
   shine_side_info_t *l3_side = &config->side_info;
   /* This is the scfsi_band table from 2.4.2.7 of the IS */
-  static int scfsi_band_long[5] = { 0, 6, 11, 16, 21 };
+  static const int scfsi_band_long[5] = { 0, 6, 11, 16, 21 };
 
   int scfsi_band;
   unsigned scfsi_set;
@@ -183,7 +183,7 @@ void calc_scfsi( shine_psy_xmin_t *l3_xmin, int ch, int gr,
   int condition = 0;
   long temp;
 
-  int *scalefac_band_long = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
+  const int *scalefac_band_long = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
 
   /* note. it goes quite a bit faster if you uncomment the next bit and exit
      early from scfsi, but you then loose the advantage of common scale factors.
@@ -276,8 +276,8 @@ void calc_scfsi( shine_psy_xmin_t *l3_xmin, int ch, int gr,
 }
 
 /* these used in next two functions */
-static int slen1_tab[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
-static int slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
+static const int slen1_tab[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
+static const int slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
 
 /*
  * part2_length:
@@ -519,9 +519,9 @@ int count1_bitcount(int ix[GRANULE_SIZE], gr_info *cod_info)
  */
 void subdivide(gr_info *cod_info, shine_global_config *config)
 {
-  int *scalefac_band_long  = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
+  const int *scalefac_band_long  = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
 
-  static struct
+  static const struct
   {
     unsigned region0_count;
     unsigned region1_count;
@@ -757,7 +757,7 @@ int count_bit(int ix[GRANULE_SIZE],
   unsigned            linbits, ylen;
   register int        i, sum;
   register int        x,y;
-  struct huffcodetab *h;
+  const struct huffcodetab *h;
 
   if(!table)
     return 0;

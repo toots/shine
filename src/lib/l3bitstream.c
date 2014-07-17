@@ -109,8 +109,8 @@ shine_format_bitstream(shine_global_config *config)
   shine_BF_BitstreamFrame(config);
 }
 
-static unsigned slen1_tab[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
-static unsigned slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
+static const unsigned slen1_tab[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
+static const unsigned slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
 
 static void encodeMainData(shine_global_config *config)
 {
@@ -241,7 +241,7 @@ static void encodeSideInfo( shine_global_config *config )
   well as the definitions of the side information on pages 26 and 27. */
 static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_global_config *config )
 {
-  int shine_huffman_coder_count1( BF_PartHolder **pph, struct huffcodetab *h, int v, int w, int x, int y );
+  int shine_huffman_coder_count1( BF_PartHolder **pph, const struct huffcodetab *h, int v, int w, int x, int y );
   int bigv_bitcount( int ix[GRANULE_SIZE], gr_info *cod_info );
 
   int region1Start;
@@ -249,7 +249,7 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
   int i, bigvalues, count1End;
   int v, w, x, y, bits, cbits, xbits, stuffingBits;
   unsigned int code, ext;
-  struct huffcodetab *h;
+  const struct huffcodetab *h;
   int bvbits, c1bits, tablezeros, r0, r1, r2, rt, *pr;
   int bitsWritten = 0;
   //int idx = 0;
@@ -259,7 +259,7 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
   /* 1: Write the bigvalues */
   bigvalues = gi->big_values <<1;
 
-  int *scalefac = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
+  const int *scalefac = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
   unsigned scalefac_index = 100;
 
   scalefac_index = gi->region0_count + 1;
@@ -340,7 +340,7 @@ int shine_abs_and_sign( int *x )
   return 1;
 }
 
-int shine_huffman_coder_count1( BF_PartHolder **pph, struct huffcodetab *h, int v, int w, int x, int y )
+int shine_huffman_coder_count1( BF_PartHolder **pph, const struct huffcodetab *h, int v, int w, int x, int y )
 {
   HUFFBITS huffbits;
   unsigned int signv, signw, signx, signy, p;
@@ -385,7 +385,7 @@ int shine_HuffmanCode(int table_select, int x, int y, unsigned int *code,
                 unsigned int *ext, int *cbits, int *xbits )
 {
   unsigned signx, signy, linbitsx, linbitsy, linbits, xlen, ylen, idx;
-  struct huffcodetab *h;
+  const struct huffcodetab *h;
 
   *cbits = 0;
   *xbits = 0;

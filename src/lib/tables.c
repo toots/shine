@@ -7,9 +7,8 @@
 
 #include "tables.h"
 
-int shine_scale_fact_band_index[9][23] =
+const int shine_scale_fact_band_index[9][23] =
 {
-
   /* MPEG-I */
     /* Table B.8.b: 44.1 kHz */
   {0,4,8,12,16,20,24,30,36,44,52,62,74,90,110,134,162,196,238,288,342,418,576},
@@ -40,7 +39,7 @@ int shine_scale_fact_band_index[9][23] =
 #define SHINE_EW2(a,b)					SHINE_EW(a), SHINE_EW(b)
 #define SHINE_EW10(a,b,c,d,e,f,g,h,i,j)	SHINE_EW2(a,b), SHINE_EW2(c,d), SHINE_EW2(e,f), SHINE_EW2(g,h), SHINE_EW2(i,j)
 
-long shine_enwindow[] = {
+const long shine_enwindow[] = {
 SHINE_EW10(   0.000000, -0.000000, -0.000000, -0.000000, -0.000000, -0.000000, -0.000000, -0.000001, -0.000001, -0.000001),
 SHINE_EW10(  -0.000001, -0.000001, -0.000001, -0.000002, -0.000002, -0.000002, -0.000002, -0.000003, -0.000003, -0.000003),
 SHINE_EW10(  -0.000004, -0.000004, -0.000005, -0.000005, -0.000006, -0.000007, -0.000008, -0.000008, -0.000009, -0.000010),
