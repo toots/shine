@@ -1,5 +1,6 @@
 shine_close
 shine_encode_buffer
+shine_encode_buffer_interlaced
 shine_check_config
 shine_flush
 shine_initialise

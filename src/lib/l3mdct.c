@@ -47,7 +47,7 @@ void shine_mdct_initialise(shine_global_config *config)
  * shine_mdct_sub:
  * ------------
  */
-void shine_mdct_sub(shine_global_config *config)
+void shine_mdct_sub(shine_global_config *config, int stride)
 {
   /* note. we wish to access the array 'config->mdct_freq[2][2][576]' as
    * [2][2][32][18]. (32*18=576),
@@ -67,8 +67,8 @@ void shine_mdct_sub(shine_global_config *config)
       /* polyphase filtering */
       for(k=0; k<18; k+=2)
       {
-      	shine_window_filter_subband(&config->buffer[ch], &config->l3_sb_sample[ch][gr+1][k  ][0], ch, config);
-      	shine_window_filter_subband(&config->buffer[ch], &config->l3_sb_sample[ch][gr+1][k+1][0], ch, config);
+      	shine_window_filter_subband(&config->buffer[ch], &config->l3_sb_sample[ch][gr+1][k  ][0], ch, config, stride);
+      	shine_window_filter_subband(&config->buffer[ch], &config->l3_sb_sample[ch][gr+1][k+1][0], ch, config, stride);
         /* Compensate for inversion in the analysis filter
          * (every odd index of band AND k)
          */

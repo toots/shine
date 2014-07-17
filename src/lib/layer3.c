@@ -148,31 +148,19 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
   return config;
 }
 
-unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, long *written)
+static unsigned char *shine_encode_buffer_internal(shine_global_config *config, long *written, int stride)
 {
-  config->buffer[0] = data[0];
-  if (config->wave.channels == 2)
-    config->buffer[1] = data[1];
-
   if(config->mpeg.frac_slots_per_frame)
   {
-    if(config->mpeg.slot_lag>(config->mpeg.frac_slots_per_frame-1.0))
-    { /* No padding for this frame */
-      config->mpeg.slot_lag    -= config->mpeg.frac_slots_per_frame;
-      config->mpeg.padding = 0;
-    }
-    else
-    { /* Padding for this frame  */
-      config->mpeg.slot_lag    += (1-config->mpeg.frac_slots_per_frame);
-      config->mpeg.padding = 1;
-    }
+    config->mpeg.padding   = (config->mpeg.slot_lag <= (config->mpeg.frac_slots_per_frame - 1.0));
+    config->mpeg.slot_lag += (config->mpeg.padding - config->mpeg.frac_slots_per_frame);
   }
 
   config->mpeg.bits_per_frame = 8*(config->mpeg.whole_slots_per_frame + config->mpeg.padding);
   config->mean_bits = (config->mpeg.bits_per_frame - config->sideinfo_len)/config->mpeg.granules_per_frame;
 
   /* apply mdct to the polyphase output */
-  shine_mdct_sub(config);
+  shine_mdct_sub(config, stride);
 
   /* bit and noise allocation */
   shine_iteration_loop(config);
@@ -185,6 +173,24 @@ unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, 
   config->bs.data_position = 0;
 
   return config->bs.data;
+}
+
+unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, long *written)
+{
+  config->buffer[0] = data[0];
+  if (config->wave.channels == 2)
+    config->buffer[1] = data[1];
+
+  return shine_encode_buffer_internal(config, written, 1);
+}
+
+unsigned char *shine_encode_buffer_interlaced(shine_global_config *config, int16_t *data, long *written)
+{
+  config->buffer[0] = data;
+  if (config->wave.channels == 2)
+    config->buffer[1] = data + 1;
+
+  return shine_encode_buffer_internal(config, written, config->wave.channels);
 }
 
 unsigned char *shine_flush(shine_global_config *config, long *written) {

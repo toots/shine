@@ -97,6 +97,15 @@ int shine_samples_per_pass(shine_t s);
  * was written. */
 unsigned char *shine_encode_buffer(shine_t s, int16_t **data, long *written);
 
+/* Encode audio data. Source data must have `shine_samples_per_pass(s)` audio samples per
+ * channels. Mono encoder only expect one channel. 
+ *
+ * Returns a pointer to freshly encoded data while `written` contains the size of
+ * available data. This pointer's memory is handled by the library and is only valid 
+ * until the next call to `shine_encode_buffer` or `shine_close` and may be NULL if no data
+ * was written. */
+unsigned char *shine_encode_buffer_interlaced(shine_t s, int16_t *data, long *written);
+
 /* Flush all data currently in the encoding buffer. Should be used before closing
  * the encoder, to make all encoded data has been written. */
 unsigned char *shine_flush(shine_t s, long *written);
