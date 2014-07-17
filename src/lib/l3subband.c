@@ -32,11 +32,6 @@ void shine_subband_initialise(shine_global_config *config)
       /* scale and convert to fixed point before storing */
       config->subband.fl[i][j] = (long)(filter * (0x7fffffff * 1e-9));
     }
-
-  /* note. 0.035781 is shine_enwindow maximum value */
-  /* scale and convert to fixed point before storing */
-  for (i=HAN_SIZE; i--;)
-    config->subband.ew[i] = (long)(shine_enwindow[i] * 0x7fffffff);
 }
 
 /*
@@ -65,7 +60,7 @@ void shine_window_filter_subband(int16_t **buffer, long s[SBLIMIT] , int ch, shi
   /* shift samples into proper window positions */
   long* z_into  = config->subband.z[ch];
   long* z_from1 = config->subband.x[ch];
-  long* z_from2 = config->subband.ew;
+  long* z_from2 = shine_enwindow;
   long  offset  = config->subband.off[ch];
 
   /* loop unrolling: 8 steps each, so need HAN_SIZE % 8 == 0 */

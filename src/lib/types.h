@@ -177,7 +177,6 @@ typedef struct {
   long fl[SBLIMIT][64];
   long x[MAX_CHANNELS][HAN_SIZE];
   long z[MAX_CHANNELS][HAN_SIZE];
-  long ew[HAN_SIZE];
 } subband_t; 
 
 /* Side information */
