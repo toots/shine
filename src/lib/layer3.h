@@ -60,6 +60,16 @@ typedef struct shine_global_flags *shine_t;
 /* Fill in a `mpeg_t` structure with default values. */
 void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg);
 
+/* Check if a given bitrate is supported by the encoder (see `bitrates` above for a list
+ * of acceptable values. */
+int shine_find_bitrate_index(int bitr, int mpeg_version);
+
+/* Check if a given bitrate is supported by the encoder (see `samplerates` above for a list
+ * of acceptable values. */
+int shine_find_samplerate_index(long freq);
+
+int shine_mpeg_version(int samplerate_index);
+
 /* Check if a given bitrate and samplerate is supported by the encoder (see `samplerates` 
  * and `bitrates` above for a list of acceptable values). 
  *
