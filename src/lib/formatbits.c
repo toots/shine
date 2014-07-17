@@ -180,10 +180,8 @@ static void WriteMainDataBits(unsigned long int val,
       shine_putbits( &config->bs, extra, config->formatbits.BitsRemaining);
       config->formatbits.BitCount = write_side_info(config);
       config->formatbits.BitsRemaining = config->mpeg.bits_per_frame - config->formatbits.BitCount;
-      shine_putbits( &config->bs, val, nbits);
     }
-  else
-    shine_putbits( &config->bs, val, nbits);
+  shine_putbits( &config->bs, val, nbits);
 
   config->formatbits.BitCount      += nbits;
   config->formatbits.BitsRemaining -= nbits;
