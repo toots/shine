@@ -167,8 +167,6 @@ typedef struct {
 } l3loop_t;
 
 typedef struct {
-  long ca[8];
-  long cs[8];
   long cos_l[18][36];
 } mdct_t;
 

@@ -3,11 +3,30 @@
 #include "types.h"
 #include "l3mdct.h"
 
-/*extern long mul(long x, long y); */ /* inlined in header file */
-/*extern long muls(long x, long y); */ /* inlined in header file */
-
 /* This is table B.9: coefficients for aliasing reduction */
-static double c[8] = { -0.6,-0.535,-0.33,-0.185,-0.095,-0.041,-0.0142, -0.0037 };
+#define MDCT_CA(coef)	(long)(coef / sqrt(1.0 + (coef * coef)) * 0x7fffffff)
+#define MDCT_CS(coef)	(long)(1.0  / sqrt(1.0 + (coef * coef)) * 0x7fffffff)
+
+static const long mdct_ca[8] = {
+	MDCT_CA(-0.6),
+	MDCT_CA(-0.535),
+	MDCT_CA(-0.33),
+	MDCT_CA(-0.185),
+	MDCT_CA(-0.095),
+	MDCT_CA(-0.041),
+	MDCT_CA(-0.0142),
+	MDCT_CA(-0.0037),
+};
+static const long mdct_cs[8] = {
+	MDCT_CS(-0.6),
+	MDCT_CS(-0.535),
+	MDCT_CS(-0.33),
+	MDCT_CS(-0.185),
+	MDCT_CS(-0.095),
+	MDCT_CS(-0.041),
+	MDCT_CS(-0.0142),
+	MDCT_CS(-0.0037),
+};
 
 /*
  * shine_mdct_initialise:
@@ -15,17 +34,7 @@ static double c[8] = { -0.6,-0.535,-0.33,-0.185,-0.095,-0.041,-0.0142, -0.0037 }
  */
 void shine_mdct_initialise(shine_global_config *config)
 {
-  int i,m,k;
-  double sq;
-
-  /* prepare the aliasing reduction butterflies */
-  for(i=8; i--; )
-  {
-    sq = sqrt(1.0 + (c[i] * c[i]));
-    /* scale and convert to fixed point before storing */
-    config->mdct.ca[i] = (long)(c[i] / sq * 0x7fffffff);
-    config->mdct.cs[i] = (long)(1.0  / sq * 0x7fffffff);
-  }
+  int m,k;
 
   /* prepare the mdct coefficients */
   for(m=18; m--; )
@@ -107,8 +116,8 @@ void shine_mdct_sub(shine_global_config *config)
           /* must left justify result of multiplication here because the centre
            * two values in each block are not touched.
            */
-          bu = muls(mdct_enc[band][17-k],config->mdct.cs[k]) + muls(mdct_enc[band+1][k],config->mdct.ca[k]);
-          bd = muls(mdct_enc[band+1][k],config->mdct.cs[k]) - muls(mdct_enc[band][17-k],config->mdct.ca[k]);
+          bu = muls(mdct_enc[band][17-k],mdct_cs[k]) + muls(mdct_enc[band+1][k],mdct_ca[k]);
+          bd = muls(mdct_enc[band+1][k],mdct_cs[k]) - muls(mdct_enc[band][17-k],mdct_ca[k]);
           mdct_enc[band][17-k] = bu;
           mdct_enc[band+1][k]  = bd;
         }
