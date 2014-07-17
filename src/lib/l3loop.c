@@ -821,34 +821,33 @@ int count_bit(int ix[GRANULE_SIZE],
 int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE],
                         gr_info * cod_info, shine_global_config *config)
 {
-  int top,bot,next,last,bit;
+  int bit, next, count;
 
-  top  = -120;
-  bot  = 0;
-  next = top;
+  next  = -120;
+  count = 120;
 
-  do
-  {
-    last = next;
-    next = (top+bot) >> 1;
+  do {
+    int half = count / 2;
 
-      if (quantize(ix,next,config) > 8192)
+    if (quantize(ix, next + half, config) > 8192)
       bit = 100000;  /* fail */
     else
     {
-      calc_runlen(ix,cod_info);            /* rzero,count1,big_values */
+      calc_runlen(ix, cod_info);           /* rzero,count1,big_values */
       bit = count1_bitcount(ix, cod_info); /* count1_table selection */
       subdivide(cod_info, config);         /* bigvalues sfb division */
-      bigv_tab_select(ix,cod_info);        /* codebook selection */
-      bit += bigv_bitcount(ix,cod_info);   /* bit count */
+      bigv_tab_select(ix, cod_info);       /* codebook selection */
+      bit += bigv_bitcount(ix, cod_info);  /* bit count */
     }
 
-    if (bit>desired_rate)
-      top = next;
+    if (bit < desired_rate)
+      count = half;
     else
-      bot = next;
-  }
-  while((bit!=desired_rate) && abs(last-next)>1);
+    {
+      next += half;
+      count -= half;
+    }
+  } while (count > 1);
+
   return next;
 }
-
