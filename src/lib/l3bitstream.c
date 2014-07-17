@@ -309,7 +309,7 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
     }
 }
 
-int shine_abs_and_sign( int *x )
+static inline int shine_abs_and_sign( int *x )
 {
   if ( *x > 0 ) return 0;
   *x *= -1;

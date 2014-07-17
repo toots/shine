@@ -29,7 +29,6 @@ static int count1_bitcount( int ix[ GRANULE_SIZE ], gr_info *cod_info );
 static void calc_runlen( int ix[GRANULE_SIZE], gr_info *cod_info );
 static void calc_xmin(shine_psy_ratio_t *ratio, gr_info *cod_info, shine_psy_xmin_t *l3_xmin, int gr, int ch );
 static int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config);
-static int ix_max( int ix[GRANULE_SIZE], unsigned int begin, unsigned int end );
 
 /*
  * shine_inner_loop:
@@ -420,7 +419,7 @@ int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config )
  * -------
  * Function: Calculate the maximum of ix from 0 to 575
  */
-int ix_max( int ix[GRANULE_SIZE], unsigned int begin, unsigned int end )
+static inline int ix_max( int ix[GRANULE_SIZE], unsigned int begin, unsigned int end )
 {
   register int i;
   register int max = 0;
