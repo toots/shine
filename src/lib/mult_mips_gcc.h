@@ -18,6 +18,22 @@
 	res; \
 })
 
+#define mul0(d,a,b)	\
+	__asm__ __volatile__("mult %0, %1" : : "r" (a), "r" (b))
+
+#define muladd(d,a,b) \
+	__asm__ __volatile__("madd %0, %1" : : "r" (a), "r" (b))
+
+#define mulsub(d,a,b) \
+	__asm__ __volatile__("msub %0, %1" : : "r" (a), "r" (b))
+
+#define mulz(d) \
+do { \
+	register int32_t t; \
+	__asm__ __volatile__("mfhi %0" : "=r" (t)); \
+	(d) = t; \
+} while (0)
+
 #define cmuls(dre, dim, are, aim, bre, bim) \
 do { \
 	register int32_t t1, t2, tre; \

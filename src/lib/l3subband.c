@@ -49,79 +49,42 @@ void shine_subband_initialise(shine_global_config *config)
  */
 void shine_window_filter_subband(int16_t **buffer, long s[SBLIMIT] , int ch, shine_global_config *config)
 {
-  long y[64];
+  int32_t y[64];
   int i,j;
 
   /* replace 32 oldest samples with 32 new samples */
   for (i=31;i>=0;i--)
     config->subband.x[ch][i+config->subband.off[ch]] = ((long)*(*buffer)++) << 16;
 
-  /* shift samples into proper window positions */
-  long* z_into  = config->subband.z[ch];
-  long* z_from1 = config->subband.x[ch];
-  long* z_from2 = shine_enwindow;
-  long  offset  = config->subband.off[ch];
-
-  /* loop unrolling: 8 steps each, so need HAN_SIZE % 8 == 0 */
-  for (i=HAN_SIZE; i; )
-  {
-    i--;
-    z_into[i] = mul(z_from1[(i+offset)&(HAN_SIZE-1)],z_from2[i]);
-    i--;
-    z_into[i] = mul(z_from1[(i+offset)&(HAN_SIZE-1)],z_from2[i]);
-    i--;
-    z_into[i] = mul(z_from1[(i+offset)&(HAN_SIZE-1)],z_from2[i]);
-    i--;
-    z_into[i] = mul(z_from1[(i+offset)&(HAN_SIZE-1)],z_from2[i]);
-    i--;
-    z_into[i] = mul(z_from1[(i+offset)&(HAN_SIZE-1)],z_from2[i]);
-    i--;
-    z_into[i] = mul(z_from1[(i+offset)&(HAN_SIZE-1)],z_from2[i]);
-    i--;
-    z_into[i] = mul(z_from1[(i+offset)&(HAN_SIZE-1)],z_from2[i]);
-    i--;
-    z_into[i] = mul(z_from1[(i+offset)&(HAN_SIZE-1)],z_from2[i]);
+  for (i=64; i--; ) {
+    int32_t s_value;
+  	mul0  (s_value, config->subband.x[ch][(config->subband.off[ch] + i + (0<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (0<<6)]);
+  	muladd(s_value, config->subband.x[ch][(config->subband.off[ch] + i + (1<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (1<<6)]);
+  	muladd(s_value, config->subband.x[ch][(config->subband.off[ch] + i + (2<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (2<<6)]);
+  	muladd(s_value, config->subband.x[ch][(config->subband.off[ch] + i + (3<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (3<<6)]);
+  	muladd(s_value, config->subband.x[ch][(config->subband.off[ch] + i + (4<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (4<<6)]);
+  	muladd(s_value, config->subband.x[ch][(config->subband.off[ch] + i + (5<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (5<<6)]);
+  	muladd(s_value, config->subband.x[ch][(config->subband.off[ch] + i + (6<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (6<<6)]);
+  	muladd(s_value, config->subband.x[ch][(config->subband.off[ch] + i + (7<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (7<<6)]);
+    mulz  (s_value);
+    y[i] = s_value;
   }
 
   config->subband.off[ch] = (config->subband.off[ch] + 480) & (HAN_SIZE-1); /* offset is modulo (HAN_SIZE)*/
 
-  memset(y,0,64*sizeof(long));
-  for (j=0; j < 512; j += 64)
-  {
-    long* z_ptr = config->subband.z[ch] + j + 64;
-    long* y_ptr = y + 64;
-    /* loop unrolling: 8 steps each for a total of 64*/
-    while (y_ptr != y)
-    {
-      *(--y_ptr) += *(--z_ptr);
-      *(--y_ptr) += *(--z_ptr);
-      *(--y_ptr) += *(--z_ptr);
-      *(--y_ptr) += *(--z_ptr);
-      *(--y_ptr) += *(--z_ptr);
-      *(--y_ptr) += *(--z_ptr);
-      *(--y_ptr) += *(--z_ptr);
-      *(--y_ptr) += *(--z_ptr);
+  for (i=SBLIMIT; i--; ) {
+    int32_t s_value;
+  	mul0(s_value, config->subband.fl[i][63], y[63]);
+    for (j=63; j; j-=7) {
+      muladd(s_value, config->subband.fl[i][j-1], y[j-1]);
+      muladd(s_value, config->subband.fl[i][j-2], y[j-2]);
+      muladd(s_value, config->subband.fl[i][j-3], y[j-3]);
+      muladd(s_value, config->subband.fl[i][j-4], y[j-4]);
+      muladd(s_value, config->subband.fl[i][j-5], y[j-5]);
+      muladd(s_value, config->subband.fl[i][j-6], y[j-6]);
+      muladd(s_value, config->subband.fl[i][j-7], y[j-7]);
     }
-  }
-
-  for (i=SBLIMIT; i--; )
-  {
-    long s_value = 0;
-    long* y_ptr = y + 64;
-    long* cur_fl = config->subband.fl[i] + 64;
-    /* loop unrolling: 8 steps each for a total of 64*/
-    while (y_ptr != y)
-    {
-      s_value += mul(*(--cur_fl),*(--y_ptr));
-      s_value += mul(*(--cur_fl),*(--y_ptr));
-      s_value += mul(*(--cur_fl),*(--y_ptr));
-      s_value += mul(*(--cur_fl),*(--y_ptr));
-      s_value += mul(*(--cur_fl),*(--y_ptr));
-      s_value += mul(*(--cur_fl),*(--y_ptr));
-      s_value += mul(*(--cur_fl),*(--y_ptr));
-      s_value += mul(*(--cur_fl),*(--y_ptr));
-    }
+    mulz(s_value);
     s[i] = s_value;
   }
 }
-

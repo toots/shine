@@ -16,6 +16,12 @@
 #define mulsr(a,b) (int32_t)  ( ( ( ((int64_t) a) * ((int64_t) b)) + 0x40000000LL ) >>31 )
 #endif
 
+#ifndef mul0
+#define mul0(d,a,b)  	((d)  = mul((a), (b)))
+#define muladd(d,a,b)   ((d) += mul((a), (b)))
+#define mulsub(d,a,b)   ((d) -= mul((a), (b)))
+#define mulz(d)
+#endif
 
 #ifndef cmuls
 #define cmuls(dre, dim, are, aim, bre, bim) \
