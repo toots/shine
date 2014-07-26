@@ -210,7 +210,7 @@ int main(int argc, char **argv)
   int samples_per_pass = shine_samples_per_pass(s);
 
   /* All the magic happens here */
-  while (wave_get(buffer, &wave, force_mono, samples_per_pass)) {
+  while (wave_get(buffer, &wave, samples_per_pass)) {
     data = shine_encode_buffer_interleaved(s, buffer, &written);
     if ( write_mp3(written, data, &config) != written )
     {
