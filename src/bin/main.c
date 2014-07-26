@@ -154,7 +154,7 @@ int main(int argc, char **argv)
   int16_t        chan1[SHINE_MAX_SAMPLES], chan2[SHINE_MAX_SAMPLES];
   shine_config_t config;
   shine_t        s;
-  long           written;
+  int            written;
   unsigned char  *data;
 
   buffer[0] = chan1, buffer[1] = chan2;

@@ -39,7 +39,7 @@ int shine_mpeg_version(int samplerate_index) {
     return MPEG_25;
 }
 
-int shine_find_samplerate_index(long freq)
+int shine_find_samplerate_index(int freq)
 {
   int i;
 
@@ -59,7 +59,7 @@ int shine_find_bitrate_index(int bitr, int mpeg_version)
   return -1; /* error - not a valid samplerate for encoder */
 }
 
-int shine_check_config(long freq, int bitr)
+int shine_check_config(int freq, int bitr)
 {
   int samplerate_index, bitrate_index, mpeg_version;
 
@@ -148,7 +148,7 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
   return config;
 }
 
-static unsigned char *shine_encode_buffer_internal(shine_global_config *config, long *written, int stride)
+static unsigned char *shine_encode_buffer_internal(shine_global_config *config, int *written, int stride)
 {
   if(config->mpeg.frac_slots_per_frame)
   {
@@ -175,7 +175,7 @@ static unsigned char *shine_encode_buffer_internal(shine_global_config *config, 
   return config->bs.data;
 }
 
-unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, long *written)
+unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, int *written)
 {
   config->buffer[0] = data[0];
   if (config->wave.channels == 2)
@@ -184,7 +184,7 @@ unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, 
   return shine_encode_buffer_internal(config, written, 1);
 }
 
-unsigned char *shine_encode_buffer_interlaced(shine_global_config *config, int16_t *data, long *written)
+unsigned char *shine_encode_buffer_interlaced(shine_global_config *config, int16_t *data, int *written)
 {
   config->buffer[0] = data;
   if (config->wave.channels == 2)
@@ -193,7 +193,7 @@ unsigned char *shine_encode_buffer_interlaced(shine_global_config *config, int16
   return shine_encode_buffer_internal(config, written, config->wave.channels);
 }
 
-unsigned char *shine_flush(shine_global_config *config, long *written) {
+unsigned char *shine_flush(shine_global_config *config, int *written) {
   *written = config->bs.data_position;
   config->bs.data_position = 0;
 
