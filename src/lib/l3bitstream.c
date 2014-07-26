@@ -75,15 +75,15 @@ shine_format_bitstream(shine_global_config *config)
 {
   int gr, ch, i;
 
-  for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
-    for ( ch =  0; ch < config->wave.channels; ch++ )
+  for ( ch =  0; ch < config->wave.channels; ch++ )
+    for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
       {
-        int *pi = &config->l3_enc[gr][ch][0];
-        long *pr = &config->mdct_freq[gr][ch][0];
-        for ( i = 0; i < GRANULE_SIZE; i++, pr++, pi++ )
+        int *pi = &config->l3_enc[ch][gr][0];
+        int32_t *pr = &config->mdct_freq[ch][gr][0];
+        for ( i = 0; i < GRANULE_SIZE; i++ )
           {
-            if ( (*pr < 0) && (*pi > 0) )
-              *pi *= -1;
+            if ( (pr[i] < 0) && (pi[i] > 0) )
+              pi[i] *= -1;
           }
       }
 
@@ -109,9 +109,6 @@ shine_format_bitstream(shine_global_config *config)
   shine_BF_BitstreamFrame(config);
 }
 
-static unsigned slen1_tab[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
-static unsigned slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
-
 static void encodeMainData(shine_global_config *config)
 {
   int gr, ch, sfb;
@@ -124,8 +121,6 @@ static void encodeMainData(shine_global_config *config)
         config->l3stream.codedDataPH[gr][ch]->part->nrEntries = 0;
       }
 
-
-
   for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     {
       for ( ch = 0; ch < config->wave.channels; ch++ )
@@ -134,7 +129,7 @@ static void encodeMainData(shine_global_config *config)
           gr_info *gi = &(si.gr[gr].ch[ch].tt);
           unsigned slen1 = slen1_tab[ gi->scalefac_compress ];
           unsigned slen2 = slen2_tab[ gi->scalefac_compress ];
-          int *ix = &config->l3_enc[gr][ch][0];
+          int *ix = &config->l3_enc[ch][gr][0];
 
           if ( (gr == 0) || (si.scfsi[ch][0] == 0) )
             for ( sfb = 0; sfb < 6; sfb++ )
@@ -241,7 +236,7 @@ static void encodeSideInfo( shine_global_config *config )
   well as the definitions of the side information on pages 26 and 27. */
 static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_global_config *config )
 {
-  int shine_huffman_coder_count1( BF_PartHolder **pph, struct huffcodetab *h, int v, int w, int x, int y );
+  int shine_huffman_coder_count1( BF_PartHolder **pph, const struct huffcodetab *h, int v, int w, int x, int y );
   int bigv_bitcount( int ix[GRANULE_SIZE], gr_info *cod_info );
 
   int region1Start;
@@ -249,17 +244,14 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
   int i, bigvalues, count1End;
   int v, w, x, y, bits, cbits, xbits, stuffingBits;
   unsigned int code, ext;
-  struct huffcodetab *h;
-  int bvbits, c1bits, tablezeros, r0, r1, r2, rt, *pr;
+  const struct huffcodetab *h;
+  int tablezeros = 0, r[3] = { 0 }, rt, *pr;
   int bitsWritten = 0;
-  //int idx = 0;
-  tablezeros = 0;
-  r0 = r1 = r2 = 0;
 
   /* 1: Write the bigvalues */
   bigvalues = gi->big_values <<1;
 
-  int *scalefac = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
+  const int *scalefac = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
   unsigned scalefac_index = 100;
 
   scalefac_index = gi->region0_count + 1;
@@ -269,24 +261,10 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
 
   for ( i = 0; i < bigvalues; i += 2 )
     {
-      unsigned tableindex = 100;
       /* get table pointer */
-      if ( i < region1Start )
-        {
-          tableindex = gi->table_select[0];
-          pr = &r0;
-        }
-      else
-        if ( i < region2Start )
-          {
-            tableindex = gi->table_select[1];
-            pr = &r1;
-          }
-        else
-          {
-            tableindex = gi->table_select[2];
-            pr = &r2;
-          }
+      int idx = (i >= region1Start) + (i >= region2Start);
+      unsigned tableindex = gi->table_select[idx];
+      pr = &r[idx];
       h = &shine_huffman_table[ tableindex ];
       /* get huffman code */
       x = ix[i];
@@ -305,7 +283,6 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
           *pr = 0;
         }
     }
-  bvbits = bitsWritten;
 
   /* 2: Write count1 area */
   h = &shine_huffman_table[gi->count1table_select + 32];
@@ -318,7 +295,6 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
       y = ix[i+3];
       bitsWritten += shine_huffman_coder_count1( pph, h, v, w, x, y );
     }
-  c1bits = bitsWritten - bvbits;
   if ( (stuffingBits = gi->part2_3_length - gi->part2_length - bitsWritten) )
     {
       int stuffingWords = stuffingBits / 32;
@@ -333,14 +309,14 @@ static void Huffmancodebits( BF_PartHolder **pph, int *ix, gr_info *gi, shine_gl
     }
 }
 
-int shine_abs_and_sign( int *x )
+static inline int shine_abs_and_sign( int *x )
 {
   if ( *x > 0 ) return 0;
   *x *= -1;
   return 1;
 }
 
-int shine_huffman_coder_count1( BF_PartHolder **pph, struct huffcodetab *h, int v, int w, int x, int y )
+int shine_huffman_coder_count1( BF_PartHolder **pph, const struct huffcodetab *h, int v, int w, int x, int y )
 {
   HUFFBITS huffbits;
   unsigned int signv, signw, signx, signy, p;
@@ -384,8 +360,8 @@ int shine_huffman_coder_count1( BF_PartHolder **pph, struct huffcodetab *h, int 
 int shine_HuffmanCode(int table_select, int x, int y, unsigned int *code,
                 unsigned int *ext, int *cbits, int *xbits )
 {
-  unsigned signx, signy, linbitsx, linbitsy, linbits, xlen, ylen, idx;
-  struct huffcodetab *h;
+  unsigned signx, signy, linbitsx, linbitsy, linbits, ylen, idx;
+  const struct huffcodetab *h;
 
   *cbits = 0;
   *xbits = 0;
@@ -397,7 +373,6 @@ int shine_HuffmanCode(int table_select, int x, int y, unsigned int *code,
   signx = shine_abs_and_sign( &x );
   signy = shine_abs_and_sign( &y );
   h = &(shine_huffman_table[table_select]);
-  xlen = h->xlen;
   ylen = h->ylen;
   linbits = h->linbits;
   linbitsx = linbitsy = 0;

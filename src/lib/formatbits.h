@@ -69,10 +69,10 @@ int  shine_BF_PartLength( BF_BitstreamPart *part );
 /* encode a frame of audio and write it to your bitstream */
 void shine_BF_BitstreamFrame( shine_global_config *config);
 
-BF_PartHolder *shine_BF_newPartHolder( unsigned long int max_elements );
+BF_PartHolder *shine_BF_newPartHolder( unsigned int max_elements );
 BF_PartHolder *shine_BF_resizePartHolder( BF_PartHolder *oldPH, int max_elements );
 BF_PartHolder *shine_BF_addElement( BF_PartHolder *thePH, BF_BitstreamElement *theElement );
-BF_PartHolder *shine_BF_addEntry( BF_PartHolder *thePH, unsigned long int value, unsigned int length );
+BF_PartHolder *shine_BF_addEntry( BF_PartHolder *thePH, unsigned int value, unsigned int length );
 BF_PartHolder *shine_BF_NewHolderFromBitstreamPart( BF_BitstreamPart *thePart );
 BF_PartHolder *shine_BF_LoadHolderFromBitstreamPart( BF_PartHolder *theHolder, BF_BitstreamPart *thePart );
 BF_PartHolder *shine_BF_freePartHolder( BF_PartHolder *thePH );

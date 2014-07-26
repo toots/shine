@@ -29,7 +29,6 @@ static int count1_bitcount( int ix[ GRANULE_SIZE ], gr_info *cod_info );
 static void calc_runlen( int ix[GRANULE_SIZE], gr_info *cod_info );
 static void calc_xmin(shine_psy_ratio_t *ratio, gr_info *cod_info, shine_psy_xmin_t *l3_xmin, int gr, int ch );
 static int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config);
-static int ix_max( int ix[GRANULE_SIZE], unsigned int begin, unsigned int end );
 
 /*
  * shine_inner_loop:
@@ -104,8 +103,8 @@ void shine_iteration_loop(shine_global_config *config)
     for(gr=0; gr<config->mpeg.granules_per_frame; gr++)
     {
       /* setup pointers */
-      ix = config->l3_enc[gr][ch];
-      config->l3loop.xr = config->mdct_freq[gr][ch];
+      ix = config->l3_enc[ch][gr];
+      config->l3loop.xr = config->mdct_freq[ch][gr];
 
       /* Precalculate the square, abs,  and maximum,
        * for use later on.
@@ -127,11 +126,11 @@ void shine_iteration_loop(shine_global_config *config)
         calc_scfsi(&l3_xmin,ch,gr,config);
 
       /* calculation of number of available bit( per granule ) */
-      max_bits = shine_max_reservoir_bits(&config->pe[gr][ch],config);
+      max_bits = shine_max_reservoir_bits(&config->pe[ch][gr],config);
 
       /* reset of iteration variables */
-      memset(config->scalefactor.l[gr][ch],0,22);
-      memset(config->scalefactor.s[gr][ch],0,14);
+      memset(config->scalefactor.l[gr][ch],0,sizeof(config->scalefactor.l[gr][ch]));
+      memset(config->scalefactor.s[gr][ch],0,sizeof(config->scalefactor.s[gr][ch]));
 
       for ( i=4; i--; )
         cod_info->slen[i] = 0;
@@ -174,16 +173,16 @@ void calc_scfsi( shine_psy_xmin_t *l3_xmin, int ch, int gr,
 {
   shine_side_info_t *l3_side = &config->side_info;
   /* This is the scfsi_band table from 2.4.2.7 of the IS */
-  static int scfsi_band_long[5] = { 0, 6, 11, 16, 21 };
+  static const int scfsi_band_long[5] = { 0, 6, 11, 16, 21 };
 
   int scfsi_band;
   unsigned scfsi_set;
 
   int sfb, start, end, i;
   int condition = 0;
-  long temp;
+  int temp;
 
-  int *scalefac_band_long = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
+  const int *scalefac_band_long = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
 
   /* note. it goes quite a bit faster if you uncomment the next bit and exit
      early from scfsi, but you then loose the advantage of common scale factors.
@@ -272,12 +271,7 @@ void calc_scfsi( shine_psy_xmin_t *l3_xmin, int ch, int gr,
       for(scfsi_band=0;scfsi_band<4;scfsi_band++)
          l3_side->scfsi[ch][scfsi_band] = 0;
   } /* if gr == 1 */
-
 }
-
-/* these used in next two functions */
-static int slen1_tab[16] = { 0, 0, 0, 0, 3, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
-static int slen2_tab[16] = { 0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 3 };
 
 /*
  * part2_length:
@@ -366,14 +360,14 @@ void shine_loop_initialise(shine_global_config *config)
        * In quantize, the long multiply does not shift it's result left one
        * bit to compensate.
        */
-      config->l3loop.steptabi[i] = (long)((config->l3loop.steptab[i]*2) + 0.5);
+      config->l3loop.steptabi[i] = (int32_t)((config->l3loop.steptab[i]*2) + 0.5);
   }
 
   /* quantize: vector conversion, three quarter power table.
    * The 0.5 is for rounding, the .0946 comes from the spec.
    */
   for(i=10000; i--;)
-    config->l3loop.int2idx[i] = (long)(sqrt(sqrt((double)i)*(double)i) - 0.0946 + 0.5);
+    config->l3loop.int2idx[i] = (int)(sqrt(sqrt((double)i)*(double)i) - 0.0946 + 0.5);
 }
 
 /*
@@ -384,7 +378,8 @@ void shine_loop_initialise(shine_global_config *config)
  */
 int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config )
 {
-  int i, max, ln, scalei;
+  int i, max, ln;
+  int32_t scalei;
   double scale, dbl;
 
   scalei = config->l3loop.steptabi[stepsize+127]; /* 2**(-stepsize/4) */
@@ -418,14 +413,14 @@ int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config )
     }
 
   return max;
- }
+}
 
 /*
  * ix_max:
  * -------
  * Function: Calculate the maximum of ix from 0 to 575
  */
-int ix_max( int ix[GRANULE_SIZE], unsigned int begin, unsigned int end )
+static inline int ix_max( int ix[GRANULE_SIZE], unsigned int begin, unsigned int end )
 {
   register int i;
   register int max = 0;
@@ -519,9 +514,9 @@ int count1_bitcount(int ix[GRANULE_SIZE], gr_info *cod_info)
  */
 void subdivide(gr_info *cod_info, shine_global_config *config)
 {
-  int *scalefac_band_long  = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
+  const int *scalefac_band_long  = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
 
-  static struct
+  static const struct
   {
     unsigned region0_count;
     unsigned region1_count;
@@ -757,7 +752,7 @@ int count_bit(int ix[GRANULE_SIZE],
   unsigned            linbits, ylen;
   register int        i, sum;
   register int        x,y;
-  struct huffcodetab *h;
+  const struct huffcodetab *h;
 
   if(!table)
     return 0;
@@ -825,34 +820,33 @@ int count_bit(int ix[GRANULE_SIZE],
 int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE],
                         gr_info * cod_info, shine_global_config *config)
 {
-  int top,bot,next,last,bit;
+  int bit, next, count;
 
-  top  = -120;
-  bot  = 0;
-  next = top;
+  next  = -120;
+  count = 120;
 
-  do
-  {
-    last = next;
-    next = (top+bot) >> 1;
+  do {
+    int half = count / 2;
 
-      if (quantize(ix,next,config) > 8192)
+    if (quantize(ix, next + half, config) > 8192)
       bit = 100000;  /* fail */
     else
     {
-      calc_runlen(ix,cod_info);            /* rzero,count1,big_values */
+      calc_runlen(ix, cod_info);           /* rzero,count1,big_values */
       bit = count1_bitcount(ix, cod_info); /* count1_table selection */
       subdivide(cod_info, config);         /* bigvalues sfb division */
-      bigv_tab_select(ix,cod_info);        /* codebook selection */
-      bit += bigv_bitcount(ix,cod_info);   /* bit count */
+      bigv_tab_select(ix, cod_info);       /* codebook selection */
+      bit += bigv_bitcount(ix, cod_info);  /* bit count */
     }
 
-    if (bit>desired_rate)
-      top = next;
+    if (bit < desired_rate)
+      count = half;
     else
-      bot = next;
-  }
-  while((bit!=desired_rate) && abs(last-next)>1);
+    {
+      next += half;
+      count -= half;
+    }
+  } while (count > 1);
+
   return next;
 }
-

@@ -1,6 +1,7 @@
 /* layer3.c */
 
 #include "types.h"
+#include "tables.h"
 #include "layer3.h"
 #include "l3subband.h"
 #include "l3mdct.h"
@@ -38,7 +39,7 @@ int shine_mpeg_version(int samplerate_index) {
     return MPEG_25;
 }
 
-int shine_find_samplerate_index(long freq)
+int shine_find_samplerate_index(int freq)
 {
   int i;
 
@@ -58,7 +59,7 @@ int shine_find_bitrate_index(int bitr, int mpeg_version)
   return -1; /* error - not a valid samplerate for encoder */
 }
 
-int shine_check_config(long freq, int bitr)
+int shine_check_config(int freq, int bitr)
 {
   int samplerate_index, bitrate_index, mpeg_version;
 
@@ -147,39 +148,19 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
   return config;
 }
 
-unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, long *written)
+static unsigned char *shine_encode_buffer_internal(shine_global_config *config, int *written, int stride)
 {
-  int i, gr, channel;
-
-  config->buffer[0] = data[0];
-  if (config->wave.channels == 2)
-    config->buffer[1] = data[1];
-
   if(config->mpeg.frac_slots_per_frame)
   {
-    if(config->mpeg.slot_lag>(config->mpeg.frac_slots_per_frame-1.0))
-    { /* No padding for this frame */
-      config->mpeg.slot_lag    -= config->mpeg.frac_slots_per_frame;
-      config->mpeg.padding = 0;
-    }
-    else
-    { /* Padding for this frame  */
-      config->mpeg.slot_lag    += (1-config->mpeg.frac_slots_per_frame);
-      config->mpeg.padding = 1;
-    }
+    config->mpeg.padding   = (config->mpeg.slot_lag <= (config->mpeg.frac_slots_per_frame - 1.0));
+    config->mpeg.slot_lag += (config->mpeg.padding - config->mpeg.frac_slots_per_frame);
   }
 
   config->mpeg.bits_per_frame = 8*(config->mpeg.whole_slots_per_frame + config->mpeg.padding);
   config->mean_bits = (config->mpeg.bits_per_frame - config->sideinfo_len)/config->mpeg.granules_per_frame;
 
-  /* polyphase filtering */
-  for(gr=0;gr<config->mpeg.granules_per_frame;gr++)
-    for(channel=config->wave.channels; channel--; )
-      for(i=0;i<18;i++)
-        shine_window_filter_subband(&config->buffer[channel], &config->l3_sb_sample[channel][gr+1][i][0] ,channel,config);
-
   /* apply mdct to the polyphase output */
-  shine_mdct_sub(config);
+  shine_mdct_sub(config, stride);
 
   /* bit and noise allocation */
   shine_iteration_loop(config);
@@ -194,8 +175,25 @@ unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, 
   return config->bs.data;
 }
 
-unsigned char *shine_flush(shine_global_config *config, long *written) {
-  shine_empty_buffer(&config->bs, MINIMUM);
+unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, int *written)
+{
+  config->buffer[0] = data[0];
+  if (config->wave.channels == 2)
+    config->buffer[1] = data[1];
+
+  return shine_encode_buffer_internal(config, written, 1);
+}
+
+unsigned char *shine_encode_buffer_interleaved(shine_global_config *config, int16_t *data, int *written)
+{
+  config->buffer[0] = data;
+  if (config->wave.channels == 2)
+    config->buffer[1] = data + 1;
+
+  return shine_encode_buffer_internal(config, written, config->wave.channels);
+}
+
+unsigned char *shine_flush(shine_global_config *config, int *written) {
   *written = config->bs.data_position;
   config->bs.data_position = 0;
 

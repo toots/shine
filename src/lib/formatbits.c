@@ -68,7 +68,7 @@ static int            write_side_info(shine_global_config *config);
 static int            WitePartSideInfo(BF_BitstreamPart *part, shine_global_config *config);
 
 static void           main_data( shine_global_config *config);
-static void           WriteMainDataBits( unsigned long int val, unsigned int nbits, shine_global_config *config);
+static void           WriteMainDataBits( unsigned int val, unsigned int nbits, shine_global_config *config);
 static void           WritePartMainData(BF_BitstreamPart *part, shine_global_config *config);
 
 static BF_PartHolder *BF_LoadHolderFromBitstreamPart( BF_PartHolder *theHolder, BF_BitstreamPart *thePart );
@@ -160,7 +160,7 @@ static void main_data(shine_global_config *config)
   locations
 */
 
-static void WriteMainDataBits(unsigned long int val,
+static void WriteMainDataBits(unsigned int val,
                               unsigned int nbits,
                               shine_global_config *config)
 {
@@ -180,10 +180,8 @@ static void WriteMainDataBits(unsigned long int val,
       shine_putbits( &config->bs, extra, config->formatbits.BitsRemaining);
       config->formatbits.BitCount = write_side_info(config);
       config->formatbits.BitsRemaining = config->mpeg.bits_per_frame - config->formatbits.BitCount;
-      shine_putbits( &config->bs, val, nbits);
     }
-  else
-    shine_putbits( &config->bs, val, nbits);
+  shine_putbits( &config->bs, val, nbits);
 
   config->formatbits.BitCount      += nbits;
   config->formatbits.BitsRemaining -= nbits;
@@ -234,7 +232,7 @@ static void store_side_info(shine_global_config *config)
 }
 
 /* Allocate a new holder of a given size */
-BF_PartHolder *shine_BF_newPartHolder(unsigned long int max_elements)
+BF_PartHolder *shine_BF_newPartHolder(unsigned int max_elements)
 {
   BF_PartHolder *newPH = calloc(1, sizeof(BF_PartHolder));
   /* assert( newPH ); */
@@ -271,7 +269,7 @@ static BF_PartHolder *BF_LoadHolderFromBitstreamPart( BF_PartHolder *theHolder, 
   and frees the old one after copying the data. */
 BF_PartHolder *shine_BF_resizePartHolder( BF_PartHolder *oldPH, int max_elements )
 {
-  int elems, i;
+  int elems;
   BF_PartHolder *newPH;
 
 #ifdef DEBUG
@@ -283,8 +281,7 @@ BF_PartHolder *shine_BF_resizePartHolder( BF_PartHolder *oldPH, int max_elements
   /* copy values from old to new */
   elems = (oldPH->max_elements > max_elements) ? max_elements : oldPH->max_elements;
   newPH->part->nrEntries = elems;
-  for ( i = 0; i < elems; i++ )
-    newPH->part->element[i] = oldPH->part->element[i];
+  memcpy(newPH->part->element, oldPH->part->element, elems * sizeof(newPH->part->element[0]));
 
   /* free old holder */
   shine_BF_freePartHolder( oldPH );
@@ -321,7 +318,7 @@ BF_PartHolder *shine_BF_addElement( BF_PartHolder *thePH, BF_BitstreamElement *t
 
 /* Add a bit value and length to the element list in thePH */
 BF_PartHolder *shine_BF_addEntry( BF_PartHolder *thePH,
-                            unsigned long int value,
+                            unsigned int value,
                             unsigned int length )
 {
   BF_BitstreamElement myElement;
