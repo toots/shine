@@ -62,15 +62,17 @@ void shine_window_filter_subband(int16_t **buffer, long s[SBLIMIT], int ch, shin
 
   for (i=64; i--; ) {
     int32_t s_value;
-  	mul0  (s_value, config->subband.x[ch][(config->subband.off[ch] + i + (0<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (0<<6)]);
-  	muladd(s_value, config->subband.x[ch][(config->subband.off[ch] + i + (1<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (1<<6)]);
-  	muladd(s_value, config->subband.x[ch][(config->subband.off[ch] + i + (2<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (2<<6)]);
-  	muladd(s_value, config->subband.x[ch][(config->subband.off[ch] + i + (3<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (3<<6)]);
-  	muladd(s_value, config->subband.x[ch][(config->subband.off[ch] + i + (4<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (4<<6)]);
-  	muladd(s_value, config->subband.x[ch][(config->subband.off[ch] + i + (5<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (5<<6)]);
-  	muladd(s_value, config->subband.x[ch][(config->subband.off[ch] + i + (6<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (6<<6)]);
-  	muladd(s_value, config->subband.x[ch][(config->subband.off[ch] + i + (7<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (7<<6)]);
-    mulz  (s_value);
+    uint32_t s_value_lo __attribute__((unused));
+
+    mul0  (s_value, s_value_lo, config->subband.x[ch][(config->subband.off[ch] + i + (0<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (0<<6)]);
+    muladd(s_value, s_value_lo, config->subband.x[ch][(config->subband.off[ch] + i + (1<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (1<<6)]);
+    muladd(s_value, s_value_lo, config->subband.x[ch][(config->subband.off[ch] + i + (2<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (2<<6)]);
+    muladd(s_value, s_value_lo, config->subband.x[ch][(config->subband.off[ch] + i + (3<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (3<<6)]);
+    muladd(s_value, s_value_lo, config->subband.x[ch][(config->subband.off[ch] + i + (4<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (4<<6)]);
+    muladd(s_value, s_value_lo, config->subband.x[ch][(config->subband.off[ch] + i + (5<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (5<<6)]);
+    muladd(s_value, s_value_lo, config->subband.x[ch][(config->subband.off[ch] + i + (6<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (6<<6)]);
+    muladd(s_value, s_value_lo, config->subband.x[ch][(config->subband.off[ch] + i + (7<<6)) & (HAN_SIZE-1)], shine_enwindow[i + (7<<6)]);
+    mulz  (s_value, s_value_lo);
     y[i] = s_value;
   }
 
@@ -78,17 +80,19 @@ void shine_window_filter_subband(int16_t **buffer, long s[SBLIMIT], int ch, shin
 
   for (i=SBLIMIT; i--; ) {
     int32_t s_value;
-  	mul0(s_value, config->subband.fl[i][63], y[63]);
+    uint32_t s_value_lo __attribute__((unused));
+
+    mul0(s_value, s_value_lo, config->subband.fl[i][63], y[63]);
     for (j=63; j; j-=7) {
-      muladd(s_value, config->subband.fl[i][j-1], y[j-1]);
-      muladd(s_value, config->subband.fl[i][j-2], y[j-2]);
-      muladd(s_value, config->subband.fl[i][j-3], y[j-3]);
-      muladd(s_value, config->subband.fl[i][j-4], y[j-4]);
-      muladd(s_value, config->subband.fl[i][j-5], y[j-5]);
-      muladd(s_value, config->subband.fl[i][j-6], y[j-6]);
-      muladd(s_value, config->subband.fl[i][j-7], y[j-7]);
+      muladd(s_value, s_value_lo, config->subband.fl[i][j-1], y[j-1]);
+      muladd(s_value, s_value_lo, config->subband.fl[i][j-2], y[j-2]);
+      muladd(s_value, s_value_lo, config->subband.fl[i][j-3], y[j-3]);
+      muladd(s_value, s_value_lo, config->subband.fl[i][j-4], y[j-4]);
+      muladd(s_value, s_value_lo, config->subband.fl[i][j-5], y[j-5]);
+      muladd(s_value, s_value_lo, config->subband.fl[i][j-6], y[j-6]);
+      muladd(s_value, s_value_lo, config->subband.fl[i][j-7], y[j-7]);
     }
-    mulz(s_value);
+    mulz(s_value, s_value_lo);
     s[i] = s_value;
   }
 }

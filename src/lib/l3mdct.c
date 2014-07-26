@@ -93,17 +93,19 @@ void shine_mdct_sub(shine_global_config *config, int stride)
         for(k=18; k--; )
         {
           int32_t vm;
-          mul0(vm, mdct_in[35], config->mdct.cos_l[k][35]);
+          uint32_t vm_lo __attribute__((unused));
+
+          mul0(vm, vm_lo, mdct_in[35], config->mdct.cos_l[k][35]);
           for(j=35; j; j-=7) {
-            muladd(vm, mdct_in[j-1], config->mdct.cos_l[k][j-1]);
-            muladd(vm, mdct_in[j-2], config->mdct.cos_l[k][j-2]);
-            muladd(vm, mdct_in[j-3], config->mdct.cos_l[k][j-3]);
-            muladd(vm, mdct_in[j-4], config->mdct.cos_l[k][j-4]);
-            muladd(vm, mdct_in[j-5], config->mdct.cos_l[k][j-5]);
-            muladd(vm, mdct_in[j-6], config->mdct.cos_l[k][j-6]);
-            muladd(vm, mdct_in[j-7], config->mdct.cos_l[k][j-7]);
+            muladd(vm, vm_lo, mdct_in[j-1], config->mdct.cos_l[k][j-1]);
+            muladd(vm, vm_lo, mdct_in[j-2], config->mdct.cos_l[k][j-2]);
+            muladd(vm, vm_lo, mdct_in[j-3], config->mdct.cos_l[k][j-3]);
+            muladd(vm, vm_lo, mdct_in[j-4], config->mdct.cos_l[k][j-4]);
+            muladd(vm, vm_lo, mdct_in[j-5], config->mdct.cos_l[k][j-5]);
+            muladd(vm, vm_lo, mdct_in[j-6], config->mdct.cos_l[k][j-6]);
+            muladd(vm, vm_lo, mdct_in[j-7], config->mdct.cos_l[k][j-7]);
           }
-          mulz(vm);
+          mulz(vm, vm_lo);
           mdct_enc[band][k] = vm;
         }
 

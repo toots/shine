@@ -17,10 +17,10 @@
 #endif
 
 #ifndef mul0
-#define mul0(d,a,b)  	((d)  = mul((a), (b)))
-#define muladd(d,a,b)   ((d) += mul((a), (b)))
-#define mulsub(d,a,b)   ((d) -= mul((a), (b)))
-#define mulz(d)
+#define mul0(hi,lo,a,b)     ((hi)  = mul((a), (b)))
+#define muladd(hi,lo,a,b)   ((hi) += mul((a), (b)))
+#define mulsub(hi,lo,a,b)   ((hi) -= mul((a), (b)))
+#define mulz(hi,lo)
 #endif
 
 #ifndef cmuls
