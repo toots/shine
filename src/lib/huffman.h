@@ -1,4 +1,4 @@
-#define HUFFBITS unsigned long int
+#define HUFFBITS uint16_t
 #define HTN     34
 #define MXOFF   250
 
