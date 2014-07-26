@@ -150,14 +150,11 @@ int main(int argc, char **argv)
 {
   wave_t         wave;
   time_t         start_time, end_time;
-  int16_t        *buffer[2];
-  int16_t        chan1[SHINE_MAX_SAMPLES], chan2[SHINE_MAX_SAMPLES];
+  int16_t        buffer[2*SHINE_MAX_SAMPLES];
   shine_config_t config;
   shine_t        s;
   int            written;
   unsigned char  *data;
-
-  buffer[0] = chan1, buffer[1] = chan2;
 
   time(&start_time);
 
@@ -214,7 +211,7 @@ int main(int argc, char **argv)
 
   /* All the magic happens here */
   while (wave_get(buffer, &wave, force_mono, samples_per_pass)) {
-    data = shine_encode_buffer(s, buffer, &written);
+    data = shine_encode_buffer_interleaved(s, buffer, &written);
     if ( write_mp3(written, data, &config) != written )
     {
        fprintf(stderr, "shineenc: write error\n");

@@ -184,7 +184,7 @@ unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, 
   return shine_encode_buffer_internal(config, written, 1);
 }
 
-unsigned char *shine_encode_buffer_interlaced(shine_global_config *config, int16_t *data, int *written)
+unsigned char *shine_encode_buffer_interleaved(shine_global_config *config, int16_t *data, int *written)
 {
   config->buffer[0] = data;
   if (config->wave.channels == 2)
