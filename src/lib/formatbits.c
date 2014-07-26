@@ -68,7 +68,7 @@ static int            write_side_info(shine_global_config *config);
 static int            WitePartSideInfo(BF_BitstreamPart *part, shine_global_config *config);
 
 static void           main_data( shine_global_config *config);
-static void           WriteMainDataBits( unsigned long int val, unsigned int nbits, shine_global_config *config);
+static void           WriteMainDataBits( unsigned int val, unsigned int nbits, shine_global_config *config);
 static void           WritePartMainData(BF_BitstreamPart *part, shine_global_config *config);
 
 static BF_PartHolder *BF_LoadHolderFromBitstreamPart( BF_PartHolder *theHolder, BF_BitstreamPart *thePart );
@@ -160,7 +160,7 @@ static void main_data(shine_global_config *config)
   locations
 */
 
-static void WriteMainDataBits(unsigned long int val,
+static void WriteMainDataBits(unsigned int val,
                               unsigned int nbits,
                               shine_global_config *config)
 {
@@ -232,7 +232,7 @@ static void store_side_info(shine_global_config *config)
 }
 
 /* Allocate a new holder of a given size */
-BF_PartHolder *shine_BF_newPartHolder(unsigned long int max_elements)
+BF_PartHolder *shine_BF_newPartHolder(unsigned int max_elements)
 {
   BF_PartHolder *newPH = calloc(1, sizeof(BF_PartHolder));
   /* assert( newPH ); */
@@ -318,7 +318,7 @@ BF_PartHolder *shine_BF_addElement( BF_PartHolder *thePH, BF_BitstreamElement *t
 
 /* Add a bit value and length to the element list in thePH */
 BF_PartHolder *shine_BF_addEntry( BF_PartHolder *thePH,
-                            unsigned long int value,
+                            unsigned int value,
                             unsigned int length )
 {
   BF_BitstreamElement myElement;

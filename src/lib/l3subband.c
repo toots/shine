@@ -29,7 +29,7 @@ void shine_subband_initialise(shine_global_config *config)
       else
         modf(filter-0.5, &filter);
       /* scale and convert to fixed point before storing */
-      config->subband.fl[i][j] = (long)(filter * (0x7fffffff * 1e-9));
+      config->subband.fl[i][j] = (int32_t)(filter * (0x7fffffff * 1e-9));
     }
 }
 
@@ -47,7 +47,7 @@ void shine_subband_initialise(shine_global_config *config)
  * picking out values from the windowed samples, and then multiplying
  * them by the filter matrix, producing 32 subband samples.
  */
-void shine_window_filter_subband(int16_t **buffer, long s[SBLIMIT], int ch, shine_global_config *config, int stride)
+void shine_window_filter_subband(int16_t **buffer, int32_t s[SBLIMIT], int ch, shine_global_config *config, int stride)
 {
   int32_t y[64];
   int i,j;

@@ -39,7 +39,7 @@ void shine_close_bit_stream(bitstream_t *bs)
  * val = value to write into the buffer
  * N = number of bits of val
  */
-void shine_putbits(bitstream_t *bs, unsigned long int val, unsigned int N)
+void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N)
 {
 	const unsigned int endian = 1;
 

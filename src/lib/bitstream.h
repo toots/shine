@@ -22,6 +22,6 @@ typedef struct  bit_stream_struc {
 
 void shine_open_bit_stream(bitstream_t *bs,const int size);
 void shine_close_bit_stream(bitstream_t *bs);
-void shine_putbits(bitstream_t *bs,unsigned long int val, unsigned int N);
+void shine_putbits(bitstream_t *bs,unsigned int val, unsigned int N);
 
 #endif

@@ -180,7 +180,7 @@ void calc_scfsi( shine_psy_xmin_t *l3_xmin, int ch, int gr,
 
   int sfb, start, end, i;
   int condition = 0;
-  long temp;
+  int temp;
 
   const int *scalefac_band_long = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
 
@@ -360,14 +360,14 @@ void shine_loop_initialise(shine_global_config *config)
        * In quantize, the long multiply does not shift it's result left one
        * bit to compensate.
        */
-      config->l3loop.steptabi[i] = (long)((config->l3loop.steptab[i]*2) + 0.5);
+      config->l3loop.steptabi[i] = (int32_t)((config->l3loop.steptab[i]*2) + 0.5);
   }
 
   /* quantize: vector conversion, three quarter power table.
    * The 0.5 is for rounding, the .0946 comes from the spec.
    */
   for(i=10000; i--;)
-    config->l3loop.int2idx[i] = (long)(sqrt(sqrt((double)i)*(double)i) - 0.0946 + 0.5);
+    config->l3loop.int2idx[i] = (int)(sqrt(sqrt((double)i)*(double)i) - 0.0946 + 0.5);
 }
 
 /*
@@ -378,7 +378,8 @@ void shine_loop_initialise(shine_global_config *config)
  */
 int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config )
 {
-  int i, max, ln, scalei;
+  int i, max, ln;
+  int32_t scalei;
   double scale, dbl;
 
   scalei = config->l3loop.steptabi[stepsize+127]; /* 2**(-stepsize/4) */
