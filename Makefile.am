@@ -13,7 +13,7 @@ libshine_la_SOURCES  = src/lib/bitstream.c src/lib/formatbits.c src/lib/huffman.
                        src/lib/l3subband.c src/lib/layer3.c src/lib/reservoir.c \
                        src/lib/tables.c
 
-libshine_la_LDFLAGS  = -lm -no-undefined -version-info 3:0:0 -export-symbols libshine.sym
+libshine_la_LDFLAGS  = -lm -no-undefined -version-info 3:1:0 -export-symbols libshine.sym
 libshine_ladir       = ${prefix}/include/shine
 libshine_la_HEADERS  = src/lib/layer3.h
 
