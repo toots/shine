@@ -100,6 +100,8 @@ int shine_find_bitrate_index(int bitr, int mpeg_version);
  * of acceptable values. */
 int shine_find_samplerate_index(int freq);
 
+/* Returns the MPEG version used for the given samplerate index. See above
+ * `mpeg_versions` for a list of possible values. */ 
 int shine_mpeg_version(int samplerate_index);
 
 /* Check if a given bitrate and samplerate is supported by the encoder (see `samplerates` 
@@ -139,7 +141,7 @@ int shine_samples_per_pass(shine_t s);
  * was written. */
 unsigned char *shine_encode_buffer(shine_t s, int16_t **data, int *written);
 
-/* Encode audio data. Source data must have `shine_samples_per_pass(s)` audio samples per
+/* Encode interleaved audio data. Source data must have `shine_samples_per_pass(s)` audio samples per
  * channels. Mono encoder only expect one channel. 
  *
  * Returns a pointer to freshly encoded data while `written` contains the size of
