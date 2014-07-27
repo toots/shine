@@ -35,26 +35,9 @@ flushed = shine.close();
 How fast is it?
 ---------------
 
-You can run the test suite located in `test/`. As of now (27/07/2013), only firefox
-and Chome Canary seem to show performances decent enough for real-time encoding.
-
-Chrome Canary:
-```
-Executing encoding test
-Got WAV file.
-Encoding..
-Done encoding.
-File duration: 5.57 seconds
-Encoding time: 4.88 seconds
-Encoding rate: 1.14X
-
-Executing rounds test
-Encoding 50 buffers of 4096 samples
-Done encoding
-Total duration: 4.64
-Encoding time: 2.54
-Encoding rate: 1.83X
-```
+You can run the test suite located in `test/`. As of now (26/07/2014), only firefox
+and seems to show performances decent enough for real-time encoding while Google Chrome
+can encode between 1X and 2X.
 
 Chrome:
 ```
@@ -63,15 +46,15 @@ Got WAV file.
 Encoding..
 Done encoding.
 File duration: 5.57 seconds
-Encoding time: 19.03 seconds
-Encoding rate: 0.29X
+Encoding time: 5.18 seconds
+Encoding rate: 1.08X
 
 Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64
-Encoding time: 12.60
-Encoding rate: 0.37X
+Encoding time: 2.73
+Encoding rate: 1.70X
 ```
 
 Firefox:
@@ -81,15 +64,15 @@ Got WAV file.
 Encoding..
 Done encoding.
 File duration: 5.57 seconds
-Encoding time: 1.72 seconds
-Encoding rate: 3.23X
+Encoding time: 1.48 seconds
+Encoding rate: 3.76X
 
 Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64
-Encoding time: 1.10
-Encoding rate: 4.23X
+Encoding time: 0.98
+Encoding rate: 4.72X
 ```
 
 Safari:
@@ -99,31 +82,31 @@ Got WAV file.
 Encoding..
 Done encoding.
 File duration: 5.57 seconds
-Encoding time: 23.14 seconds
-Encoding rate: 0.24X
+Encoding time: 11.77 seconds
+Encoding rate: 0.47X
 
 Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64
-Encoding time: 7.07
-Encoding rate: 0.66X
+Encoding time: 6.93
+Encoding rate: 0.67X
 ```
 
-NodeJS, v0.10.7:
+NodeJS, v0.10.24:
 ```
 Executing encoding test
 Got WAV file.
 Encoding..
 Done encoding.
 File duration: 5.57 seconds
-Encoding time: 12.27 seconds
-Encoding rate: 0.45X
+Encoding time: 22.57 seconds
+Encoding rate: 0.25X
 
 Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64
-Encoding time: 6.82
-Encoding rate: 0.68X
+Encoding time: 11.46
+Encoding rate: 0.40X
 ```
