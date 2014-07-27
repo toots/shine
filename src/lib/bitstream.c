@@ -41,8 +41,6 @@ void shine_close_bit_stream(bitstream_t *bs)
  */
 void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N)
 {
-	const unsigned int endian = 1;
-
 #ifdef DEBUG
 	if (N > 32)
 		printf("Cannot read or write more than %d bits at a time.\n", 32);
@@ -61,10 +59,11 @@ void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N)
 
 		N -= bs->cache_bits;
 		bs->cache |= val >> N;
-		if (*((unsigned char*)&endian))
-			*(unsigned int*)(bs->data + bs->data_position) = SWAB32(bs->cache);
-		else
-			*(unsigned int*)(bs->data + bs->data_position) = bs->cache;
+#ifdef SHINE_BIG_ENDIAN
+		*(unsigned int*)(bs->data + bs->data_position) = bs->cache;
+#else
+		*(unsigned int*)(bs->data + bs->data_position) = SWAB32(bs->cache);
+#endif
 		bs->data_position += sizeof(unsigned int);
 		bs->cache_bits = 32 - N;
 		bs->cache = val << bs->cache_bits;
