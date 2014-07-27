@@ -1,13 +1,3 @@
-/*
-  ASM functions:
-
-    mul     Fractional multiply.
-    muls    Fractional multiply with single bit left shift.
-    mulr    Fractional multiply with rounding.
-    mulsr   Fractional multiply with single bit left shift and rounding.
-
-*/
-
 #include <stdint.h>
 
 #define mul(a,b) \

@@ -11,18 +11,16 @@
 
 #include "bitstream.h"
 
-/* TODO: Assembler code did not seem to like
- * moving all static variables to allocated struct..
- * Needs fixing, so disabled for now. However, it does
- * not seem to make much of a difference anyway..
- 
-#if defined(__arm__)
-#include "mult_sarm_gcc.h"
-#endif
-*/
+/* Include arch-specific instructions,
+ * when defined. */
 #if defined(__mips__)
 #include "mult_mips_gcc.h"
+#elif defined(__arm__)
+#include "mult_sarm_gcc.h"
 #endif
+
+/* Include and define generic instructions,
+ * when not already defined above. */
 #include "mult_noarch_gcc.h"
 
 #ifndef SWAB32

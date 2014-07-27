@@ -2,6 +2,8 @@ LOCAL_PATH := $(call my-dir)/..
 
 include $(CLEAR_VARS)
 
+LOCAL_ARM_MODE  := arm
+
 LOCAL_CFLAGS    := -I$(LOCAL_PATH)/src/lib
 
 LOCAL_MODULE    := shineenc

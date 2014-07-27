@@ -1,28 +1,21 @@
-/*
-  ASM functions:
-
-    mul     Fractional multiply.
-    muls    Fractional multiply with single bit left shift.
-    mulr    Fractional multiply with rounding.
-    mulsr   Fractional multiply with single bit left shift and rounding.
-
-*/
-
 #include <stdint.h>
 
 /* Fractional multiply */
-static inline int32_t mul(int32_t x,int32_t y) {
+static inline int32_t _mul(int32_t x,int32_t y) {
     register int32_t result;
+    asm (
 #if __ARM_ARCH >= 6
-    asm ("smmul %0, %2, %1" : "=r" (result) : "r" (x), "r" (y));
+        "smmul %0, %2, %1" : "=r" (result) : "r" (x), "r" (y)
 #else
-    asm ("smull r3, %0, %2, %1" : "=r" (result) : "r" (x), "r" (y) : "r3" );
+        "smull r3, %0, %2, %1" : "=r" (result) : "r" (x), "r" (y) : "r3"
 #endif
+    );
     return result;
 }
+#define mul _mul
 
 /* Fractional multiply with single bit left shift. */
-static inline int32_t muls(int32_t x, int32_t y) {
+static inline int32_t _muls(int32_t x, int32_t y) {
     int32_t result;
     asm (
         "smull r3, %0, %2, %1\n\t"
@@ -32,23 +25,25 @@ static inline int32_t muls(int32_t x, int32_t y) {
     );
     return result;
 }
+#define _muls muls
 
-static inline int32_t mulr(int32_t x, int32_t y) {
+static inline int32_t _mulr(int32_t x, int32_t y) {
     int32_t result;
-#if __ARM_ARCH >= 6
-    asm ("smmulr %0, %2, %1" : "=r" (result) : "r" (x), "r" (y));
-#else
     asm (
+#if __ARM_ARCH >= 6
+        "smmulr %0, %2, %1" : "=r" (result) : "r" (x), "r" (y)
+#else
         "smull r3, %0, %2, %1\n\t"
         "adds r3, r3, #0x80000000\n\t"
         "adc %0, %0, #0"
         : "=r" (result) : "r" (x), "r" (y) : "r3", "cc"
-    );
 #endif
+    );
     return result;
 }
+#define mulr _mulr
 
-static inline int32_t mulsr(int32_t x, int32_t y) {
+static inline int32_t _mulsr(int32_t x, int32_t y) {
     int32_t result;
     asm (
         "smull r3, %0, %1, %2\n\t"
@@ -60,6 +55,7 @@ static inline int32_t mulsr(int32_t x, int32_t y) {
     );
     return result;
 }
+#define mulsr _mulsr
 
 #define mul0(hi,lo,a,b) \
     asm ("smull %0, %1, %2, %3" : "=r" (lo), "=r" (hi) : "r" (a), "r" (b))
