@@ -1,11 +1,16 @@
-3.0.1 (xx):
+3.1.0 (xx):
 =====
 * Fixed WAV file parsing.
 * Explicitely unroll some loops
   to enhance encoding speed. Thanks
-	to @ckthomas on github for these
-	changes!
+  to @ckthomas on github for these
+  changes!
 * Add -funroll-loops to CFLAGS
+* Major code cleanup by @zhaoxiu-zeng
+  on `LingYunZhi/shine`.
+* Added interleaved API, also contributed
+  by @zhaoxiu-zeng
+* Bumped ABI to 3.1.0
 
 3.0.0 (2013-07-21):
 ======

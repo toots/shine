@@ -167,6 +167,17 @@ unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config,
   return 1;
 }
 
+#ifdef SHINE_BIG_ENDIAN
+static inline int16_t bswap_16 (int16_t x) { return ((((x) >> 8) & 0xff) | (((x) & 0xff) << 8)); }
+
+void swap_buffer(int16_t *sample_buffer, int length)
+{
+  int i;
+  for (i=0; i<length; i++)
+    sample_buffer[i] = bswap_16(sample_buffer[i]);
+}
+#endif
+
 /*
  * read_samples:
  * -------------
@@ -182,6 +193,10 @@ int read_samples(int16_t *sample_buffer, int frame_size, FILE *file)
   if(samples_read<frame_size && samples_read>0) /* Pad sample with zero's */
     while(samples_read<frame_size) sample_buffer[samples_read++] = 0;
 
+#ifdef SHINE_BIG_ENDIAN
+  swap_buffer(sample_buffer, samples_read);
+#endif
+
   return samples_read;
 }
 
@@ -189,39 +204,10 @@ int read_samples(int16_t *sample_buffer, int frame_size, FILE *file)
  * wave_get:
  * ---------
  * Expects an interleaved 16bit pcm stream from read_samples, which it
- * de-interleaves into buffer.
+ * reads into the given buffer.
  */
-int wave_get(int16_t **buffer, wave_t *wave, int force_mono, int samp_per_pass)
+int wave_get(int16_t *buffer, wave_t *wave, int samp_per_pass)
 {
-  FILE *file = wave->file;
-
-  static int16_t temp_buf[2304];
-  int            samples_read;
-  int            j;
-
-  if (wave->channels == 1) {
-    samples_read = read_samples(temp_buf,samp_per_pass, file);
-    for(j=0;j<samp_per_pass;j++)
-    {
-      buffer[0][j] = temp_buf[j];
-      buffer[1][j] = 0;
-    }
-  } else {
-    samples_read = read_samples(temp_buf,samp_per_pass<<1, file);
-    if (!force_mono) {
-      for(j=0;j<samp_per_pass;j++)
-      {
-        buffer[0][j] = temp_buf[2*j];
-        buffer[1][j] = temp_buf[2*j+1];
-      }
-    } else {
-      for(j=0;j<samp_per_pass;j++)
-      {
-        buffer[0][j] = (temp_buf[2*j] + temp_buf[2*j+1]) / 2;
-        buffer[1][j] = 0;
-      }
-    }
-  }
-  return samples_read;
+  return read_samples(buffer,samp_per_pass*wave->channels, wave->file);
 }
 

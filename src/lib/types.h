@@ -104,8 +104,8 @@ typedef struct BF_PartHolder {
 } BF_PartHolder;
 
 typedef struct {
-    int  channels;
-    long samplerate;
+    int channels;
+    int samplerate;
 } priv_shine_wave_t;
 
 typedef struct {
@@ -116,8 +116,8 @@ typedef struct {
     int    bitr;      /* + */ /* Must conform to known bitrate - see Main.c */
     int    emph;      /* + */ /* De-emphasis */
     int    padding;
-    long   bits_per_frame;
-    long   bits_per_slot;
+    int    bits_per_frame;
+    int    bits_per_slot;
     double frac_slots_per_frame;
     double slot_lag;
     int    whole_slots_per_frame;
