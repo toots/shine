@@ -96,7 +96,7 @@ void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg);
  * of acceptable values. */
 int shine_find_bitrate_index(int bitr, int mpeg_version);
 
-/* Check if a given bitrate is supported by the encoder (see `samplerates` above for a list
+/* Check if a given samplerate is supported by the encoder (see `samplerates` above for a list
  * of acceptable values. */
 int shine_find_samplerate_index(int freq);
 
