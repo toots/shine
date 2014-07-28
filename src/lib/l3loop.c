@@ -514,8 +514,6 @@ int count1_bitcount(int ix[GRANULE_SIZE], gr_info *cod_info)
  */
 void subdivide(gr_info *cod_info, shine_global_config *config)
 {
-  const int *scalefac_band_long  = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
-
   static const struct
   {
     unsigned region0_count;
@@ -547,47 +545,40 @@ void subdivide(gr_info *cod_info, shine_global_config *config)
     {6, 7}, /* 22 bands */
   };
 
-  int scfb_anz = 0;
-  int bigvalues_region;
-
-  if ( !cod_info->big_values)
+  if (!cod_info->big_values)
   { /* no big_values region */
     cod_info->region0_count = 0;
     cod_info->region1_count = 0;
   }
   else
   {
+    const int *scalefac_band_long = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
+    int bigvalues_region, scfb_anz, thiscount;
+
     bigvalues_region = 2 * cod_info->big_values;
-    {
-      int thiscount, index;
-      /* Calculate scfb_anz */
-      while ( scalefac_band_long[scfb_anz] < bigvalues_region )
-        scfb_anz++;
 
-      cod_info->region0_count = subdv_table[scfb_anz].region0_count;
-      thiscount = cod_info->region0_count;
-      index = thiscount + 1;
-      while ( thiscount && (scalefac_band_long[index] > bigvalues_region) )
-      {
-        thiscount--;
-        index--;
-      }
-      cod_info->region0_count = thiscount;
+    /* Calculate scfb_anz */
+    scfb_anz = 0;
+    while ( scalefac_band_long[scfb_anz] < bigvalues_region )
+      scfb_anz++;
 
-      cod_info->region1_count = subdv_table[scfb_anz].region1_count;
-      index = cod_info->region0_count + cod_info->region1_count + 2;
-      thiscount = cod_info->region1_count;
-      while ( thiscount && (scalefac_band_long[index] > bigvalues_region) )
-      {
-        thiscount--;
-        index--;
-      }
-      cod_info->region1_count = thiscount;
-      cod_info->address1 = scalefac_band_long[cod_info->region0_count+1];
-      cod_info->address2 = scalefac_band_long[cod_info->region0_count
-                                            + cod_info->region1_count + 2 ];
-      cod_info->address3 = bigvalues_region;
+    for (thiscount = subdv_table[scfb_anz].region0_count; thiscount; thiscount--) {
+      if (scalefac_band_long[thiscount + 1] <= bigvalues_region)
+        break;
     }
+    cod_info->region0_count = thiscount;
+    cod_info->address1 = scalefac_band_long[thiscount + 1];
+
+    scalefac_band_long += cod_info->region0_count + 1;
+
+    for (thiscount = subdv_table[scfb_anz].region1_count; thiscount; thiscount--) {
+      if (scalefac_band_long[thiscount + 1] <= bigvalues_region)
+        break;
+    }
+    cod_info->region1_count = thiscount;
+    cod_info->address2 = scalefac_band_long[thiscount + 1];
+
+    cod_info->address3 = bigvalues_region;
   }
 }
 

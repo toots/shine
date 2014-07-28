@@ -37,3 +37,15 @@ do { \
 	__asm__ __volatile__("mfhi %0; mflo %1" : "=r" (t1), "=r" (t2)); \
 	dim = (t1 << 1) | ((uint32_t)t2 >> 31); \
 } while (0)
+
+#if __mips_isa_rev >= 2
+static inline uint32_t SWAB32(uint32_t x)
+{
+	__asm__(
+	"	wsbh	%0, %1			\n"
+	"	rotr	%0, %0, 16		\n"
+	: "=r" (x) : "r" (x));
+	return x;
+}
+#define SWAB32 SWAB32
+#endif
