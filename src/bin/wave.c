@@ -168,7 +168,11 @@ unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config,
 }
 
 #ifdef SHINE_BIG_ENDIAN
-static inline int16_t bswap_16 (int16_t x) { return ((((x) >> 8) & 0xff) | (((x) & 0xff) << 8)); }
+#if defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 2))
+#define bswap_16(x) __builtin_bswap16(x)
+#else
+#define bswap_16(x) ((((x) >> 8) & 0xff) | (((x) & 0xff) << 8))
+#endif
 
 void swap_buffer(int16_t *sample_buffer, int length)
 {
