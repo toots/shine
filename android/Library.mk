@@ -2,6 +2,7 @@ LOCAL_PATH := $(call my-dir)/..
 
 include $(CLEAR_VARS)
 
+LOCAL_ARM_MODE  := arm
 LOCAL_MODULE    := shine
 LOCAL_SRC_FILES := src/lib/bitstream.c src/lib/formatbits.c src/lib/huffman.c \
                    src/lib/l3bitstream.c src/lib/l3loop.c src/lib/l3mdct.c \
