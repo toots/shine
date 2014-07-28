@@ -15,7 +15,7 @@
  * when defined. */
 #if defined(__mips__)
 #include "mult_mips_gcc.h"
-#elif defined(__arm__)
+#elif defined(__arm__) && !defined(__thumb__)
 #include "mult_sarm_gcc.h"
 #endif
 

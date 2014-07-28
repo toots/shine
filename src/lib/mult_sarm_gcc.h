@@ -1,61 +1,72 @@
 #include <stdint.h>
 
 /* Fractional multiply */
-static inline int32_t _mul(int32_t x,int32_t y) {
-    register int32_t result;
-    asm (
 #if __ARM_ARCH >= 6
-        "smmul %0, %2, %1" : "=r" (result) : "r" (x), "r" (y)
+#define mul(x,y) \
+({ \
+    register int32_t result; \
+    asm ("smmul %0, %2, %1" : "=r" (result) : "r" (x), "r" (y)); \
+    result ;\
+})
 #else
-        "smull r3, %0, %2, %1" : "=r" (result) : "r" (x), "r" (y) : "r3"
+#define mul(x,y) \
+({ \
+    register int32_t result; \
+    asm ("smull r3, %0, %2, %1" : "=r" (result) : "r" (x), "r" (y) : "r3"); \
+    result ; \
+})
 #endif
-    );
-    return result;
-}
-#define mul _mul
 
 /* Fractional multiply with single bit left shift. */
-static inline int32_t _muls(int32_t x, int32_t y) {
-    int32_t result;
-    asm (
-        "smull r3, %0, %2, %1\n\t"
-        "movs r3, r3, lsl #1\n\t"
-        "adc %0, %0, %0"
-        : "=r" (result) : "r" (x), "r" (y) : "r3", "cc"
-    );
-    return result;
-}
-#define _muls muls
+#define muls(x,y) \
+({ \
+    register int32_t result; \
+    asm ( \
+        "smull r3, %0, %2, %1\n\t" \
+        "movs r3, r3, lsl #1\n\t" \
+        "adc %0, %0, %0" \
+        : "=r" (result) : "r" (x), "r" (y) : "r3", "cc" \
+    ); \
+    result; \
+})
 
-static inline int32_t _mulr(int32_t x, int32_t y) {
-    int32_t result;
-    asm (
+
 #if __ARM_ARCH >= 6
-        "smmulr %0, %2, %1" : "=r" (result) : "r" (x), "r" (y)
+#define mulr(x,y) \
+({ \
+    register int32_t result; \
+    asm ( \
+        "smmulr %0, %2, %1" : "=r" (result) : "r" (x), "r" (y) \
+    ); \
+    result; \
+})
 #else
-        "smull r3, %0, %2, %1\n\t"
-        "adds r3, r3, #0x80000000\n\t"
-        "adc %0, %0, #0"
-        : "=r" (result) : "r" (x), "r" (y) : "r3", "cc"
+#define mulr(x,y) \
+({ \
+    register int32_t result; \
+    asm ( \
+        "smull r3, %0, %2, %1\n\t" \
+        "adds r3, r3, #0x80000000\n\t" \
+        "adc %0, %0, #0" \
+        : "=r" (result) : "r" (x), "r" (y) : "r3", "cc" \
+    ); \
+    result; \
+})
 #endif
-    );
-    return result;
-}
-#define mulr _mulr
 
-static inline int32_t _mulsr(int32_t x, int32_t y) {
-    int32_t result;
-    asm (
-        "smull r3, %0, %1, %2\n\t"
-        "movs r3, r3, lsl #1\n\t"
-        "adc %0, %0, %0\n\t"
-        "adds r3, r3, #0x80000000\n\t"
-        "adc %0, %0, #0"
-        : "=r" (result) : "r" (x), "r" (y) : "r3", "cc"
-    );
-    return result;
-}
-#define mulsr _mulsr
+#define mulsr(x,y) \
+({ \
+    register int32_t result; \
+    asm ( \
+        "smull r3, %0, %1, %2\n\t" \
+        "movs r3, r3, lsl #1\n\t" \
+        "adc %0, %0, %0\n\t" \
+        "adds r3, r3, #0x80000000\n\t" \
+        "adc %0, %0, #0" \
+        : "=r" (result) : "r" (x), "r" (y) : "r3", "cc" \
+    ); \
+    result; \
+})
 
 #define mul0(hi,lo,a,b) \
     asm ("smull %0, %1, %2, %3" : "=r" (lo), "=r" (hi) : "r" (a), "r" (b))
