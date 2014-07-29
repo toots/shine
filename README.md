@@ -1,10 +1,9 @@
-Revived shine fixed-point mp3 encoder
-=====================================
+Shine: a fast fixed-point mp3 encoding library
+===============================================
 
-[savonet/shine](https://github.com/savonet/shine) is a library for encoding mp3 data which
-is implemented in fixed-point arithmetic. The library can thus be used to implement super fast
-mp3 encoding on architectures without a FPU, such as `armel`, etc.. In fact, it is also super
-fast on architectures with a FPU!
+[savonet/shine](https://github.com/savonet/shine) is a blazing fast mp3 encoding library implemented in 
+fixed-point arithmetic. The library can thus be used to performe super fast mp3 encoding on architectures
+without a FPU, such as `armel`, etc.. It is also, however, also super fast on architectures with a FPU!
 
 How to use?
 -----------
@@ -43,67 +42,75 @@ shine_close(s);
 How fast is it?
 ---------------
 
-On a [Raspberry Pi](http://www.raspberrypi.org/) (`ARM`, no `FPU`):
+On a [Raspberry Pi](http://www.raspberrypi.org/) (`ARM`, `FPU`):
 
-Lame, `8m53s`:
+Lame, `3m06s`, `1.8x` realtime:
 ```
-pi@raspbmc:/tmp$ lame /tmp/bla.wav /tmp/bla.mp3 
-LAME 3.98.4 32bits (http://www.mp3dev.org/)
+pi@raspberrypi ~ $ lame bla.wav bla.mp3
+LAME 3.99.5 32bits (http://lame.sf.net)
 Using polyphase lowpass filter, transition band: 16538 Hz - 17071 Hz
-Encoding /tmp/bla.wav to /tmp/bla.mp3
+Encoding bla.wav to bla.mp3
 Encoding as 44.1 kHz j-stereo MPEG-1 Layer III (11x) 128 kbps qval=3
-    Frame          |  CPU time/estim | REAL time/estim | play/CPU |    ETA 
-  5763/5764  (100%)|    8:44/    8:44|    8:53/    8:53|   0.2871x|    0:00 
-----------------------------------------------------------------------------
+    Frame          |  CPU time/estim | REAL time/estim | play/CPU |    ETA
+ 12987/12987 (100%)|    3:06/    3:06|    3:06/    3:06|   1.8216x|    0:00
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
    kbps        LR    MS  %     long switch short %
-  128.0       47.8  52.2        98.1   1.2   0.7
+  128.0        0.1  99.9        89.1   6.1   4.9
 Writing LAME Tag...done
-ReplayGain: -4.9d
+ReplayGain: -10.5dB
 ```
 
-Shine, `47s`:
+Shine, `1m35s`, `3.6x` realtime:
 ```
-pi@raspbmc:/tmp$ shineenc /tmp/bla.wav /tmp/bla.mp3 
+pi@raspberrypi ~ $ shineenc bla.wav bla.mp3
 shineenc (Liquidsoap version)
-WAV PCM DATA, stereo 44100Hz 16bit, Length:  0: 2:30
+WAVE PCM Data, stereo 44100Hz 16bit, duration: 00:05:39
 MPEG-I layer III, stereo  Psychoacoustic Model: Shine
-Bitrate=128 kbps  De-emphasis: none   Original 
-Encoding "/tmp/bla.wav" to "/tmp/bla.mp3"
- Finished in  0: 0:47
+Bitrate: 128 kbps  De-emphasis: none   Original
+Encoding "bla.wav" to "bla.mp3"
+Finished in 00:01:35 (3.6x realtime)
 ```
-
-The difference is quite remarkable...!
 
 Now, on a mac airbook (`x86_64`, `FPU`):
 
-Lame, `9s`:
+Lame, `15s`, `22x` realtime:
 ```
-toots@zulu /tmp  % lame /tmp/bla.wav /tmp/bla.mp3
+toots@zulu tmp  % lame bla.wav bla.mp3
 LAME 3.99.5 64bits (http://lame.sf.net)
 Using polyphase lowpass filter, transition band: 16538 Hz - 17071 Hz
-Encoding /tmp/bla.wav to /tmp/bla.mp3
+Encoding bla.wav to bla.mp3
 Encoding as 44.1 kHz j-stereo MPEG-1 Layer III (11x) 128 kbps qval=3
-    Frame          |  CPU time/estim | REAL time/estim | play/CPU |    ETA 
-  5763/5763  (100%)|    0:07/    0:07|    0:09/    0:09|   18.924x|    0:00 
-----------------------------------------------------------------------------
+    Frame          |  CPU time/estim | REAL time/estim | play/CPU |    ETA
+ 12987/12987 (100%)|    0:15/    0:15|    0:17/    0:17|   22.087x|    0:00
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
    kbps        LR    MS  %     long switch short %
-  128.0       55.5  44.5        97.6   1.4   1.0
+  128.0        0.1  99.9        89.1   6.1   4.9
 Writing LAME Tag...done
-ReplayGain: -4.9dB
+ReplayGain: -10.5dB
 ```
 
-Shine, `5s`:
+Shine, `9s`, `37.7x` realtime:
 ```
-toots@zulu /tmp  % shineenc /tmp/bla.wav /tmp/bla.mp3
 shineenc (Liquidsoap version)
-WAV PCM DATA, stereo 44100Hz 16bit, Length:  0: 2:30
+WAVE PCM Data, stereo 44100Hz 16bit, duration: 00:05:39
 MPEG-I layer III, stereo  Psychoacoustic Model: Shine
-Bitrate=128 kbps  De-emphasis: none   Original 
+Bitrate: 128 kbps  De-emphasis: none   Original
 Encoding "/tmp/bla.wav" to "/tmp/bla.mp3"
- Finished in  0: 0: 5
+Finished in 00:00:09 (37.7x realtime)
 ```
 
-Not so bad eh!
+On a Google Nexus 5 (`ARM`, `FPU`):
+
+Shine, `14s`, `24.2x` realtime:
+```
+u0_a65@hammerhead:/mnt/sdcard $ shineenc bla.wav bla.mp3
+shineenc (Liquidsoap version)
+WAVE PCM Data, stereo 44100Hz 16bit, duration: 00:05:39
+MPEG-I layer III, stereo  Psychoacoustic Model: Shine
+Bitrate: 128 kbps  De-emphasis: none   Original
+Encoding "bla.wav" to "bla.mp3"
+Finished in 00:00:14 (24.2x realtime)
+```
 
 Limitations
 -----------
