@@ -1,5 +1,5 @@
-Shine: a fast fixed-point mp3 encoding library
-===============================================
+A fast fixed-point mp3 encoding library
+=======================================
 
 [savonet/shine](https://github.com/savonet/shine) is a blazing fast mp3 encoding library implemented in 
 fixed-point arithmetic. The library can thus be used to performe super fast mp3 encoding on architectures
