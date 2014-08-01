@@ -1,4 +1,4 @@
-3.1.0 (xx):
+3.1.0 (2014-08-01):
 =====
 * Fixed WAV file parsing.
 * Explicitely unroll some loops
