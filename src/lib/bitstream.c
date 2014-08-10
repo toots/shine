@@ -43,7 +43,7 @@ void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N)
 {
 #ifdef DEBUG
 	if (N > 32)
-		printf("Cannot read or write more than %d bits at a time.\n", 32);
+		printf("Cannot write more than 32 bits at a time.\n");
 #endif
 	if (N < 32)
 		val &= ((1UL << N) - 1);
