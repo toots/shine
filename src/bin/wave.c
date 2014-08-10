@@ -176,9 +176,33 @@ unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config,
 
 void swap_buffer(int16_t *sample_buffer, int length)
 {
-  int i;
-  for (i=0; i<length; i++)
-    sample_buffer[i] = bswap_16(sample_buffer[i]);
+  int16_t *end = sample_buffer + length;
+
+  if (length >= 2 * sizeof(long) / sizeof(int16_t)) {
+    const unsigned long mask = (~0UL / 0xffff) * 0xff;  /* 0x00ff00ff or 0x00ff00ff00ff00ff */
+    unsigned long *long_ptr = (unsigned long *)((unsigned long)sample_buffer & -sizeof(long));
+
+    /* make sample_buffer aligned on word boundary */
+    if ((int16_t *)long_ptr != sample_buffer) {
+      long_ptr++;
+      do {
+        register uint16_t tmp = *sample_buffer++;
+        sample_buffer[-1] = bswap_16(tmp);
+      } while (sample_buffer != (int16_t *)long_ptr);
+    }
+
+    while ((int16_t *)(long_ptr + 1) <= end) {
+      register unsigned long tmp = *long_ptr++;
+      long_ptr[-1] = ((tmp & mask) << 8) | ((tmp >> 8) & mask);
+    }
+
+    sample_buffer = (int16_t *)long_ptr;
+  }
+
+  while (sample_buffer < end) {
+    register uint16_t tmp = *sample_buffer++;
+    sample_buffer[-1] = bswap_16(tmp);
+  }
 }
 #endif
 
@@ -194,12 +218,14 @@ int read_samples(int16_t *sample_buffer, int frame_size, FILE *file)
 
   samples_read = fread(sample_buffer,sizeof(int16_t),frame_size, file);
 
-  if(samples_read<frame_size && samples_read>0) /* Pad sample with zero's */
-    while(samples_read<frame_size) sample_buffer[samples_read++] = 0;
-
 #ifdef SHINE_BIG_ENDIAN
   swap_buffer(sample_buffer, samples_read);
 #endif
+
+  if(samples_read<frame_size && samples_read>0) { /* Pad sample with zero's */
+    memset(sample_buffer + samples_read, 0, (frame_size - samples_read) * sizeof(int16_t));
+    samples_read = frame_size;
+  }
 
   return samples_read;
 }
