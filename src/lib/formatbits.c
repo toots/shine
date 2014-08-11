@@ -65,7 +65,7 @@ void shine_formatbits_close(shine_global_config *config)
 /* forward declarations */
 static void           store_side_info( shine_global_config *config );
 static int            write_side_info(shine_global_config *config);
-static int            WitePartSideInfo(BF_BitstreamPart *part, shine_global_config *config);
+static void           WitePartSideInfo(BF_BitstreamPart *part, shine_global_config *config);
 
 static void           main_data( shine_global_config *config);
 static void           WriteMainDataBits( unsigned int val, unsigned int nbits, shine_global_config *config);
@@ -123,21 +123,16 @@ static void WritePartMainData(BF_BitstreamPart *part, shine_global_config *confi
     WriteMainDataBits( ep->value, ep->length, config );
 }
 
-static int WitePartSideInfo(BF_BitstreamPart *part, shine_global_config *config)
+static void WitePartSideInfo(BF_BitstreamPart *part, shine_global_config *config)
 {
   BF_BitstreamElement *ep;
-  int i, bits;
+  int i;
 
   /* assert( part ); */
 
-  bits = 0;
   ep = part->element;
   for ( i = 0; i < part->nrEntries; i++, ep++ )
-    {
       shine_putbits( &config->bs, ep->value, ep->length);
-      bits += ep->length;
-    }
-  return bits;
 }
 
 static void main_data(shine_global_config *config)
@@ -191,18 +186,18 @@ static int write_side_info(shine_global_config *config)
 {
   int bits, ch, gr;
 
-  bits = 0;
+  bits = shine_get_bits_count(&config->bs);
 
-  bits += WitePartSideInfo( config->formatbits.side_info.headerPH->part,  config );
-  bits += WitePartSideInfo( config->formatbits.side_info.frameSIPH->part, config );
+  WitePartSideInfo( config->formatbits.side_info.headerPH->part,  config );
+  WitePartSideInfo( config->formatbits.side_info.frameSIPH->part, config );
 
   for ( ch = 0; ch < config->wave.channels; ch++ )
-    bits += WitePartSideInfo( config->formatbits.side_info.channelSIPH[ch]->part, config );
+    WitePartSideInfo( config->formatbits.side_info.channelSIPH[ch]->part, config );
 
   for ( gr = 0; gr < config->mpeg.granules_per_frame; gr++ )
     for ( ch = 0; ch < config->wave.channels; ch++ )
-      bits += WitePartSideInfo( config->formatbits.side_info.spectrumSIPH[gr][ch]->part, config );
-  return bits;
+      WitePartSideInfo( config->formatbits.side_info.spectrumSIPH[gr][ch]->part, config );
+  return shine_get_bits_count(&config->bs) - bits;
 }
 
 static void store_side_info(shine_global_config *config)
