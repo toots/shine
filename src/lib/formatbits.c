@@ -125,13 +125,11 @@ static void WritePartMainData(BF_BitstreamPart *part, shine_global_config *confi
 
 static void WitePartSideInfo(BF_BitstreamPart *part, shine_global_config *config)
 {
-  BF_BitstreamElement *ep;
-  int i;
+  BF_BitstreamElement *ep, *end;
 
   /* assert( part ); */
 
-  ep = part->element;
-  for ( i = 0; i < part->nrEntries; i++, ep++ )
+  for (ep = part->element, end = ep + part->nrEntries; ep != end; ep++)
       shine_putbits( &config->bs, ep->value, ep->length);
 }
 
