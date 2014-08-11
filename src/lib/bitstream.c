@@ -75,6 +75,6 @@ void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N)
 
 int shine_get_bits_count(bitstream_t *bs)
 {
-        return bs->data_position * 8 + 32 - bs->cache_bits;
+	return bs->data_position * 8 + 32 - bs->cache_bits;
 }
 
