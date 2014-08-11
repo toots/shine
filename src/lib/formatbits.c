@@ -65,11 +65,9 @@ void shine_formatbits_close(shine_global_config *config)
 /* forward declarations */
 static void           store_side_info( shine_global_config *config );
 static int            write_side_info(shine_global_config *config);
-static void           WitePartSideInfo(BF_BitstreamPart *part, shine_global_config *config);
 
 static void           main_data( shine_global_config *config);
 static void           WriteMainDataBits( unsigned int val, unsigned int nbits, shine_global_config *config);
-static void           WritePartMainData(BF_BitstreamPart *part, shine_global_config *config);
 
 static BF_PartHolder *BF_LoadHolderFromBitstreamPart( BF_PartHolder *theHolder, BF_BitstreamPart *thePart );
 
@@ -111,7 +109,7 @@ void shine_BF_BitstreamFrame(shine_global_config *config)
  * WritePartMainData:
  * ------------------
  */
-static void WritePartMainData(BF_BitstreamPart *part, shine_global_config *config)
+static inline void WritePartMainData(BF_BitstreamPart *part, shine_global_config *config)
 {
   BF_BitstreamElement *ep, *end;
 
@@ -121,7 +119,7 @@ static void WritePartMainData(BF_BitstreamPart *part, shine_global_config *confi
     WriteMainDataBits( ep->value, ep->length, config );
 }
 
-static void WitePartSideInfo(BF_BitstreamPart *part, shine_global_config *config)
+static inline void WitePartSideInfo(BF_BitstreamPart *part, shine_global_config *config)
 {
   BF_BitstreamElement *ep, *end;
 
