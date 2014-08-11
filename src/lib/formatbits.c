@@ -242,15 +242,13 @@ BF_PartHolder *shine_BF_NewHolderFromBitstreamPart( BF_BitstreamPart *thePart )
 
 static BF_PartHolder *BF_LoadHolderFromBitstreamPart( BF_PartHolder *theHolder, BF_BitstreamPart *thePart )
 {
-  BF_BitstreamElement *pElem;
-  int i;
+  BF_BitstreamElement *ep, *end;
 
   theHolder->part->nrEntries = 0;
-  for ( i = 0; i < thePart->nrEntries; i++ )
-    {
-      pElem = &(thePart->element[i]);
-      theHolder = shine_BF_addElement( theHolder, pElem );
-    }
+
+  for (ep = thePart->element, end = ep + thePart->nrEntries; ep != end; ep++)
+    theHolder = shine_BF_addElement( theHolder, ep );
+
   return theHolder;
 }
 
