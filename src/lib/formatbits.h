@@ -17,9 +17,6 @@
 
 #include "types.h"
 
-void shine_formatbits_initialise(shine_global_config *config);
-void shine_formatbits_close(shine_global_config *config);
-
 /*
   The following is a shorthand bitstream syntax for
   the type of bitstream this package will create.
@@ -63,17 +60,10 @@ MainData()
   public functions in formatBitstream.c
 */
 
-/* count the bits in a BitstreamPart */
-int  shine_BF_PartLength( BF_BitstreamPart *part );
-
 /* encode a frame of audio and write it to your bitstream */
 void shine_BF_BitstreamFrame( shine_global_config *config);
 
-BF_PartHolder *shine_BF_newPartHolder( unsigned int max_elements );
-BF_PartHolder *shine_BF_resizePartHolder( BF_PartHolder *oldPH, int max_elements );
-BF_PartHolder *shine_BF_addElement( BF_PartHolder *thePH, BF_BitstreamElement *theElement );
-BF_PartHolder *shine_BF_addEntry( BF_PartHolder *thePH, unsigned int value, unsigned int length );
-BF_PartHolder *shine_BF_NewHolderFromBitstreamPart( BF_BitstreamPart *thePart );
-BF_PartHolder *shine_BF_LoadHolderFromBitstreamPart( BF_PartHolder *theHolder, BF_BitstreamPart *thePart );
-BF_PartHolder *shine_BF_freePartHolder( BF_PartHolder *thePH );
+void shine_BF_initPartHolder( BF_PartHolder *thePH, unsigned int max_elements );
+void shine_BF_addEntry( BF_PartHolder *thePH, unsigned int value, unsigned int length );
+
 #endif

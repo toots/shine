@@ -44,9 +44,9 @@ void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N)
 #ifdef DEBUG
 	if (N > 32)
 		printf("Cannot write more than 32 bits at a time.\n");
+	if (N < 32 && (val >> N) != 0)
+		printf("Upper bits (higher than %d) are not all zeros.\n", N);
 #endif
-	if (N < 32)
-		val &= ((1UL << N) - 1);
 
 	if (bs->cache_bits > N) {
 		bs->cache_bits -= N;
