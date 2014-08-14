@@ -105,9 +105,9 @@ static void WriteMainDataBits(unsigned int val,
 
   if (nbits > config->l3stream.BitsRemaining) {
     if (config->l3stream.BitsRemaining) {
-  	  nbits -= config->l3stream.BitsRemaining;
-      val   &= (1UL << nbits) - 1;
+      nbits -= config->l3stream.BitsRemaining;
       extra  = val >> nbits;
+      val   &= (1UL << nbits) - 1;
       shine_putbits( &config->bs, extra, config->l3stream.BitsRemaining);
     }
 
