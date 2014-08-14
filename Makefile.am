@@ -8,7 +8,7 @@ ACLOCAL_AMFLAGS  = -I m4
 CFLAGS = @CFLAGS@ -funroll-loops -fno-exceptions -Wall -O2 -fsigned-char
 
 lib_LTLIBRARIES      = libshine.la
-libshine_la_SOURCES  = src/lib/bitstream.c src/lib/formatbits.c src/lib/huffman.c \
+libshine_la_SOURCES  = src/lib/bitstream.c src/lib/huffman.c \
                        src/lib/l3bitstream.c src/lib/l3loop.c src/lib/l3mdct.c \
                        src/lib/l3subband.c src/lib/layer3.c src/lib/reservoir.c \
                        src/lib/tables.c

@@ -56,23 +56,6 @@
 #define MAX_GRANULES 2
 #endif
 
-/*
-  A BitstreamElement contains encoded data
-  to be written to the bitstream.
-  'length' bits of 'value' will be written to
-  the bitstream msb-first.
-*/
-typedef struct {
-    unsigned int value;
-    unsigned int length;
-} BF_BitstreamElement;
-
-typedef struct BF_PartHolder {
-    unsigned int max_elements;
-    unsigned int nrEntries;
-    BF_BitstreamElement *element;
-} BF_PartHolder;
-
 typedef struct {
     int channels;
     int samplerate;
@@ -99,18 +82,6 @@ typedef struct {
     int    copyright;  /* + */
     int    original;   /* + */
 } priv_shine_mpeg_t;
-
-typedef struct {
-  int           BitsRemaining;
-  BF_PartHolder headerPH;
-  BF_PartHolder frameSIPH;
-  BF_PartHolder channelSIPH[ MAX_CHANNELS ];
-  BF_PartHolder spectrumSIPH[ MAX_GRANULES ][ MAX_CHANNELS ];
-  BF_PartHolder scaleFactorsPH[ MAX_GRANULES ][ MAX_CHANNELS ];
-  BF_PartHolder codedDataPH[ MAX_GRANULES ][ MAX_CHANNELS ];
-  BF_PartHolder userSpectrumPH[ MAX_GRANULES ][ MAX_CHANNELS ];
-  BF_PartHolder userFrameDataPH;
-} l3stream_t;
 
 typedef struct {
   int32_t *xr;                    /* magnitudes of the spectral values */
@@ -199,7 +170,6 @@ typedef struct shine_global_flags {
   int32_t        mdct_freq[MAX_CHANNELS][MAX_GRANULES][GRANULE_SIZE];
   int            ResvSize;
   int            ResvMax;
-  l3stream_t     l3stream;
   l3loop_t       l3loop;
   mdct_t         mdct;
   subband_t      subband;
