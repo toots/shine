@@ -7,7 +7,6 @@
 #include "l3mdct.h"
 #include "l3loop.h"
 #include "bitstream.h"
-#include "formatbits.h"
 #include "l3bitstream.h"
 
 static int granules_per_frame[4] = {
@@ -95,8 +94,6 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
   shine_subband_initialise(config);
   shine_mdct_initialise(config);
   shine_loop_initialise(config);
-  shine_formatbits_initialise(config);
-  shine_bitstream_initialise(config );
 
   /* Copy public config. */
   config->wave.channels   = pub_config->wave.channels;
@@ -202,8 +199,6 @@ unsigned char *shine_flush(shine_global_config *config, int *written) {
 
 
 void shine_close(shine_global_config *config) {
-  shine_bitstream_close(config);
-  shine_formatbits_close(config);
   shine_close_bit_stream(&config->bs);
   free(config);
 }

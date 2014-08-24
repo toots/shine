@@ -56,55 +56,6 @@
 #define MAX_GRANULES 2
 #endif
 
-/*
-  A BitstreamElement contains encoded data
-  to be written to the bitstream.
-  'length' bits of 'value' will be written to
-  the bitstream msb-first.
-*/
-typedef struct {
-    unsigned int value;
-    unsigned int length;
-} BF_BitstreamElement;
-
-/*
-  A BitstreamPart contains a group
-  of 'nrEntries' of BitstreamElements.
-  Each BitstreamElement will be written
-  to the bitstream in the order it appears
-  in the 'element' array.
-*/
-typedef struct {
-    unsigned int nrEntries;
-    BF_BitstreamElement *element;
-} BF_BitstreamPart;
-
-/*
-  This structure contains all the information needed by the
-  bitstream formatter to encode one frame of data. You must
-  fill this out and provide a pointer to it when you call
-  the formatter.
-  Maintainers: If you add or remove part of the side
-  information, you will have to update the routines that
-  make local copies of that information (in formatBitstream.c)
-*/
-
-typedef struct BF_FrameData {
-    BF_BitstreamPart *header;
-    BF_BitstreamPart *frameSI;
-    BF_BitstreamPart *channelSI[MAX_CHANNELS];
-    BF_BitstreamPart *spectrumSI[MAX_GRANULES][MAX_CHANNELS];
-    BF_BitstreamPart *scaleFactors[MAX_GRANULES][MAX_CHANNELS];
-    BF_BitstreamPart *codedData[MAX_GRANULES][MAX_CHANNELS];
-    BF_BitstreamPart *userSpectrum[MAX_GRANULES][MAX_CHANNELS];
-    BF_BitstreamPart *userFrameData;
-} BF_FrameData;
-
-typedef struct BF_PartHolder {
-    int max_elements;
-    BF_BitstreamPart *part;
-} BF_PartHolder;
-
 typedef struct {
     int channels;
     int samplerate;
@@ -133,32 +84,6 @@ typedef struct {
 } priv_shine_mpeg_t;
 
 typedef struct {
-  BF_PartHolder *headerPH;
-  BF_PartHolder *frameSIPH;
-  BF_PartHolder *channelSIPH[MAX_CHANNELS];
-  BF_PartHolder *spectrumSIPH[MAX_GRANULES][MAX_CHANNELS];
-} MYSideInfo;
-
-typedef struct {
-    int        BitCount;
-    int        BitsRemaining;
-    MYSideInfo side_info;
-} formatbits_t;
-
-typedef struct {
-  BF_FrameData   frameData;
-
-  BF_PartHolder *headerPH;
-  BF_PartHolder *frameSIPH;
-  BF_PartHolder *channelSIPH[ MAX_CHANNELS ];
-  BF_PartHolder *spectrumSIPH[ MAX_GRANULES ][ MAX_CHANNELS ];
-  BF_PartHolder *scaleFactorsPH[ MAX_GRANULES ][ MAX_CHANNELS ];
-  BF_PartHolder *codedDataPH[ MAX_GRANULES ][ MAX_CHANNELS ];
-  BF_PartHolder *userSpectrumPH[ MAX_GRANULES ][ MAX_CHANNELS ];
-  BF_PartHolder *userFrameDataPH;
-} l3stream_t;
-
-typedef struct {
   int32_t *xr;                    /* magnitudes of the spectral values */
   int32_t xrsq[GRANULE_SIZE];     /* xr squared */
   int32_t xrabs[GRANULE_SIZE];    /* xr absolute */
@@ -184,25 +109,24 @@ typedef struct {
 
 /* Side information */
 typedef struct {
-        unsigned part2_3_length;
-        unsigned big_values;
-        unsigned count1;
-        unsigned global_gain;
-        unsigned scalefac_compress;
-        unsigned table_select[3];
-        unsigned region0_count;
-        unsigned region1_count;
-        unsigned preflag;
-        unsigned scalefac_scale;
-        unsigned count1table_select;
-
-        unsigned part2_length;
-        unsigned sfb_lmax;
-        unsigned address1;
-        unsigned address2;
-        unsigned address3;
-        int quantizerStepSize;
-        unsigned slen[4];
+  unsigned part2_3_length;
+  unsigned big_values;
+  unsigned count1;
+  unsigned global_gain;
+  unsigned scalefac_compress;
+  unsigned table_select[3];
+  unsigned region0_count;
+  unsigned region1_count;
+  unsigned preflag;
+  unsigned scalefac_scale;
+  unsigned count1table_select;
+  unsigned part2_length;
+  unsigned sfb_lmax;
+  unsigned address1;
+  unsigned address2;
+  unsigned address3;
+  int quantizerStepSize;
+  unsigned slen[4];
 } gr_info;
 
 typedef struct {
@@ -246,8 +170,6 @@ typedef struct shine_global_flags {
   int32_t        mdct_freq[MAX_CHANNELS][MAX_GRANULES][GRANULE_SIZE];
   int            ResvSize;
   int            ResvMax;
-  formatbits_t   formatbits;
-  l3stream_t     l3stream;
   l3loop_t       l3loop;
   mdct_t         mdct;
   subband_t      subband;

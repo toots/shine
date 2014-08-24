@@ -43,12 +43,12 @@ void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N)
 {
 #ifdef DEBUG
 	if (N > 32)
-		printf("Cannot read or write more than %d bits at a time.\n", 32);
+		printf("Cannot write more than 32 bits at a time.\n");
+	if (N < 32 && (val >> N) != 0)
+		printf("Upper bits (higher than %d) are not all zeros.\n", N);
 #endif
-	if (N < 32)
-		val &= ((1UL << N) - 1);
 
-	if (bs->cache_bits >= N) {
+	if (bs->cache_bits > N) {
 		bs->cache_bits -= N;
 		bs->cache |= val << bs->cache_bits;
 	} else {
@@ -66,6 +66,15 @@ void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N)
 #endif
 		bs->data_position += sizeof(unsigned int);
 		bs->cache_bits = 32 - N;
-		bs->cache = val << bs->cache_bits;
+		if (N != 0)
+			bs->cache = val << bs->cache_bits;
+		else
+			bs->cache = 0;
 	}
 }
+
+int shine_get_bits_count(bitstream_t *bs)
+{
+	return bs->data_position * 8 + 32 - bs->cache_bits;
+}
+
