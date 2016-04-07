@@ -58,8 +58,8 @@ static void encodeMainData(shine_global_config *config)
       for ( ch = 0; ch < config->wave.channels; ch++ )
         {
           gr_info *gi = &(si.gr[gr].ch[ch].tt);
-          unsigned slen1 = slen1_tab[ gi->scalefac_compress ];
-          unsigned slen2 = slen2_tab[ gi->scalefac_compress ];
+          unsigned slen1 = shine_slen1_tab[ gi->scalefac_compress ];
+          unsigned slen2 = shine_slen2_tab[ gi->scalefac_compress ];
           int *ix = &config->l3_enc[ch][gr][0];
 
           if ( gr == 0 || si.scfsi[ch][0] == 0 )

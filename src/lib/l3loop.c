@@ -287,8 +287,8 @@ int part2_length(int gr, int ch, shine_global_config *config)
   bits = 0;
 
   {
-    slen1 = slen1_tab[ gi->scalefac_compress ];
-    slen2 = slen2_tab[ gi->scalefac_compress ];
+    slen1 = shine_slen1_tab[ gi->scalefac_compress ];
+    slen2 = shine_slen2_tab[ gi->scalefac_compress ];
 
     if ( !gr || !(config->side_info.scfsi[ch][0]) )
       bits += (6 * slen1);
