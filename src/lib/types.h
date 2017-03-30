@@ -13,7 +13,7 @@
 
 /* Include arch-specific instructions,
  * when defined. */
-#if defined(__mips__)
+#if defined(__mips__) && (__mips != 64)
 #include "mult_mips_gcc.h"
 #elif defined(__arm__) && !defined(__thumb__)
 #include "mult_sarm_gcc.h"
