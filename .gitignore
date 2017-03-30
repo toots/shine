@@ -1,3 +1,4 @@
+*~
 *.swp
 obj
 libs
@@ -17,6 +18,15 @@ config.log
 config.status
 config.sub
 configure
+debian/libshine-dbg
+debian/libshine-dev
+debian/libshine
+debian/files
+debian/*.substvars
+debian/*.debhelper
+debian/*.log
+debian/stamp-*
+debian/tmp
 depcomp
 install-sh
 libtool
@@ -84,4 +94,5 @@ src/lib/tables.o
 shine-*.tar.gz
 *.c.o
 *.mp3
+*.cdbs-orig
 node_modules

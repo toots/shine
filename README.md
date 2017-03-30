@@ -122,6 +122,13 @@ proper shared API out of it. Thus, the encoder may not be exempt of bugs.
 Also, the encoding algorithm is rather simple. In particular, it does not
 have any Psychoacoustic Model.
 
+Building Debian package
+-----------------------
+First run the `bootstrap` script which basically runs `autoreconf -i` on
+the whole source code tree to create `configure`. Then issue `dch --create`
+to initialize Debian changelog or `dch -i`, if you already have one. Finally
+run `debuild -i -us -uc -b` to build a Debian package without signing it.
+
 A bit of history
 ----------------
 

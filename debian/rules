@@ -1,0 +1,4 @@
+#!/usr/bin/make -f
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/class/autotools.mk
+#DEB_CMAKE_EXTRA_FLAGS = -DCMAKE_INSTALL_SYSCONFDIR="/etc" -DCMAKE_INSTALL_LIBDIR="lib"

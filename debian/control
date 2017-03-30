@@ -1,0 +1,47 @@
+Source: libshine
+Section: libs
+Priority: extra
+Maintainer: Lauri Võsandi <lauri.vosandi@gmail.com>
+Build-Depends: debhelper (>= 9), autoconf, automake, autotools-dev, libtool,
+ pkg-config
+Standards-Version: 3.9.3
+Homepage: https://github.com/savonet/shine
+Vcs-Browser: https://github.com/savonet/shine
+Vcs-Git: git://github.com/savonet/shine
+
+Package: libshine
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Shine fixed-point MP3 encoding library
+ shine is a library for encoding mp3 data which is implemented in fixed-point
+ arithmetic. The library can thus be used to implement super fast mp3 encoding
+ on architectures without a FPU, such as armel, etc. In fact, it is also super
+ fast on architectures with a FPU!
+ .
+ This package contains the core library.
+
+Package: libshine-dev
+Architecture: any
+Section: libdevel
+Depends: libshine (= ${binary:Version}), ${misc:Depends}
+Description: Shine fixed-point MP3 encoding library headers
+ shine is a library for encoding mp3 data which is implemented in fixed-point
+ arithmetic. The library can thus be used to implement super fast mp3 encoding
+ on architectures without a FPU, such as armel, etc. In fact, it is also super
+ fast on architectures with a FPU!
+ .
+ This package contains the development files
+
+Package: shineenc
+Architecture: any
+Section: sound
+Depends: libshine (= ${binary:Version}), ${misc:Depends}
+Description: Shine fixed-point MP3 encoding library headers
+ shine is a library for encoding mp3 data which is implemented in fixed-point
+ arithmetic. The library can thus be used to implement super fast mp3 encoding
+ on architectures without a FPU, such as armel, etc. In fact, it is also super
+ fast on architectures with a FPU!
+ .
+ This package contains the shineenc command-line frontend
+
+

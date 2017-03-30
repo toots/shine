@@ -1,0 +1,25 @@
+This package was debianized by Lauri Võsandi <lauri.vosandi@gmail.com> on
+Tue, 15 Oct 2013 17:49:44 +0200
+
+It was downloaded from https://github.com/savonet/shine
+
+Upstream Author: Romain Beauxis <toots@rastageeks.org>
+
+Copyright:
+
+Copyright (c) 2001-2013 Gabriel Bouvigne, Pete Everett, Patrick Roberts, Romain Beauxis
+
+License:
+
+   This package is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; version 2 dated June, 1991.
+
+   This package is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+On Debian systems, the complete text of the GNU General
+Public License can be found in `/usr/share/common-licenses/GPL-2'.
+
