@@ -10,15 +10,15 @@ LINKFLAGS:=-s EXPORTED_FUNCTIONS=$(EXPORTED_FUNCTIONS) --memory-init-file 0 $(CF
 C_FILES:=$(wildcard ../src/lib/*.c) src/wrapper.c
 HEADER_FILES:=$(wildcard ../src/lib/*.h)
 SOURCES:=$(C_FILES) $(HEADER_FILES)
-OBJECTS:=$(C_FILES:%.c=%.c.o)
+OBJECTS:=$(C_FILES:%.c=%.bc)
 
 all: dist/libshine.js
 
 dist/libshine.js: $(SOURCES) $(OBJECTS) src/pre.js src/post.js
 	$(EMCC) $(LINKFLAGS) --pre-js src/pre.js --post-js src/post.js $(OBJECTS) -o $@
 
-%.c.o: %.c
+%.bc: %.c
 	$(EMCC) $(CFLAGS) -I../src/lib -c $< -o $@
 
 clean:
-	rm -f *.c.o ../src/lib/*.c.o
+	rm -f *.bc ../src/lib/*.bc
