@@ -29,12 +29,12 @@ const int bitrates[16][4] = {
    { 48,  -1,        48,  80},
    { 56,  -1,        56,  96},
    { 64,  -1,        64, 112},
-   { 80,  -1,        80, 128},
-   { 96,  -1,        96, 160},
-   {112,  -1,       112, 192},
-   {128,  -1,       128, 224},
-   {144,  -1,       144, 256},
-   {160,  -1,       160, 320},
+   { -1,  -1,        80, 128},
+   { -1,  -1,        96, 160},
+   { -1,  -1,       112, 192},
+   { -1,  -1,       128, 224},
+   { -1,  -1,       144, 256},
+   { -1,  -1,       160, 320},
    { -1,  -1,        -1,  -1}
 };
 
@@ -66,7 +66,7 @@ const int shine_scale_fact_band_index[9][23] =
 
 /* note. 0.035781 is shine_enwindow maximum value */
 /* scale and convert to fixed point before storing */
-#define SHINE_EW(x)						(int32_t)((double)(x) * 0x7fffffff)
+#define SHINE_EW(x)					(int32_t)((double)(x) * 0x7fffffff)
 #define SHINE_EW2(a,b)					SHINE_EW(a), SHINE_EW(b)
 #define SHINE_EW10(a,b,c,d,e,f,g,h,i,j)	SHINE_EW2(a,b), SHINE_EW2(c,d), SHINE_EW2(e,f), SHINE_EW2(g,h), SHINE_EW2(i,j)
 
