@@ -35,78 +35,79 @@ flushed = shine.close();
 How fast is it?
 ---------------
 
-You can run the test suite located in `test/`. As of now (26/07/2014), only firefox
-and seems to show performances decent enough for real-time encoding while Google Chrome
-can encode between 1X and 2X.
+You can run the test suite located in `test/`. Encoding rate above `1X` means that 
+the browser should be suitable for real-time encoding.
 
-Chrome:
+Results, as of August 1st, 2017:
+
+Chrome (`59.0.3071.115`):
 ```
 Executing encoding test
 Got WAV file.
 Encoding..
 Done encoding.
 File duration: 5.57 seconds
-Encoding time: 5.18 seconds
-Encoding rate: 1.08X
+Encoding time: 3.16 seconds
+Encoding rate: 1.76X
 
 Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64
-Encoding time: 2.73
-Encoding rate: 1.70X
+Encoding time: 2.17
+Encoding rate: 2.14X
 ```
 
-Firefox:
+Firefox (`54.0.1`):
 ```
 Executing encoding test
 Got WAV file.
 Encoding..
 Done encoding.
 File duration: 5.57 seconds
-Encoding time: 1.48 seconds
-Encoding rate: 3.76X
+Encoding time: 1.21 seconds
+Encoding rate: 4.61X
 
 Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64
-Encoding time: 0.98
-Encoding rate: 4.72X
+Encoding time: 0.82
+Encoding rate: 5.64X
 ```
 
-Safari:
+Safari (`10.1.1`):
 ```
 Executing encoding test
 Got WAV file.
 Encoding..
 Done encoding.
 File duration: 5.57 seconds
-Encoding time: 11.77 seconds
-Encoding rate: 0.47X
+Encoding time: 2.73 seconds
+Encoding rate: 2.04X
 
 Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64
-Encoding time: 6.93
-Encoding rate: 0.67X
+Encoding time: 1.81
+Encoding rate: 2.57X
 ```
 
-NodeJS, v0.10.24:
+NodeJS (`8.2.1`):
 ```
 Executing encoding test
 Got WAV file.
 Encoding..
 Done encoding.
 File duration: 5.57 seconds
-Encoding time: 22.57 seconds
-Encoding rate: 0.25X
+Encoding time: 3.85 seconds
+Encoding rate: 1.45X
 
 Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64
-Encoding time: 11.46
-Encoding rate: 0.40X
+Encoding time: 3.42
+Encoding rate: 1.36X
 ```
