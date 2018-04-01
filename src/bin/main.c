@@ -61,6 +61,7 @@ static void print_name()
 static void print_usage()
 {
   printf("Usage: shineenc [options] <infile> <outfile>\n\n");
+  printf("Use \"-\" for standard input or output.\n\n"); 
   printf("Options:\n");
   printf(" -h            this help message\n");
   printf(" -b <bitrate>  set the bitrate [8-320], default 128kbit\n");
