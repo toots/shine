@@ -1,3 +1,7 @@
+x.y.z ()
+=====
+* Be more specific when enabling MIPS assembly routines.
+
 3.1.1 (2017-07-28)
 =====
 * Remove invalid MPEG 2.5 bitrates.
