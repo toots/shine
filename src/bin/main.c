@@ -156,6 +156,7 @@ int main(int argc, char **argv)
   shine_t        s;
   int            written;
   unsigned char  *data;
+  int samples_per_pass;
 
   time(&start_time);
 
@@ -208,7 +209,7 @@ int main(int argc, char **argv)
   /* Print some info about the file about to be created (optional) */
   if (!quiet) check_config(&config);
 
-  int samples_per_pass = shine_samples_per_pass(s);
+  samples_per_pass = shine_samples_per_pass(s);
 
   /* All the magic happens here */
   while (wave_get(buffer, &wave, samples_per_pass)) {
