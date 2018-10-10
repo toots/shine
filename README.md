@@ -10,7 +10,7 @@ How to use?
 
 The encoding API should be quite straight forward:
 
-```
+```c
 #include <shine/layer3.h>
   
 (...)
@@ -45,7 +45,7 @@ How fast is it?
 On a [Raspberry Pi](http://www.raspberrypi.org/) (`ARM`, `FPU`):
 
 Lame, `3m06s`, `1.8x` realtime:
-```
+```bash
 pi@raspberrypi ~ $ lame bla.wav bla.mp3
 LAME 3.99.5 32bits (http://lame.sf.net)
 Using polyphase lowpass filter, transition band: 16538 Hz - 17071 Hz
@@ -61,7 +61,7 @@ ReplayGain: -10.5dB
 ```
 
 Shine, `1m35s`, `3.6x` realtime:
-```
+```bash
 pi@raspberrypi ~ $ shineenc bla.wav bla.mp3
 shineenc (Liquidsoap version)
 WAVE PCM Data, stereo 44100Hz 16bit, duration: 00:05:39
@@ -74,7 +74,7 @@ Finished in 00:01:35 (3.6x realtime)
 Now, on a mac airbook (`x86_64`, `FPU`):
 
 Lame, `15s`, `22x` realtime:
-```
+```bash
 toots@zulu tmp  % lame bla.wav bla.mp3
 LAME 3.99.5 64bits (http://lame.sf.net)
 Using polyphase lowpass filter, transition band: 16538 Hz - 17071 Hz
@@ -102,7 +102,7 @@ Finished in 00:00:09 (37.7x realtime)
 On a Google Nexus 5 (`ARM`, `FPU`):
 
 Shine, `14s`, `24.2x` realtime:
-```
+```bash
 u0_a65@hammerhead:/mnt/sdcard $ shineenc bla.wav bla.mp3
 shineenc (Liquidsoap version)
 WAVE PCM Data, stereo 44100Hz 16bit, duration: 00:05:39
