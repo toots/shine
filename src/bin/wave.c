@@ -20,6 +20,18 @@
 
 #define MODE_MONO 3
 
+#ifdef SHINE_BIG_ENDIAN
+#if defined(SHINE_HAVE_BSWAP_H)
+#include <byteswap.h>
+#elif defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 2))
+#define bswap_16(x) __builtin_bswap16(x)
+#define bswap_32(x) __builtin_bswap32(x)
+#else
+#define bswap_16(x)   ((((x) >> 8) & 0xff)  | (((x) & 0xff) << 8))
+#define bswap_32(x)   ((((x)&0xFF)<<24)     | (((x)>>24)&0xFF) \
+                    | (((x)&0x0000FF00)<<8) | (((x)&0x00FF0000)>>8))
+#endif
+
 typedef struct {
   char id[4];
   uint32_t length;
@@ -39,6 +51,17 @@ typedef struct {
   uint16_t frame_size;   /* block align (bytes per sample) = channels * bits_per_sample / 8 = 4 */
   uint16_t depth;        /* bits per sample = 16 for MS PCM (format specific) */
 } fmt_chunk_t;
+
+#ifdef SHINE_BIG_ENDIAN
+#define native_fmt_chunk(fmt) { \
+  fmt.header.length = bswap_32(fmt.header.length); \
+  fmt.format = bswap_16(fmt.format); \
+  fmt.channels = bswap_16(fmt.channels); \
+  fmt.sample_rate = bswap_32(fmt.sample_rate); \
+  fmt.byte_rate = bswap_32(fmt.byte_rate); \
+  fmt.frame_size = bswap_16(fmt.frame_size); \
+  fmt.depth = bswap_16(fmt.depth); } 
+#endif
 
 void wave_seek(FILE *file, int has_seek, uint32_t bytes) {
   uint32_t i;
@@ -132,6 +155,10 @@ unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config,
   if(fread(&fmt_chunk.format, fmt_data, 1, wave->file) != 1)
     error("Read error");
 
+#ifdef SHINE_BIG_ENDIAN
+  native_fmt_chunk(fmt_chunk);
+#endif
+
   if (verbose())
     fprintf(stderr, "WAVE format: %u\n", fmt_chunk.format);
 
@@ -166,13 +193,6 @@ unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config,
       (long)wave->duration / 3600, (long)(wave->duration / 60) % 60, (long)wave->duration % 60);
   return 1;
 }
-
-#ifdef SHINE_BIG_ENDIAN
-#if defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 2))
-#define bswap_16(x) __builtin_bswap16(x)
-#else
-#define bswap_16(x) ((((x) >> 8) & 0xff) | (((x) & 0xff) << 8))
-#endif
 
 void swap_buffer(int16_t *sample_buffer, int length)
 {
