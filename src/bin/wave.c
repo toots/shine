@@ -31,6 +31,7 @@
 #define bswap_32(x)   ((((x)&0xFF)<<24)     | (((x)>>24)&0xFF) \
                     | (((x)&0x0000FF00)<<8) | (((x)&0x00FF0000)>>8))
 #endif
+#endif
 
 typedef struct {
   char id[4];
@@ -194,6 +195,7 @@ unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config,
   return 1;
 }
 
+#ifdef SHINE_BIG_ENDIAN
 void swap_buffer(int16_t *sample_buffer, int length)
 {
   int16_t *end = sample_buffer + length;
