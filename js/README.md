@@ -10,7 +10,7 @@ How to use?
 
 The encoding API should be quite straight forward:
 
-```
+```js
 shine = new Shine({
   samplerate: 44100,
   bitrate: 128,
