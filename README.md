@@ -3,7 +3,7 @@ Shine: fast fixed-point mp3 encoding
 
 [shine](https://github.com/savonet/shine) is a blazing fast mp3 encoding library implemented in 
 fixed-point arithmetic. The library can thus be used to performe super fast mp3 encoding on architectures
-without a FPU, such as `armel`, etc.. It is also, however, also super fast on architectures with a FPU!
+without a FPU, such as `armel`, etc.. It is also super fast on architectures with a FPU!
 
 How to use?
 -----------
