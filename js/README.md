@@ -56,6 +56,7 @@ Done encoding
 Total duration: 4.64
 Encoding time: 0.21
 Encoding rate: 22.42X
+```
 
 Firefox (`103.0.2`):
 ```
