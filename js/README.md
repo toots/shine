@@ -94,7 +94,7 @@ Encoding time: 0.41
 Encoding rate: 11.32X
 ```
 
-NodeJS (`8.2.1`):
+NodeJS (`v14.19.1`):
 ```
 File duration: 5.57 seconds
 Encoding time: 0.53 seconds
