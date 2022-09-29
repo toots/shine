@@ -73,6 +73,33 @@ void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N)
 	}
 }
 
+/*
+ * shine_flush_end_of_frame:
+ * -------------------------
+ * Flush remaining bits of the frame to the bitstream. Must be called only at end of
+ * frame, because only then is the cache guaranteed to be filled to a byte boundary.
+ */
+void shine_flush_end_of_frame(bitstream_t *bs)
+{
+	int bits_to_flush;
+	int cache_bytes;
+
+	if (bs->cache_bits < 32) {
+		bits_to_flush = 32 - bs->cache_bits;
+
+		/* fill the remaining cache bits with zeros (they will be ignored). */
+		shine_putbits(bs, 0, bs->cache_bits);
+
+		/* correct output position because a full 4 bytes may not have been written */
+		cache_bytes = bits_to_flush / 8;
+		bs->data_position += cache_bytes - 4;
+
+		/* clear the cache for the next frame */
+		bs->cache_bits = 32;
+		bs->cache = 0;
+	}
+}
+
 int shine_get_bits_count(bitstream_t *bs)
 {
 	return bs->data_position * 8 + 32 - bs->cache_bits;

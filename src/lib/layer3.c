@@ -165,6 +165,9 @@ static unsigned char *shine_encode_buffer_internal(shine_global_config *config, 
   /* write the frame to the bitstream */
   shine_format_bitstream(config);
 
+  /* flush the cache bits to write a full frame */
+  shine_flush_end_of_frame(&config->bs);
+
   /* Return data. */
   *written = config->bs.data_position;
   config->bs.data_position = 0;
@@ -191,6 +194,8 @@ unsigned char *shine_encode_buffer_interleaved(shine_global_config *config, int1
 }
 
 unsigned char *shine_flush(shine_global_config *config, int *written) {
+  shine_flush_end_of_frame(&config->bs);
+
   *written = config->bs.data_position;
   config->bs.data_position = 0;
 
