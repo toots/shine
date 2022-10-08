@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32901.215
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "shine", "shine.vcxproj", "{2FD2158B-8D2B-496A-9F8A-487FC02703D8}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "shineenc", "shineenc.vcxproj", "{30F159B9-7104-4A66-8746-0E5754B3AF6C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{2FD2158B-8D2B-496A-9F8A-487FC02703D8} = {2FD2158B-8D2B-496A-9F8A-487FC02703D8}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2FD2158B-8D2B-496A-9F8A-487FC02703D8}.Debug|x86.ActiveCfg = Debug|Win32
+		{2FD2158B-8D2B-496A-9F8A-487FC02703D8}.Debug|x86.Build.0 = Debug|Win32
+		{2FD2158B-8D2B-496A-9F8A-487FC02703D8}.Release|x86.ActiveCfg = Release|Win32
+		{2FD2158B-8D2B-496A-9F8A-487FC02703D8}.Release|x86.Build.0 = Release|Win32
+		{30F159B9-7104-4A66-8746-0E5754B3AF6C}.Debug|x86.ActiveCfg = Debug|Win32
+		{30F159B9-7104-4A66-8746-0E5754B3AF6C}.Debug|x86.Build.0 = Debug|Win32
+		{30F159B9-7104-4A66-8746-0E5754B3AF6C}.Release|x86.ActiveCfg = Release|Win32
+		{30F159B9-7104-4A66-8746-0E5754B3AF6C}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E5A05653-4F10-442D-B15B-03BCFAA02093}
+	EndGlobalSection
+EndGlobal

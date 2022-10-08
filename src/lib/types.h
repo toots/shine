@@ -11,6 +11,10 @@
 
 #include "bitstream.h"
 
+#if defined(_MSC_VER) || defined(__BORLANDC__)
+#define __attribute__(X)
+#endif
+
 /* Include arch-specific instructions,
  * when defined. */
 #if defined(__mips__) && (__mips == 32)

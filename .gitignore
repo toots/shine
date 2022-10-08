@@ -85,3 +85,11 @@ shine-*.tar.gz
 *.bc
 *.mp3
 node_modules
+
+# VS
+.vs/
+build/
+*.user
+*.bak
+shineenc.pdb
+shineenc.exe
