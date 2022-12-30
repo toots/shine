@@ -7,20 +7,20 @@
     el.innerHTML = el.innerHTML + "<br>" + msg;
   };
 
-  var load = function() {
-    runEncodeTest(log, function (blob) {
-      if (typeof window.URL !== "undefined") {
-        var link = document.getElementById("download-link");
-        link.href = URL.createObjectURL(blob);
-        link.download = "encoded.mp3";
-      }
+  function onLoad() {
+    Shine.initialized.then(function () {
+      runEncodeTest(log, function (blob) {
+        if (typeof window.URL !== "undefined") {
+          var link = document.getElementById("download-link");
+          link.href = URL.createObjectURL(blob);
+          link.download = "encoded.mp3";
+        }
 
-      log("");
-      runRoundsTest(Shine, log);
+        runRoundsTest(Shine, log);
+      });
     });
   };
-
-  window.addEventListener("load", load, false);
+  window.addEventListener("load", onLoad, false);
 </script>
 <a href="#" id="download-link">Download encoded file</a>
 <div id="output"></div>

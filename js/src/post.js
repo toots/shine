@@ -2,8 +2,8 @@
 
 var isNode = typeof process === "object" && typeof require === "function";
 
-var int16Len = Module.HEAP16.BYTES_PER_ELEMENT;
-var ptrLen   = Module.HEAP32.BYTES_PER_ELEMENT;
+var int16Len = new Int16Array().BYTES_PER_ELEMENT;
+var ptrLen   = new Int32Array().BYTES_PER_ELEMENT;
 
 function Shine(args) {
   if (_shine_check_config(args.samplerate, args.bitrate) < 0)
@@ -157,6 +157,12 @@ Shine.prototype.close = function () {
 
   return encoded;
 };
+
+Shine.initialized = new Promise(function (resolve) {
+  Module['onRuntimeInitialized'] = function () {
+    resolve();
+  }
+})
 
 if (isNode) {
   module.exports = Shine;

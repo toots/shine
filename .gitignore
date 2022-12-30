@@ -81,6 +81,6 @@ src/lib/reservoir.o
 src/lib/tables.lo
 src/lib/tables.o
 shine-*.tar.gz
-*.bc
+*.o
 *.mp3
 node_modules

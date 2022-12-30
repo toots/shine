@@ -4,6 +4,6 @@
 
 
 var Shine = (function() {
-  var Module;
+  var Module = {};
   var context = {};
   return (function() {
