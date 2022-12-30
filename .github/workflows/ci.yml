@@ -51,7 +51,5 @@ jobs:
       run: ./bootstrap
     - name: configure
       run: ./configure
-    - name: bootstrap
-      run: ./bootstrap
     - name: make android
       run: make android   
