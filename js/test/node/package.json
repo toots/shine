@@ -21,7 +21,7 @@
     "npm": "1"
   },
   "dependencies": {
-    "coffee-script": "1.6.3",
+    "coffeescript": "2.7.0",
     "wav": "^1.0.2"
   }
 }

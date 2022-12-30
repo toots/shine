@@ -60,7 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: lovasoa/setup-emscripten@master
+    - uses: mymindstorm/setup-emsdk@v11
     - name: JS build
       run: |
         cd js
