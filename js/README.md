@@ -51,7 +51,7 @@ Done encoding.
 File duration: 5.57 seconds
 Encoding time: 0.08 seconds
 Encoding rate: 67.96X
-sa
+
 Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
