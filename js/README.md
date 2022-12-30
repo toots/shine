@@ -38,72 +38,76 @@ How fast is it?
 You can run the test suite located in `test/`. Encoding rate above `1X` means that 
 the browser should be suitable for real-time encoding.
 
-Results, as of August 20, 2022:
+Results, as of December 30, 2022:
 
-Chrome (`104.0.5112.101`):
+Chrome (`108.0.5359.124`):
 ```
 Executing encoding test
 Got WAV file.
 Encoding..
 Done encoding.
 File duration: 5.57 seconds
-Encoding time: 0.35 seconds
-Encoding rate: 16.11X
-
+Encoding time: 0.08 seconds
+Encoding rate: 67.96X
+sa
 Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64
-Encoding time: 0.21
-Encoding rate: 22.42X
+Encoding time: 0.03
+Encoding rate: 160.00X
 ```
 
-Firefox (`103.0.2`):
+Firefox (`108.0.1`):
 ```
 Executing encoding test
 Got WAV file.
 Encoding..
 Done encoding.
 File duration: 5.57 seconds
-Encoding time: 0.36 seconds
-Encoding rate: 15.31X
+Encoding time: 0.06 seconds
+Encoding rate: 99.52X
 
 Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64
-Encoding time: 0.24
-Encoding rate: 19.50X
+Encoding time: 0.03
+Encoding rate: 178.46X
 ```
 
-Safari (`15.3`):
+Safari (`16.2`):
 ```
 Executing encoding test
 Got WAV file.
 Encoding..
 Done encoding.
 File duration: 5.57 seconds
-Encoding time: 0.69 seconds
-Encoding rate: 8.09X
+Encoding time: 0.12 seconds
+Encoding rate: 46.44X
 
 Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64
-Encoding time: 0.41
-Encoding rate: 11.32X
+Encoding time: 0.02
+Encoding rate: 210.91X
 ```
 
-NodeJS (`v14.19.1`):
+NodeJS (`v19.3.0`):
 ```
+Executing encoding test
+Got WAV file.
+Encoding..
+Done encoding.
 File duration: 5.57 seconds
-Encoding time: 0.53 seconds
-Encoding rate: 10.44X
+Encoding time: 0.06 seconds
+Encoding rate: 94.45X
 
 Executing rounds test
 Encoding 50 buffers of 4096 samples
 Done encoding
 Total duration: 4.64
-Encoding time: 0.38
-Encoding rate: 12.34X
+Encoding time: 0.03
+Encoding rate: 178.46X
 ```
