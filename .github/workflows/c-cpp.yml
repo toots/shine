@@ -1,0 +1,43 @@
+name: Build and install
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+  
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v3
+    - name: bootstrap
+      run: ./bootstrap
+    - name: configure
+      run: ./configure
+    - name: make
+      run: make
+    - name: make install
+      run: make install
+      
+  android_build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r25b
+        local-cache: true
+    - name: configure
+      run: ./configure
+    - name: bootstrap
+      run: ./bootstrap
+    - name: make android
+      run: make android   
