@@ -41,6 +41,10 @@ jobs:
       with:
         ndk-version: r25b
         local-cache: true
+    - name: Install autoconf/automake
+      run: sudo apt-get -y install automake autoconf
+    - name: bootstrap
+      run: ./bootstrap
     - name: configure
       run: ./configure
     - name: bootstrap
