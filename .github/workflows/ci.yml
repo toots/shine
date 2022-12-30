@@ -66,8 +66,6 @@ jobs:
         cd js
         make
     - uses: actions/setup-node@v3
-      with:
-        cache: 'npm'
     - name: Run node test
       run: |
         cd js/test/node
