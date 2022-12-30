@@ -2,7 +2,7 @@ Shine: fast fixed-point mp3 encoding
 ====================================
 
 [shine](https://github.com/savonet/shine) is a blazing fast mp3 encoding library implemented in 
-fixed-point arithmetic. The library can thus be used to performe super fast mp3 encoding on architectures
+fixed-point arithmetic. The library can thus be used to perform super fast mp3 encoding on architectures
 without a FPU, such as `armel`, etc.. It is also super fast on architectures with a FPU!
 
 How to use?
@@ -128,7 +128,7 @@ A bit of history
 This code was dug out from the dusty crates of those times before internet 
 and github. It apparently was created by Gabriel Bouvigne sometime around 
 the end of the 20th century. The encoder was converted circa 2001 by Pete 
-Everett to fixed-point arithmetic for the RISC OS. Latest we know, Patrick 
+Everett to fixed-point arithmetic for the RISC OS. Last we know, Patrick 
 Roberts had worked on the code to make it multi-platform and more library
 oriented. That was around 2006.
 
