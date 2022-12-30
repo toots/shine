@@ -1,9 +1,29 @@
 Shine encoder library for Javascript
 ====================================
 
-This directory contains a build of shine for Javascript using 
-[kripken/emscripten](https://github.com/kripken/emscripten) and
-located in `dist/libshine.js`
+This package contains a build of the [shine](https://github.com/toots/shine) fixed-point
+mp3 encoder compiled for Javascript and wasm using [emscripten-core/emscripten](https://github.com/emscripten-core/emscripten).
+
+Install
+-------
+
+Using `npm`:
+
+```shell
+npm install @toots/shine.js
+```
+
+Using `yarn:
+
+```shell
+yarn add @toots/shine.js
+```
+
+Using `pnpm`:
+
+```shell
+pnpm install @toots/shine.js
+```
 
 How to use?
 -----------
@@ -11,27 +31,34 @@ How to use?
 The encoding API should be quite straight forward:
 
 ```js
-await Shine.initialized;
+import Shine from "@toots/shine.js";
 
-shine = new Shine({
-  samplerate: 44100,
-  bitrate: 128,
-  channels: 2,
-  mode: Shine.STEREO
-});
+const exec = async () => 
+  await Shine.initialized;
+
+  shine = new Shine({
+    samplerate: 44100,
+    bitrate: 128,
+    channels: 2,
+    mode: Shine.STEREO
+  });
   
-// All the magic happens here
-while (..) {
-  // data here is an array of channels.
-  // Channels must have the same number of samples
-  // and both be either Int16Array or Float32Array.
-  encoded = shine.encode(data);
+  // All the magic happens here
+  while (..) {
+    // data here is an array of channels.
+    // Channels must have the same number of samples
+    // and both be either Int16Array or Float32Array.
+    encoded = shine.encode(data);
+    ...
+  }
+
+  // Close and get remaining data.
+  flushed = shine.close();
+
   ...
 }
 
-// Close and get remaining data.
-flushed = shine.close();
-...
+exec();
 ```
 
 How fast is it?

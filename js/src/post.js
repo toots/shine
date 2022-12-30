@@ -8,18 +8,18 @@ function Shine(args) {
   if (_shine_check_config(args.samplerate, args.bitrate) < 0)
     throw "Invalid configuration";
 
-  var mode;
-  if (!args.mode) {
+  var stereoMode;
+  if (!args.stereoMode) {
     if (args.channels === 1) {
-      mode = Shine.MONO;
+      stereoMode = Shine.MONO;
     } else {
-      mode = Shine.JOINT_STEREO;
+      stereoMode = Shine.JOINT_STEREO;
     }
   } else {
-    mode = args.mode;
+    stereoMode = args.stereoMode;
   }
 
-  this._handle = _shine_js_init(args.channels, args.samplerate, mode, args.bitrate);
+  this._handle = _shine_js_init(args.channels, args.samplerate, stereoMode, args.bitrate);
 
   this._channels = args.channels;
   this._samples_per_pass = _shine_samples_per_pass(this._handle);
@@ -40,10 +40,28 @@ function Shine(args) {
   return this; 
 };
 
-Shine.STEREO = 0;
-Shine.JOINT_STEREO = 1;
-Shine.DUAL_CHANNEL = 2;
-Shine.MONO = 3;
+Shine.StereoMode = {
+  '0': 'STEREO',
+  '1': 'JOINT_STEREO',
+  '2': 'DUAL_CHANNEL',
+  '3': 'MONO',
+  STEREO: 0,
+  JOINT_STEREO: 1,
+  DUAL_CHANNEL: 2,
+  MONO: 3
+};
+
+Shine.checkConfig = function (samplerate, bitrate) {
+  return !!_shine_check_config(samplerate, bitrate);
+};
+
+Shine.initialized = new Promise(function (resolve) {
+  Module['onRuntimeInitialized'] = function () {
+    int16Len = _shine_js_int16_len();
+    ptrLen   = _shine_js_ptr_len();
+    resolve();
+  }
+})
 
 Shine.prototype._encodePass = function (data) {
   if (!this._handle)
@@ -156,14 +174,6 @@ Shine.prototype.close = function () {
 
   return encoded;
 };
-
-Shine.initialized = new Promise(function (resolve) {
-  Module['onRuntimeInitialized'] = function () {
-    int16Len = _shine_js_int16_len();
-    ptrLen   = _shine_js_ptr_len();
-    resolve();
-  }
-})
 
 if (isNode) {
   module.exports = Shine;

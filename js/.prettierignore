@@ -1,0 +1,4 @@
+src/pre.js
+src/post.js
+dist/libshine.js
+test/browser/libshine.js

@@ -1,0 +1,34 @@
+{
+  "name": "@toots/shine.js",
+  "version": "1.0.1",
+  "description": "Shine fixed-point mp3 encoder",
+  "types": "libshine.js",
+  "main": "dist/libshine.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "ts-node ./test.ts",
+    "format": "prettier '**/*.{ts,tsx,js,jsx}' --write"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/toots/shine.git"
+  },
+  "keywords": [
+    "mp3",
+    "encoder",
+    "wasm",
+    "fixed-point"
+  ],
+  "author": "Romain Beauxis <toots@rastageeks.org>",
+  "license": "LGPL-2.0-only",
+  "bugs": {
+    "url": "https://github.com/toots/shine/issues"
+  },
+  "homepage": "https://github.com/toots/shine#readme",
+  "devDependencies": {
+    "prettier": "^2.8.1",
+    "ts-node": "^10.9.1"
+  }
+}
