@@ -11,6 +11,8 @@ How to use?
 The encoding API should be quite straight forward:
 
 ```js
+await Shine.initialized;
+
 shine = new Shine({
   samplerate: 44100,
   bitrate: 128,
