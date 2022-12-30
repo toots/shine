@@ -3,6 +3,7 @@ obj
 libs
 compile
 android/
+!android/*.mk
 shine
 shine.pc
 m4
