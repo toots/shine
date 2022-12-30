@@ -2,8 +2,9 @@
 
 EMCC:=emcc
 EXPORTED_FUNCTIONS:='["_malloc", "_free", "_shine_check_config", "_shine_js_init",\
+        "_shine_js_int16_len", "_shine_js_ptr_len", \
 	"_shine_samples_per_pass", "_shine_encode_buffer",\
-  "_shine_flush", "_shine_close"]'
+        "_shine_flush", "_shine_close"]'
 CFLAGS:=-O3
 LINKFLAGS:=-s EXPORTED_FUNCTIONS=$(EXPORTED_FUNCTIONS) --memory-init-file 0 $(CFLAGS)
 
