@@ -33,14 +33,14 @@ The encoding API should be quite straight forward:
 ```js
 import Shine from "@toots/shine.js";
 
-const exec = async () => 
+const exec = async () => {
   await Shine.initialized;
 
   shine = new Shine({
     samplerate: 44100,
     bitrate: 128,
     channels: 2,
-    mode: Shine.STEREO
+    stereoModel: Shine.stereoModel.STEREO
   });
   
   // All the magic happens here

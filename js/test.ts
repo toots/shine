@@ -19,7 +19,7 @@ const runRoundsTest = async () => {
     samplerate: samplerate,
     bitrate: 128,
     channels: channels,
-    mode: Shine.StereoMode.STEREO,
+    stereoModel: Shine.StereoMode.STEREO,
   });
 
   for (let i = 0; i < nPasses; i++) shine.encode(data);
