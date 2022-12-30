@@ -44,7 +44,7 @@ How fast is it?
 
 On a [Raspberry Pi](http://www.raspberrypi.org/) (`ARM`, `FPU`):
 
-Lame, `3m06s`, `1.8x` realtime:
+Lame, `1.8x` realtime:
 ```bash
 pi@raspberrypi ~ $ lame bla.wav bla.mp3
 LAME 3.99.5 32bits (http://lame.sf.net)
@@ -60,7 +60,7 @@ Writing LAME Tag...done
 ReplayGain: -10.5dB
 ```
 
-Shine, `1m35s`, `3.6x` realtime:
+Shine, `3.6x` realtime:
 ```bash
 pi@raspberrypi ~ $ shineenc bla.wav bla.mp3
 shineenc (Liquidsoap version)
@@ -71,32 +71,32 @@ Encoding "bla.wav" to "bla.mp3"
 Finished in 00:01:35 (3.6x realtime)
 ```
 
-Now, on a mac airbook (`x86_64`, `FPU`):
+Now, on a macbook pro (`arm64`, `FPU`):
 
-Lame, `15s`, `22x` realtime:
+Lame, `88.7x` realtime:
 ```bash
-toots@zulu tmp  % lame bla.wav bla.mp3
-LAME 3.99.5 64bits (http://lame.sf.net)
+LAME 3.100 64bits (http://lame.sf.net)
 Using polyphase lowpass filter, transition band: 16538 Hz - 17071 Hz
-Encoding bla.wav to bla.mp3
+Encoding /tmp/decoded.wav to /tmp/lame.mp3
 Encoding as 44.1 kHz j-stereo MPEG-1 Layer III (11x) 128 kbps qval=3
     Frame          |  CPU time/estim | REAL time/estim | play/CPU |    ETA
- 12987/12987 (100%)|    0:15/    0:15|    0:17/    0:17|   22.087x|    0:00
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 12203/12203 (100%)|    0:03/    0:03|    0:04/    0:04|   88.773x|    0:00
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
    kbps        LR    MS  %     long switch short %
-  128.0        0.1  99.9        89.1   6.1   4.9
+  128.0       32.6  67.4        96.4   1.9   1.7
 Writing LAME Tag...done
-ReplayGain: -10.5dB
+ReplayGain: -9.3dB
+lame -b 128 /tmp/decoded.wav /tmp/lame.mp3  3.55s user 0.05s system 99% cpu 3.609 total
 ```
 
-Shine, `9s`, `37.7x` realtime:
+Shine, `318.0x` realtime:
 ```
 shineenc (Liquidsoap version)
-WAVE PCM Data, stereo 44100Hz 16bit, duration: 00:05:39
+WAVE PCM Data, stereo 44100Hz 16bit, duration: 00:05:18
 MPEG-I layer III, stereo  Psychoacoustic Model: Shine
 Bitrate: 128 kbps  De-emphasis: none   Original
-Encoding "/tmp/bla.wav" to "/tmp/bla.mp3"
-Finished in 00:00:09 (37.7x realtime)
+Encoding "/tmp/bla.wav" to "/tmp/shine.mp3"
+Finished in 00:00:01 (318.0x realtime)
 ```
 
 On a Google Nexus 5 (`ARM`, `FPU`):
