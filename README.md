@@ -42,6 +42,36 @@ shine_close(s);
 How fast is it?
 ---------------
 
+On a macbook pro (`arm64`/M1 pro, `FPU`, December 30, 2022):
+
+Lame, `88.7x` realtime:
+```bash
+LAME 3.100 64bits (http://lame.sf.net)
+Using polyphase lowpass filter, transition band: 16538 Hz - 17071 Hz
+Encoding /tmp/decoded.wav to /tmp/lame.mp3
+Encoding as 44.1 kHz j-stereo MPEG-1 Layer III (11x) 128 kbps qval=3
+    Frame          |  CPU time/estim | REAL time/estim | play/CPU |    ETA
+ 12203/12203 (100%)|    0:03/    0:03|    0:04/    0:04|   88.773x|    0:00
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+   kbps        LR    MS  %     long switch short %
+  128.0       32.6  67.4        96.4   1.9   1.7
+Writing LAME Tag...done
+ReplayGain: -9.3dB
+lame -b 128 /tmp/decoded.wav /tmp/lame.mp3  3.55s user 0.05s system 99% cpu 3.609 total
+```
+
+Shine, `318.0x` realtime:
+```
+shineenc (Liquidsoap version)
+WAVE PCM Data, stereo 44100Hz 16bit, duration: 00:05:18
+MPEG-I layer III, stereo  Psychoacoustic Model: Shine
+Bitrate: 128 kbps  De-emphasis: none   Original
+Encoding "/tmp/bla.wav" to "/tmp/shine.mp3"
+Finished in 00:00:01 (318.0x realtime)
+```
+
+### ⚠ The following are outdated tests ⚠
+
 On a [Raspberry Pi](http://www.raspberrypi.org/) (`ARM`, `FPU`):
 
 Lame, `1.8x` realtime:
