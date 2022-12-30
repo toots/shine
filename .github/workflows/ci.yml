@@ -18,6 +18,12 @@ jobs:
         os: [macos-latest, ubuntu-latest]
     steps:
     - uses: actions/checkout@v3
+    - name: Install autoconf/automake on macos
+      if: matrix.os == 'macos-latest'
+      run: brew install autoconf automake
+    - name: Install autoconf/automake on ubuntu
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo apt-get -y install automake autoconf
     - name: bootstrap
       run: ./bootstrap
     - name: configure
