@@ -2,6 +2,6 @@
 #define MAIN_H
 
 void error(char *s);
-int  verbose();
+int verbose();
 
 #endif

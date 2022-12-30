@@ -1,7 +1,7 @@
+#include "layer3.h"
+#include "types.h"
 #include <stdlib.h>
 #include <string.h>
-#include "types.h"
-#include "layer3.h"
 
 shine_t shine_js_init(int channels, int samplerate, int mode, int bitr) {
   shine_config_t config;
@@ -13,4 +13,4 @@ shine_t shine_js_init(int channels, int samplerate, int mode, int bitr) {
   config.mpeg.bitr = bitr;
 
   return shine_initialise(&config);
-} 
+}

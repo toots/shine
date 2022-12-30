@@ -1,6 +1,8 @@
+#include <stdint.h>
+
 #define HUFFBITS uint16_t
-#define HTN     34
-#define MXOFF   250
+#define HTN 34
+#define MXOFF 250
 
 struct huffcodetab {
   unsigned int xlen;         /*max. x-index+                         */
@@ -11,9 +13,8 @@ struct huffcodetab {
   const unsigned char *hlen; /*pointer to array[xlen][ylen]          */
 };
 
-extern const struct huffcodetab shine_huffman_table[HTN];/* global memory block                */
-                                                         /* array of all huffcodtable headers    */
-                                                         /* 0..31 Huffman code table 0..31       */
-                                                         /* 32,33 count1-tables                  */
-
-
+extern const struct huffcodetab
+    shine_huffman_table[HTN]; /* global memory block                */
+                              /* array of all huffcodtable headers    */
+                              /* 0..31 Huffman code table 0..31       */
+                              /* 32,33 count1-tables                  */
