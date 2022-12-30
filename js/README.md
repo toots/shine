@@ -13,7 +13,7 @@ Using `npm`:
 npm install @toots/shine.js
 ```
 
-Using `yarn:
+Using `yarn`:
 
 ```shell
 yarn add @toots/shine.js
