@@ -18,12 +18,12 @@ jobs:
         os: [macos-latest, ubuntu-latest]
     steps:
     - uses: actions/checkout@v3
-    - name: Install autoconf/automake on macos
+    - name: Install required packages  on macos
       if: matrix.os == 'macos-latest'
-      run: brew install autoconf automake
-    - name: Install autoconf/automake on ubuntu
+      run: brew install autoconf automake pkg-config
+    - name: Install required packages on ubuntu
       if: matrix.os == 'ubuntu-latest'
-      run: sudo apt-get -y install automake autoconf
+      run: sudo apt-get -y install automake autoconf pkg-config
     - name: bootstrap
       run: ./bootstrap
     - name: configure
@@ -36,6 +36,8 @@ jobs:
     - name: make install on ubuntu
       if: matrix.os == 'ubuntu-latest'
       run: sudo make install
+    - name: Test pkg-config setup
+      run: pkg-config --libs shine
       
   android_build:
     runs-on: ubuntu-latest
