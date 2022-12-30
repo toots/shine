@@ -26,14 +26,12 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = shine.pc
 
 android:
-	[ -d android/bin ]     || mkdir android/bin
 	[ -d android/include ] || mkdir android/include
-	[ -d android/lib ]     || mkdir android/lib
+	cp src/lib/layer3.h android/includ
 	NDK_PROJECT_PATH=$(shell pwd) ndk-build APP_BUILD_SCRIPT=$(shell pwd)/android/Library.mk
-	cp libs/armeabi/libshine.so android/lib
-	cp src/lib/layer3.h android/include
+	cp -rf libs/* android
 	NDK_PROJECT_PATH=$(shell pwd) ndk-build APP_BUILD_SCRIPT=$(shell pwd)/android/Binary.mk
-	cp libs/armeabi/shineenc android/bin
+	cp -rf libs/* android
 
 clean-local:
 	-rm -rf obj libs android/lib android/bin android/include

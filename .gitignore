@@ -2,9 +2,7 @@
 obj
 libs
 compile
-android/lib
-android/include
-android/bin
+android/
 shine
 shine.pc
 m4
