@@ -5,9 +5,6 @@ var int16Len;
 var ptrLen;
 
 function Shine(args) {
-  int16Len = _shine_js_int16_len();
-  ptrLen   = _shine_js_ptr_len();
-
   if (_shine_check_config(args.samplerate, args.bitrate) < 0)
     throw "Invalid configuration";
 
@@ -162,6 +159,8 @@ Shine.prototype.close = function () {
 
 Shine.initialized = new Promise(function (resolve) {
   Module['onRuntimeInitialized'] = function () {
+    int16Len = _shine_js_int16_len();
+    ptrLen   = _shine_js_ptr_len();
     resolve();
   }
 })
