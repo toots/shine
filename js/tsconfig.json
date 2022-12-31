@@ -1,8 +1,12 @@
 {
   "include": ["**/*.ts"],
+  "exclude": ["test/", "node_modules/"],
   "compilerOptions": {
+    "baseUrl": ".",
     "allowJs": true,
     "skipLibCheck": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "declaration": true,
+    "outDir": "dist"
   }
 }

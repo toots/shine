@@ -12,7 +12,6 @@
     "mail": "toots@rastageeks.org",
     "url": "http://github.com/savonet/shine/issues"
   },
-  "main": "test.coffee",
   "scripts": {
     "test": "ts-node ./encode.ts && ts-node ./rounds.ts"
   },

@@ -1,0 +1,28 @@
+{
+  "name": "shine-nextjs-test-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "lint": "next lint --fix",
+    "build": "next build && next export && touch out/.nojekyll",
+    "format": "prettier '**/*.{ts,tsx,js,jsx}' --write",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@next/font": "13.1.1",
+    "@toots/shine.js": "file:../..",
+    "@types/node": "18.11.18",
+    "@types/react": "18.0.26",
+    "@types/react-dom": "18.0.10",
+    "eslint": "8.31.0",
+    "eslint-config-next": "13.1.1",
+    "next": "13.1.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "typescript": "4.9.4"
+  },
+  "devDependencies": {
+    "prettier": "^2.8.1"
+  }
+}

@@ -17,7 +17,6 @@ var runRoundsTest = function (Shine, log) {
     samplerate: samplerate,
     bitrate: 128,
     channels: channels,
-    stereoMode: Shine.StereoMode.STEREO,
   });
 
   var i;

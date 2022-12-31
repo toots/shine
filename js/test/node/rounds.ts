@@ -1,4 +1,4 @@
-import Shine from "@toots/shine.js";
+import { Shine } from "@toots/shine.js";
 import runRoundsTest from "../lib/rounds";
 
 const exec = async () => {

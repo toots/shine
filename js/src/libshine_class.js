@@ -1,11 +1,27 @@
 // libshine function wrappers
 
-var isNode = typeof process === "object" && typeof require === "function";
+var StereoMode = {
+  '0': 'STEREO',
+  '1': 'JOINT_STEREO',
+  '2': 'DUAL_CHANNEL',
+  '3': 'MONO',
+  STEREO: 0,
+  JOINT_STEREO: 1,
+  DUAL_CHANNEL: 2,
+  MONO: 3
+};
+
+var ShineModule;
 var int16Len;
 var ptrLen;
 
+function shineInit() {
+  int16Len = ShineModule._shine_js_int16_len();
+  ptrLen   = ShineModule._shine_js_ptr_len();
+};
+
 function Shine(args) {
-  if (_shine_check_config(args.samplerate, args.bitrate) < 0)
+  if (ShineModule._shine_check_config(args.samplerate, args.bitrate) < 0)
     throw "Invalid configuration";
 
   var stereoMode;
@@ -19,49 +35,30 @@ function Shine(args) {
     stereoMode = args.stereoMode;
   }
 
-  this._handle = _shine_js_init(args.channels, args.samplerate, stereoMode, args.bitrate);
+  this._handle = ShineModule._shine_js_init(args.channels, args.samplerate, stereoMode, args.bitrate);
 
   this._channels = args.channels;
-  this._samples_per_pass = _shine_samples_per_pass(this._handle);
+  this._samples_per_pass = ShineModule._shine_samples_per_pass(this._handle);
 
-  this._buffer = _malloc(this._channels * ptrLen);
+  this._buffer = ShineModule._malloc(this._channels * ptrLen);
   this._pcm = new Array(this._channels);
   this._rem = new Array(this._channels);
-  this._written = _malloc(int16Len);
+  this._written = ShineModule._malloc(int16Len);
 
   var _tmp, chan;
   for (chan=0; chan<this._channels; chan++) {
     this._rem[chan] = new Int16Array;
-    _tmp = _malloc(this._samples_per_pass * int16Len);
-    setValue(this._buffer + chan*ptrLen, _tmp, "*")
-    this._pcm[chan] = Module.HEAP16.subarray(_tmp/int16Len, _tmp/int16Len+this._samples_per_pass) 
+    _tmp = ShineModule._malloc(this._samples_per_pass * int16Len);
+    ShineModule.setValue(this._buffer + chan*ptrLen, _tmp, "*")
+    this._pcm[chan] = ShineModule.HEAP16.subarray(_tmp/int16Len, _tmp/int16Len+this._samples_per_pass) 
   }
 
   return this; 
 };
 
-Shine.StereoMode = {
-  '0': 'STEREO',
-  '1': 'JOINT_STEREO',
-  '2': 'DUAL_CHANNEL',
-  '3': 'MONO',
-  STEREO: 0,
-  JOINT_STEREO: 1,
-  DUAL_CHANNEL: 2,
-  MONO: 3
-};
-
 Shine.checkConfig = function (samplerate, bitrate) {
-  return !!_shine_check_config(samplerate, bitrate);
+  return ShineModule._shine_check_config(samplerate, bitrate) >= 0;
 };
-
-Shine.initialized = new Promise(function (resolve) {
-  Module['onRuntimeInitialized'] = function () {
-    int16Len = _shine_js_int16_len();
-    ptrLen   = _shine_js_ptr_len();
-    resolve();
-  }
-})
 
 Shine.prototype._encodePass = function (data) {
   if (!this._handle)
@@ -71,11 +68,11 @@ Shine.prototype._encodePass = function (data) {
   for (chan=0;chan<this._channels;chan++)
     this._pcm[chan].set(data[chan]);
 
-  var _buf = _shine_encode_buffer(this._handle, this._buffer, this._written);
+  var _buf = ShineModule._shine_encode_buffer(this._handle, this._buffer, this._written);
 
-  var written = getValue(this._written, "i16"); 
+  var written = ShineModule.getValue(this._written, "i16"); 
 
-  return Module.HEAPU8.subarray(_buf, _buf+written);
+  return ShineModule.HEAPU8.subarray(_buf, _buf+written);
 };
 
 function concat(ctr, a, b) {
@@ -155,30 +152,22 @@ Shine.prototype.close = function () {
     throw "Closed";
   }
 
-  var _buf = _shine_flush(this._handle, this._written);
+  var _buf = ShineModule._shine_flush(this._handle, this._written);
 
-  var written = getValue(this._written, "i16");
+  var written = ShineModule.getValue(this._written, "i16");
   var encoded = new Uint8Array(written);
 
-  encoded.set(Module.HEAPU8.subarray(_buf, _buf + written));
+  encoded.set(ShineModule.HEAPU8.subarray(_buf, _buf + written));
 
-  _free(this._written);
-  _shine_close(this._handle);
+  ShineModule._free(this._written);
+  ShineModule._shine_close(this._handle);
   this._handle = null;
 
   var chan;
   for (chan=0; chan<this._channels; chan++) {
-    _free(getValue(this._buffer + chan*ptrLen, "*"));
+    ShineModule._free(ShineModule.getValue(this._buffer + chan*ptrLen, "*"));
   }
-  _free(this._buffer);
+  ShineModule._free(this._buffer);
 
   return encoded;
 };
-
-if (isNode) {
-  module.exports = Shine;
-}
-
-return Shine;
-
-}).call(context)})();

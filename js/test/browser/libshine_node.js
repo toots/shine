@@ -1,0 +1,1 @@
+../../dist/libshine_node.js

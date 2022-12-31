@@ -4,13 +4,11 @@ function runEncodeTest(log, callback) {
   var samplerate = 44100;
   var channels = 2;
   var bitrate = 128;
-  var stereoModel = Shine.StereoModel.STEREO;
 
   var shine = new Shine({
     samplerate: samplerate,
     channels: channels,
     bitrate: bitrate,
-    stereoModel: stereoModel,
   });
 
   var started = new Date();

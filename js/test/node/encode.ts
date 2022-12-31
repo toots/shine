@@ -1,4 +1,4 @@
-import Shine from "@toots/shine.js";
+import { Shine } from "@toots/shine.js";
 import { Reader } from "wav";
 import fs from "fs";
 

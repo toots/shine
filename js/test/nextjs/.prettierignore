@@ -1,5 +1,4 @@
 .next/
-dist/
-stubs/
+out/
 public/audio
 __ENV.js

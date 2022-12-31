@@ -25,13 +25,27 @@ Using `pnpm`:
 pnpm install @toots/shine.js
 ```
 
+In a HTML page:
+
+When using `webpack`, the package should point to the correct
+`libshine_browser.js` file automatically.
+
+When using directly as a script, you can load the `libshine_node.js`
+file as:
+
+```html
+<script src="libshine_node.js"></script>
+```
+
+See: [test/browser](https://github.com/toots/shine/tree/main/js/test/browser) for an example.
+
 How to use?
 -----------
 
 The encoding API should be quite straight forward:
 
 ```js
-import Shine from "@toots/shine.js";
+import { Shine } from "@toots/shine.js";
 
 const exec = async () => {
   await Shine.initialized;
