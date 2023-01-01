@@ -46,7 +46,7 @@ const exec = async () => {
     console.log("Encoding..");
     const started = new Date();
     let duration = 0.0;
-    const samplerate = parseFloat(format.sampleRate);
+    const samplerate = format.sampleRate;
 
     reader.on("data", buf => {
       const samples = buf.length / (2 * format.channels);
