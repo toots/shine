@@ -45,7 +45,7 @@ How to use?
 The encoding API should be quite straight forward:
 
 ```js
-import { Shine } from "@toots/shine.js";
+import { Shine, StereoModel } from "@toots/shine.js";
 
 const exec = async () => {
   await Shine.initialized;
@@ -54,7 +54,7 @@ const exec = async () => {
     samplerate: 44100,
     bitrate: 128,
     channels: 2,
-    stereoModel: Shine.stereoModel.STEREO
+    stereoModel: StereoModel.STEREO
   });
   
   // All the magic happens here
