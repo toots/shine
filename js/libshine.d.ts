@@ -7,7 +7,7 @@ export declare enum StereoMode {
 }
 export class Shine {
     static initialized: Promise<void>;
-    static checkConfig(samplerate: any, bitrate: any): boolean;
+    static checkConfig(samplerate: number, bitrate: number): boolean;
     constructor(args: {
         samplerate: number;
         bitrate: number;

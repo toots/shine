@@ -1,6 +1,6 @@
 {
   "name": "@toots/shine.js",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Shine fixed-point mp3 encoder",
   "main": "dist/libshine_node.js",
   "browser": "dist/libshine_browser.js",
