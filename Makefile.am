@@ -5,7 +5,7 @@ EXTRA_DIST = ChangeLog README.md README.old libshine.sym js tests/golden.txt \
 noinst_HEADERS = src/bin/main.h src/bin/wave.h \
                  src/lib/bitstream.h src/lib/huffman.h src/lib/l3bitstream.h \
                  src/lib/l3loop.h src/lib/l3mdct.h src/lib/l3subband.h \
-                 src/lib/mult_noarch_gcc.h src/lib/reservoir.h src/lib/tables.h \
+                 src/lib/fixed_point.h src/lib/reservoir.h src/lib/tables.h \
                  src/lib/types.h
 
 AUTOMAKE_OPTIONS = foreign
