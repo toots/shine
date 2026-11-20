@@ -59,7 +59,6 @@ typedef struct {
 #ifdef SHINE_BIG_ENDIAN
 #define native_fmt_chunk(fmt)                                                  \
   {                                                                            \
-    fmt.header.length = bswap_32(fmt.header.length);                           \
     fmt.format = bswap_16(fmt.format);                                         \
     fmt.channels = bswap_16(fmt.channels);                                     \
     fmt.sample_rate = bswap_32(fmt.sample_rate);                               \
@@ -94,6 +93,10 @@ unsigned char wave_get_chunk_header(FILE *file, int has_seek, const char id[4],
       else
         error("Read error");
     }
+
+#ifdef SHINE_BIG_ENDIAN
+    header->length = bswap_32(header->length);
+#endif
 
     /* chunks must be word-aligned, chunk data doesn't need to */
     chunk_length = header->length + header->length % 2;
