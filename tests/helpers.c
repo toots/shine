@@ -150,7 +150,7 @@ int walk_frames(const stream_t *stream, const shine_config_t *config,
     mode = header[3] >> 6;
 
     if (bitrate != config->mpeg.bitr || samplerate != config->wave.samplerate ||
-        mode != config->mpeg.mode) {
+        mode != (int)config->mpeg.mode) {
       printf("FAIL %s: frame %d header says %d Hz %d kbps mode %d\n", name,
              frames, samplerate, bitrate, mode);
       return -1;

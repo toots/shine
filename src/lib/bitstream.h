@@ -2,11 +2,11 @@
 #define BITSTREAM_H
 
 typedef struct bit_stream_struc {
-  unsigned char *data; /* Processed data */
-  int data_size;       /* Total data size */
-  int data_position;   /* Data position */
-  unsigned int cache;  /* bit stream cache */
-  int cache_bits;      /* free bits in cache */
+  unsigned char *data;     /* Processed data */
+  int data_size;           /* Total data size */
+  int data_position;       /* Data position */
+  unsigned int cache;      /* bit stream cache */
+  unsigned int cache_bits; /* free bits in cache */
 } bitstream_t;
 
 /* "bit_stream.h" Definitions */
