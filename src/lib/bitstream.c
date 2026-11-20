@@ -45,6 +45,9 @@ void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N) {
     printf("Upper bits (higher than %d) are not all zeros.\n", N);
 #endif
 
+  if (N == 0)
+    return;
+
   if (bs->cache_bits > N) {
     bs->cache_bits -= N;
     bs->cache |= val << bs->cache_bits;
