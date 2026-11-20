@@ -95,9 +95,9 @@ static void encodeSideInfo(shine_global_config *config) {
   shine_putbits(&config->bs, config->mpeg.mode_ext, 2);
   shine_putbits(&config->bs, config->mpeg.copyright, 1);
   shine_putbits(&config->bs, config->mpeg.original, 1);
-  shine_putbits(&config->bs, config->mpeg.emph, 2);
+  shine_putbits(&config->bs, config->mpeg.emphasis, 2);
 
-  if (config->mpeg.version == MPEG_I) {
+  if (config->mpeg.version == SHINE_MPEG_I) {
     shine_putbits(&config->bs, 0, 9);
     if (config->wave.channels == 2)
       shine_putbits(&config->bs, si.private_bits, 3);
@@ -111,7 +111,7 @@ static void encodeSideInfo(shine_global_config *config) {
       shine_putbits(&config->bs, si.private_bits, 1);
   }
 
-  if (config->mpeg.version == MPEG_I)
+  if (config->mpeg.version == SHINE_MPEG_I)
     for (ch = 0; ch < config->wave.channels; ch++) {
       for (scfsi_band = 0; scfsi_band < 4; scfsi_band++)
         shine_putbits(&config->bs, si.scfsi[ch][scfsi_band], 1);
@@ -124,7 +124,7 @@ static void encodeSideInfo(shine_global_config *config) {
       shine_putbits(&config->bs, gi->part2_3_length, 12);
       shine_putbits(&config->bs, gi->big_values, 9);
       shine_putbits(&config->bs, gi->global_gain, 8);
-      if (config->mpeg.version == MPEG_I)
+      if (config->mpeg.version == SHINE_MPEG_I)
         shine_putbits(&config->bs, gi->scalefac_compress, 4);
       else
         shine_putbits(&config->bs, gi->scalefac_compress, 9);
@@ -136,7 +136,7 @@ static void encodeSideInfo(shine_global_config *config) {
       shine_putbits(&config->bs, gi->region0_count, 4);
       shine_putbits(&config->bs, gi->region1_count, 3);
 
-      if (config->mpeg.version == MPEG_I)
+      if (config->mpeg.version == SHINE_MPEG_I)
         shine_putbits(&config->bs, gi->preflag, 1);
       shine_putbits(&config->bs, gi->scalefac_scale, 1);
       shine_putbits(&config->bs, gi->count1table_select, 1);

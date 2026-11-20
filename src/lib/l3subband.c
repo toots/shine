@@ -17,11 +17,12 @@
  * selectively picking out values from the windowed samples, and then
  * multiplying them by the filter matrix, producing 32 subband samples.
  */
-void shine_window_filter_subband(int16_t **buffer, int32_t s[SBLIMIT], int ch,
-                                 shine_global_config *config, int stride) {
+void shine_window_filter_subband(const int16_t **buffer, int32_t s[SBLIMIT],
+                                 int ch, shine_global_config *config,
+                                 int stride) {
   int32_t y[64];
   int i, j;
-  int16_t *ptr = *buffer;
+  const int16_t *ptr = *buffer;
 
   /* replace 32 oldest samples with 32 new samples */
   for (i = 32; i--;) {

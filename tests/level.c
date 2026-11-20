@@ -13,7 +13,7 @@
 
 typedef struct {
   int samplerate, bitrate;
-  enum modes mode;
+  enum shine_mode mode;
 } level_case_t;
 
 /* Magic circle oscillator, as in tests/golden.c. */
@@ -48,7 +48,7 @@ static int check_level(const level_case_t *test) {
   shine_config_t config;
   shine_t encoder;
   stream_t stream = {NULL, 0, 0};
-  int channels = test->mode == MONO ? 1 : 2;
+  int channels = test->mode == SHINE_MONO ? 1 : 2;
   long count = 2L * test->samplerate, decoded_count = 0, capacity;
   int16_t *samples = malloc(count * channels * sizeof(int16_t));
   int16_t *decoded = NULL;
@@ -63,7 +63,7 @@ static int check_level(const level_case_t *test) {
   shine_set_config_mpeg_defaults(&config.mpeg);
   config.wave.samplerate = test->samplerate;
   config.wave.channels = channels;
-  config.mpeg.bitr = test->bitrate;
+  config.mpeg.bitrate = test->bitrate;
   config.mpeg.mode = test->mode;
 
   encoder = shine_initialise(&config);
@@ -119,8 +119,9 @@ end:
 
 int main(void) {
   static const level_case_t cases[] = {
-      {44100, 128, STEREO}, {48000, 320, JOINT_STEREO}, {32000, 64, MONO},
-      {22050, 64, MONO},    {16000, 32, DUAL_CHANNEL},  {8000, 16, MONO},
+      {44100, 128, SHINE_STEREO},      {48000, 320, SHINE_JOINT_STEREO},
+      {32000, 64, SHINE_MONO},         {22050, 64, SHINE_MONO},
+      {16000, 32, SHINE_DUAL_CHANNEL}, {8000, 16, SHINE_MONO},
   };
   const int count = sizeof(cases) / sizeof(*cases);
   int passed = 0;

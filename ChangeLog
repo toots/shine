@@ -1,5 +1,19 @@
 x.y.z ()
 =====
+* API: public names are prefixed, and config fields spelled out:
+  - `MONO`, `STEREO`, `JOINT_STEREO`, `DUAL_CHANNEL`: `SHINE_MONO`,
+    `SHINE_STEREO`, `SHINE_JOINT_STEREO`, `SHINE_DUAL_CHANNEL`
+    (`enum modes`: `enum shine_mode`).
+  - `NONE`, `MU50_15`, `CITT`: `SHINE_EMPHASIS_NONE`, `SHINE_EMPHASIS_50_15`,
+    `SHINE_EMPHASIS_CCITT` (`enum emph`: `enum shine_emphasis`).
+  - `MPEG_I`, `MPEG_II`, `MPEG_25`: `SHINE_MPEG_I`, `SHINE_MPEG_II`,
+    `SHINE_MPEG_25` (`enum mpeg_versions`: `enum shine_mpeg_version`).
+  - `shine_mpeg_t.bitr` and `.emph`: `.bitrate` and `.emphasis`.
+  - `PCM_MONO`, `PCM_STEREO` and `LAYER_III` are removed: `shine_wave_t.channels`
+    is an int, 1 or 2.
+  - `shine_initialise()` takes a const config, `shine_encode_buffer()` samples
+    as `int16_t *const *` and `shine_encode_buffer_interleaved()` as
+    `const int16_t *`: the samples are not modified.
 * Remove the ARM and MIPS assembly multiplies: current compilers generate
   the same instructions from C. Output on those architectures now matches
   every other.

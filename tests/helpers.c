@@ -108,11 +108,11 @@ void encode_noise(shine_t encoder, int channels, int input_samples,
 
 static int version_index(int version_bits) {
   switch (version_bits) {
-  case MPEG_25:
+  case SHINE_MPEG_25:
     return 0;
-  case MPEG_II:
+  case SHINE_MPEG_II:
     return 1;
-  case MPEG_I:
+  case SHINE_MPEG_I:
     return 2;
   default:
     return -1;
@@ -137,7 +137,7 @@ int walk_frames(const stream_t *stream, const shine_config_t *config,
 
     version = (header[1] >> 3) & 3;
     index = version_index(version);
-    if (index < 0 || ((header[1] >> 1) & 3) != LAYER_III ||
+    if (index < 0 || ((header[1] >> 1) & 3) != 1 /* Layer III */ ||
         (header[2] >> 4) == 0 || (header[2] >> 4) == 15 ||
         ((header[2] >> 2) & 3) == 3) {
       printf("FAIL %s: invalid frame header at byte %zu\n", name, position);
@@ -149,7 +149,8 @@ int walk_frames(const stream_t *stream, const shine_config_t *config,
     padding = (header[2] >> 1) & 1;
     mode = header[3] >> 6;
 
-    if (bitrate != config->mpeg.bitr || samplerate != config->wave.samplerate ||
+    if (bitrate != config->mpeg.bitrate ||
+        samplerate != config->wave.samplerate ||
         mode != (int)config->mpeg.mode) {
       printf("FAIL %s: frame %d header says %d Hz %d kbps mode %d\n", name,
              frames, samplerate, bitrate, mode);
@@ -157,7 +158,8 @@ int walk_frames(const stream_t *stream, const shine_config_t *config,
     }
 
     position +=
-        (version == MPEG_I ? 144 : 72) * bitrate * 1000 / samplerate + padding;
+        (version == SHINE_MPEG_I ? 144 : 72) * bitrate * 1000 / samplerate +
+        padding;
     frames++;
   }
 
@@ -171,7 +173,7 @@ int walk_frames(const stream_t *stream, const shine_config_t *config,
 }
 
 static int run_config(config_test_t test, int samplerate, int bitrate,
-                      enum modes mode) {
+                      enum shine_mode mode) {
   shine_config_t config;
   char name[64];
 
@@ -180,15 +182,16 @@ static int run_config(config_test_t test, int samplerate, int bitrate,
 
   shine_set_config_mpeg_defaults(&config.mpeg);
   config.wave.samplerate = samplerate;
-  config.wave.channels = mode == MONO ? PCM_MONO : PCM_STEREO;
-  config.mpeg.bitr = bitrate;
+  config.wave.channels = mode == SHINE_MONO ? 1 : 2;
+  config.mpeg.bitrate = bitrate;
   config.mpeg.mode = mode;
 
   return test(&config, name);
 }
 
 int run_all_configs(config_test_t test) {
-  static const enum modes modes[] = {MONO, STEREO, JOINT_STEREO, DUAL_CHANNEL};
+  static const enum shine_mode modes[] = {
+      SHINE_MONO, SHINE_STEREO, SHINE_JOINT_STEREO, SHINE_DUAL_CHANNEL};
   const int mode_count = sizeof(modes) / sizeof(*modes);
   /* Valid samplerate/bitrate pairs, each in every mode. */
   const int expected = 108 * mode_count;
