@@ -23,10 +23,12 @@ change does more than it claims. The commit message says which kind it is.
       silence, full scale) against `tests/golden.txt`, with an environment
       variable to regenerate.
 - [ ] Decoded-PCM goldens, using FFmpeg when available, skipped otherwise.
-- [ ] Quality report script: level, gain-corrected SNR and ViSQOL (audio
-      mode) per item, on synthetic signals plus local music (e.g. FATE
-      samples), with LAME at the same bitrate as reference. Not run in CI.
-- [ ] Decode with both FFmpeg and mpg123 in the report, to catch streams
+- [x] Quality report script (`tools/quality-report.sh`): level and
+      gain-corrected SNR per item, on synthetic signals plus local music
+      (e.g. FATE samples), with LAME at the same bitrate as reference. Not
+      run in CI.
+- [ ] Perceptual score in the report: ViSQOL (audio mode) or PEAQ.
+- [x] Decode with both FFmpeg and mpg123 in the report, to catch streams
       only one decoder tolerates.
 - [ ] Listening check before release for psychoacoustic changes.
 - [x] Confirm the goldens are identical on Linux, macOS and other
