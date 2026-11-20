@@ -83,10 +83,13 @@ static int parse_command(int argc, char **argv, shine_config_t *config) {
   if (argc < 3)
     return 0;
 
-  while (argv[++i][0] == '-' && argv[i][1] != '\000' && argv[i][1] != ' ')
+  while (++i < argc && argv[i][0] == '-' && argv[i][1] != '\000' &&
+         argv[i][1] != ' ')
     switch (argv[i][1]) {
     case 'b':
-      config->mpeg.bitr = atoi(argv[++i]);
+      if (++i == argc)
+        return 0;
+      config->mpeg.bitr = atoi(argv[i]);
       break;
 
     case 'm':
