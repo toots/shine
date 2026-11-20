@@ -191,7 +191,9 @@ unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config,
   config->wave.samplerate = fmt_chunk.sample_rate;
 
   wave->channels = fmt_chunk.channels;
-  wave->length = data_chunk.length;
+  /* Streaming writers cannot know the length in advance. */
+  wave->data_unbounded = data_chunk.length == 0xffffffff;
+  wave->data_remaining = data_chunk.length;
   wave->duration = data_chunk.length / fmt_chunk.byte_rate;
 
   if (!quiet)
@@ -242,11 +244,16 @@ void swap_buffer(int16_t *sample_buffer, int length) {
  * -------------
  */
 
-/* TODO: respect data chunk length */
-int read_samples(int16_t *sample_buffer, int frame_size, FILE *file) {
-  int samples_read = 0;
+int read_samples(int16_t *sample_buffer, int frame_size, wave_t *wave) {
+  int samples_wanted = frame_size, samples_read;
 
-  samples_read = fread(sample_buffer, sizeof(int16_t), frame_size, file);
+  if (!wave->data_unbounded &&
+      wave->data_remaining / sizeof(int16_t) < (uint32_t)samples_wanted)
+    samples_wanted = wave->data_remaining / sizeof(int16_t);
+
+  samples_read =
+      fread(sample_buffer, sizeof(int16_t), samples_wanted, wave->file);
+  wave->data_remaining -= samples_read * sizeof(int16_t);
 
 #ifdef SHINE_BIG_ENDIAN
   swap_buffer(sample_buffer, samples_read);
@@ -269,5 +276,5 @@ int read_samples(int16_t *sample_buffer, int frame_size, FILE *file) {
  * reads into the given buffer.
  */
 int wave_get(int16_t *buffer, wave_t *wave, int samp_per_pass) {
-  return read_samples(buffer, samp_per_pass * wave->channels, wave->file);
+  return read_samples(buffer, samp_per_pass * wave->channels, wave);
 }

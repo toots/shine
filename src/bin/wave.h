@@ -1,13 +1,15 @@
 #ifndef WAVE_H
 #define WAVE_H
 
+#include <stdint.h>
 #include <stdio.h>
 
 typedef struct {
   FILE *file;
   int has_seek;
   int channels;
-  long length;
+  uint32_t data_remaining; /* bytes left in the data chunk */
+  int data_unbounded;      /* data chunk length unknown: read to EOF */
   long duration;
 } wave_t;
 
