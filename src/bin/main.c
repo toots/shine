@@ -44,7 +44,7 @@ static void downmix_to_mono(int16_t *buffer, int samples) {
 }
 
 /* Write out the MP3 file */
-int write_mp3(long bytes, void *buffer, void *config) {
+int write_mp3(long bytes, void *buffer) {
   return fwrite(buffer, sizeof(unsigned char), bytes, outfile) /
          sizeof(unsigned char);
 }
@@ -218,7 +218,7 @@ int main(int argc, char **argv) {
     if (wave.channels == 2 && config.wave.channels == 1)
       downmix_to_mono(buffer, samples_per_pass);
     data = shine_encode_buffer_interleaved(s, buffer, &written);
-    if (write_mp3(written, data, &config) != written) {
+    if (write_mp3(written, data) != written) {
       fprintf(stderr, "shineenc: write error\n");
       return 1;
     }
@@ -226,7 +226,7 @@ int main(int argc, char **argv) {
 
   /* Flush and write remaining data. */
   data = shine_flush(s, &written);
-  write_mp3(written, data, &config);
+  write_mp3(written, data);
 
   /* Close encoder. */
   shine_close(s);

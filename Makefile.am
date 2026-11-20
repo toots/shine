@@ -11,7 +11,8 @@ noinst_HEADERS = src/bin/main.h src/bin/wave.h \
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS  = -I m4
 
-CFLAGS = @CFLAGS@ -funroll-loops -fno-exceptions -Wall -O2 -fsigned-char
+# Optimization comes from CFLAGS, which configure defaults to -g -O2.
+AM_CFLAGS = -Wall -Wextra -funroll-loops -fsigned-char
 
 lib_LTLIBRARIES      = libshine.la
 libshine_la_SOURCES  = src/lib/bitstream.c src/lib/huffman.c \
@@ -26,7 +27,6 @@ libshine_la_HEADERS  = src/lib/layer3.h
 bin_PROGRAMS     = shineenc
 shineenc_SOURCES = src/bin/main.c src/bin/wave.c
 shineenc_LDADD   = libshine.la
-shineenc_CFLAGS  = -I$(srcdir)/src/lib
 
 # One program per concern. A new test needs its program here and its
 # _SOURCES line below.

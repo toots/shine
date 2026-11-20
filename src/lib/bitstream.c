@@ -28,7 +28,7 @@ int shine_open_bit_stream(bitstream_t *bs, int size) {
 static int ensure_word_space(bitstream_t *bs) {
   unsigned char *data;
 
-  if (bs->data_position + sizeof(unsigned int) < bs->data_size)
+  if (bs->data_position + (int)sizeof(unsigned int) < bs->data_size)
     return 0;
 
   data = realloc(bs->data, bs->data_size + bs->data_size / 2);

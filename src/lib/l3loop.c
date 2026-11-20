@@ -33,7 +33,7 @@ static int quantize(int ix[GRANULE_SIZE], int stepsize,
  * of scalefacs.
  */
 int shine_inner_loop(int ix[GRANULE_SIZE], int max_bits, gr_info *cod_info,
-                     int gr, int ch, shine_global_config *config) {
+                     shine_global_config *config) {
   int bits, c1bits, bvbits;
 
   if (max_bits < 0)
@@ -73,7 +73,7 @@ int shine_outer_loop(int max_bits,
   cod_info->part2_length = part2_length(gr, ch, config);
   huff_bits = max_bits - cod_info->part2_length;
 
-  bits = shine_inner_loop(ix, huff_bits, cod_info, gr, ch, config);
+  bits = shine_inner_loop(ix, huff_bits, cod_info, config);
   cod_info->part2_3_length = cod_info->part2_length + bits;
 
   return cod_info->part2_3_length;
@@ -259,10 +259,9 @@ int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config) {
  */
 static inline int ix_max(int ix[GRANULE_SIZE], unsigned int begin,
                          unsigned int end) {
-  int i;
   int max = 0;
 
-  for (i = begin; i < end; i++)
+  for (unsigned int i = begin; i < end; i++)
     if (max < ix[i])
       max = ix[i];
   return max;
@@ -276,13 +275,10 @@ static inline int ix_max(int ix[GRANULE_SIZE], unsigned int begin,
  */
 void calc_runlen(int ix[GRANULE_SIZE], gr_info *cod_info) {
   int i;
-  int rzero = 0;
 
-  for (i = GRANULE_SIZE; i > 1; i -= 2)
-    if (!ix[i - 1] && !ix[i - 2])
-      rzero++;
-    else
-      break;
+  /* Skip the trailing pairs of zeros. */
+  for (i = GRANULE_SIZE; i > 1 && !ix[i - 1] && !ix[i - 2]; i -= 2)
+    ;
 
   cod_info->count1 = 0;
   for (; i > 3; i -= 4)
@@ -300,7 +296,8 @@ void calc_runlen(int ix[GRANULE_SIZE], gr_info *cod_info) {
  * Determines the number of bits to encode the quadruples.
  */
 int count1_bitcount(int ix[GRANULE_SIZE], gr_info *cod_info) {
-  int p, i, k;
+  int p, i;
+  unsigned int k;
   int v, w, x, y, signbits;
   int sum0 = 0, sum1 = 0;
 
@@ -447,7 +444,8 @@ void bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info) {
  */
 int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin,
                      unsigned int end) {
-  int i, max;
+  int i;
+  unsigned int max;
   int choice[2];
   int sum[2];
 
@@ -559,7 +557,8 @@ int bigv_bitcount(int ix[GRANULE_SIZE], gr_info *gi) {
 int count_bit(int ix[GRANULE_SIZE], unsigned int start, unsigned int end,
               unsigned int table) {
   unsigned linbits, ylen;
-  int i, sum;
+  unsigned int i;
+  int sum;
   int x, y;
   const struct huffcodetab *h;
 

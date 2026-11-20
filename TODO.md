@@ -95,9 +95,9 @@ Bit-exact; formatting commits separate from functional ones.
 
 - [x] Add `.clang-format` (LLVM, what the code already follows), normalize
       CRLF line endings (12 files), reformat, check formatting in CI.
-- [ ] Remove `register`, `__BORLANDC__` branches, RISC OS leftovers,
-      `README.old`.
-- [ ] Fix `-Wextra` warnings (unused parameters, sign comparisons, `rzero`).
+- [x] Remove `register`, `__BORLANDC__` branches, RISC OS leftovers.
+      `README.old` stays, for its history.
+- [x] Fix `-Wextra` warnings (unused parameters, sign comparisons, `rzero`).
 
 ## CI and packaging
 
