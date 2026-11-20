@@ -104,7 +104,7 @@ Bit-exact; formatting commits separate from functional ones.
 - [x] Run the tests on 32-bit and big endian hosts: armv7 and s390x under
       QEMU. The ARM and MIPS assembly is removed and byte order handled
       portably, so no code is specific to them.
-- [ ] Update `actions/checkout`.
+- [x] Update `actions/checkout`.
 
 ## Release
 
