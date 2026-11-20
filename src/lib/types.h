@@ -127,6 +127,7 @@ typedef struct shine_global_flags {
   int ResvMax;
   l3loop_t l3loop;
   subband_t subband;
+  struct psy_model *psy; /* NULL at quality 0 */
 } shine_global_config;
 
 #endif

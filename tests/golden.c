@@ -111,6 +111,10 @@ static uint64_t fnv1a(const unsigned char *data, size_t size) {
   return hash;
 }
 
+/* Quality level of the configurations being checked. Lines of level 0 have
+ * no prefix: they are the frozen output (doc/psy/README.md). */
+static int quality;
+
 /* Expected lines, in the order configurations and signals run. */
 static char **golden;
 static int golden_count, golden_next;
@@ -146,13 +150,16 @@ static int check_golden(const shine_config_t *config, const char *name) {
 
   for (int s = 0; s < SIGNAL_COUNT; s++) {
     shine_config_t copy = *config;
+    char prefix[16] = "";
     stream_t stream = {NULL, 0, 0};
-    shine_t encoder = shine_initialise(&copy);
+    shine_t encoder;
     int channels = config->wave.channels;
     long count;
     int16_t *samples;
     char line[256];
 
+    copy.mpeg.quality = quality;
+    encoder = shine_initialise(&copy);
     if (!encoder) {
       printf("FAIL %s: shine_initialise failed\n", name);
       return 0;
@@ -168,8 +175,10 @@ static int check_golden(const shine_config_t *config, const char *name) {
     signals[s].generate(samples, count, channels);
     encode_samples(encoder, channels, samples, count, &stream);
 
-    snprintf(line, sizeof(line), "%s, %s: %016" PRIx64, name, signals[s].name,
-             fnv1a(stream.data, stream.size));
+    if (quality)
+      snprintf(prefix, sizeof(prefix), "quality %d, ", quality);
+    snprintf(line, sizeof(line), "%s%s, %s: %016" PRIx64, prefix, name,
+             signals[s].name, fnv1a(stream.data, stream.size));
 
     if (update)
       fprintf(update, "%s\n", line);
@@ -192,7 +201,7 @@ static int check_golden(const shine_config_t *config, const char *name) {
 
 int main(void) {
   const char *path = getenv("SHINE_GOLDEN");
-  int status;
+  int status = 0;
 
   if (!path) {
     printf("FAIL: SHINE_GOLDEN is not set\n");
@@ -210,7 +219,8 @@ int main(void) {
   } else
     load_golden(path);
 
-  status = run_all_configs(check_golden);
+  for (quality = 0; quality <= SHINE_QUALITY_MAX; quality++)
+    status |= run_all_configs(check_golden);
 
   if (update) {
     if (fclose(update)) {
