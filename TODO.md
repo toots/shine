@@ -29,9 +29,9 @@ change does more than it claims. The commit message says which kind it is.
 - [ ] Decode with both FFmpeg and mpg123 in the report, to catch streams
       only one decoder tolerates.
 - [ ] Listening check before release for psychoacoustic changes.
-- [ ] Confirm the goldens are identical on Linux, macOS and the
-      architectures below. libm-generated init tables and the ARM/MIPS
-      multiply headers may differ.
+- [x] Confirm the goldens are identical on Linux, macOS and other
+      architectures: CI checks x86-64 and arm64 natively, armv7 and s390x
+      emulated.
 
 ## Correctness
 
@@ -101,11 +101,9 @@ Bit-exact; formatting commits separate from functional ones.
 
 ## CI and packaging
 
-- [ ] Run the tests under QEMU on armv7 and MIPS (multiply assembly) and
-      s390x (big endian), e.g. with `run-on-arch`. The ARM and MIPS
-      `mul0`/`muladd`/`mulz` accumulate full 64-bit products where the
-      generic version truncates each product, so the polyphase filter's
-      output differs by architecture. The MDCT uses `mul` per product.
+- [x] Run the tests on 32-bit and big endian hosts: armv7 and s390x under
+      QEMU. The ARM and MIPS assembly is removed and byte order handled
+      portably, so no code is specific to them.
 - [ ] Update `actions/checkout`.
 
 ## Release
