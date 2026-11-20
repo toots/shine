@@ -5,9 +5,6 @@
 #include "l3bitstream.h"
 #include "types.h"
 
-const HUFFBITS dmask = 1 << (((sizeof(HUFFBITS)) << 3) - 1);
-const unsigned int hs = sizeof(HUFFBITS) << 3;
-
 static const HUFFBITS t1HB[] = {1, 1, 1, 0};
 static const HUFFBITS t2HB[] = {1, 2, 1, 3, 1, 1, 3, 2, 0};
 static const HUFFBITS t3HB[] = {3, 2, 1, 1, 1, 1, 3, 2, 0};
