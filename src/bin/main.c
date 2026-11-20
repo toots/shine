@@ -195,8 +195,8 @@ int main(int argc, char **argv) {
 
   /* Initiate encoder */
   s = shine_initialise(&config);
-
-  // assert(s != NULL);
+  if (s == NULL)
+    error("Could not initialise the encoder.");
 
   /* Print some info about the file about to be created (optional) */
   if (!quiet)
