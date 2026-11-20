@@ -106,3 +106,11 @@ Bit-exact; formatting commits separate from functional ones.
       generic version truncates each product, so the polyphase filter's
       output differs by architecture. The MDCT uses `mul` per product.
 - [ ] Update `actions/checkout`.
+
+## Release
+
+- [ ] Run new benchmarks once the changes above are done: native `shineenc`
+      against LAME (`README.md`, last run December 2022), the JavaScript
+      package in Node.js and in browsers through `js/test/browser`
+      (`js/README.md`), and speed against the 3.1.1 release, at each
+      quality setting.
