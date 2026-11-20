@@ -13,17 +13,6 @@
  * instructions, e.g. smmul and smmulr on ARMv7, mult and mfhi on MIPS. */
 #include "mult_noarch_gcc.h"
 
-#ifndef SWAB32
-#if defined(__GNUC__) &&                                                       \
-    (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 2))
-#define SWAB32(x) __builtin_bswap32(x)
-#else
-#define SWAB32(x)                                                              \
-  (((unsigned int)(x) >> 24) | (((unsigned int)(x) >> 8) & 0xff00) |           \
-   (((unsigned int)(x) & 0xff00) << 8) | ((unsigned int)(x) << 24))
-#endif
-#endif
-
 /* #define DEBUG if you want the library to dump info to stdout */
 
 #define BLKSIZE 1024
