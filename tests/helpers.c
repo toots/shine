@@ -67,27 +67,25 @@ int run_shineenc(const char *name, const char *arguments) {
 }
 
 /* Loud, so that the encoder runs out of bits. */
-static int16_t noise(unsigned int *seed) {
+int16_t noise(unsigned int *seed) {
   *seed = *seed * 1103515245 + 12345;
   return (int16_t)(*seed >> 16);
 }
 
-void encode_noise(shine_t encoder, int channels, int input_samples,
-                  stream_t *stream) {
+void encode_samples(shine_t encoder, int channels, const int16_t *samples,
+                    int input_samples, stream_t *stream) {
   int samples_per_pass = shine_samples_per_pass(encoder);
   size_t buffer_size = samples_per_pass * channels * sizeof(int16_t);
   int16_t *buffer = checked_realloc(NULL, buffer_size);
-  unsigned int seed = 1;
   unsigned char *data;
   int written;
 
   for (int done = 0; done < input_samples; done += samples_per_pass) {
-    int samples = input_samples - done < samples_per_pass
-                      ? input_samples - done
-                      : samples_per_pass;
+    int pass = input_samples - done < samples_per_pass ? input_samples - done
+                                                        : samples_per_pass;
     memset(buffer, 0, buffer_size);
-    for (int i = 0; i < samples * channels; i++)
-      buffer[i] = noise(&seed);
+    memcpy(buffer, samples + (size_t)done * channels,
+           pass * channels * sizeof(int16_t));
     data = shine_encode_buffer_interleaved(encoder, buffer, &written);
     append(stream, data, written);
   }
@@ -95,6 +93,18 @@ void encode_noise(shine_t encoder, int channels, int input_samples,
 
   data = shine_flush(encoder, &written);
   append(stream, data, written);
+}
+
+void encode_noise(shine_t encoder, int channels, int input_samples,
+                  stream_t *stream) {
+  int16_t *samples =
+      checked_realloc(NULL, (size_t)input_samples * channels * sizeof(int16_t));
+  unsigned int seed = 1;
+
+  for (long i = 0; i < (long)input_samples * channels; i++)
+    samples[i] = noise(&seed);
+  encode_samples(encoder, channels, samples, input_samples, stream);
+  free(samples);
 }
 
 static int version_index(int version_bits) {
