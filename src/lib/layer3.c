@@ -90,10 +90,6 @@ shine_global_config *shine_initialise(shine_config_t *pub_config) {
   if (config == NULL)
     return config;
 
-  shine_subband_initialise(config);
-  shine_mdct_initialise(config);
-  shine_loop_initialise(config);
-
   /* Copy public config. */
   config->wave.channels = pub_config->wave.channels;
   config->wave.samplerate = pub_config->wave.samplerate;

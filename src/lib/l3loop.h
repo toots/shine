@@ -3,8 +3,6 @@
 
 #include "types.h"
 
-void shine_loop_initialise(shine_global_config *config);
-
 void shine_iteration_loop(shine_global_config *config);
 
 #endif
