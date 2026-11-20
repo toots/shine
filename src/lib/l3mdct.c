@@ -51,7 +51,7 @@ void shine_mdct_sub(shine_global_config *config, int stride) {
   /* note. we wish to access the array 'config->mdct_freq[2][2][576]' as
    * [2][2][32][18]. (32*18=576),
    */
-  int32_t(*mdct_enc)[18];
+  int32_t (*mdct_enc)[18];
 
   int ch, gr, band, j, k;
   int32_t mdct_in[36];
@@ -59,7 +59,7 @@ void shine_mdct_sub(shine_global_config *config, int stride) {
   for (ch = config->wave.channels; ch--;) {
     for (gr = 0; gr < config->mpeg.granules_per_frame; gr++) {
       /* set up pointer to the part of config->mdct_freq we're using */
-      mdct_enc = (int32_t(*)[18])config->mdct_freq[ch][gr];
+      mdct_enc = (int32_t (*)[18])config->mdct_freq[ch][gr];
 
       /* polyphase filtering */
       for (k = 0; k < 18; k += 2) {
