@@ -15,6 +15,10 @@ x.y.z ()
   chunks after it as audio.
 * shineenc: downmix stereo input with `-m` instead of encoding interleaved
   samples as mono.
+* The JavaScript package is built to WebAssembly with clang instead of
+  Emscripten (`make wasm`), and is now an ES module.
+* JavaScript: `close()` encodes the samples still buffered instead of dropping
+  them, and `stereoMode: StereoMode.STEREO` no longer means joint stereo.
 * shineenc: fix crashes on command lines made only of options.
 * shineenc: reject WAV files with no channels, and accept those with a zero
   byte rate instead of dividing by it.

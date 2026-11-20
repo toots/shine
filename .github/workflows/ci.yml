@@ -73,18 +73,15 @@ jobs:
     - name: make android
       run: make android   
 
-  js_build:
+  wasm:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: mymindstorm/setup-emsdk@v11
-    - name: JS build
-      run: |
-        cd js
-        make
-    - uses: actions/setup-node@v3
-    - name: Run node test
-      run: |
-        cd js/test/node
-        npm install
-        npm run test
+    - name: Install required packages
+      run: sudo apt-get -y install automake autoconf libtool pkg-config clang lld wasi-libc nodejs
+    - name: bootstrap
+      run: ./bootstrap
+    - name: configure
+      run: ./configure --enable-wasm
+    - name: make check-wasm
+      run: make check-wasm

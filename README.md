@@ -62,6 +62,10 @@ To do the same locally:
 make check
 ```
 
+`make check-wasm` tests the WebAssembly build of the JavaScript package against
+the native encoder, when `configure` found a WebAssembly toolchain: see
+[js/README.md](js/README.md).
+
 How fast is it?
 ---------------
 
