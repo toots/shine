@@ -90,25 +90,15 @@ void shine_mdct_sub(shine_global_config *config, int stride) {
          * domain.
          */
         for (k = 18; k--;) {
-          int32_t vm;
-#ifdef __BORLANDC__
-          uint32_t vm_lo;
-#else
-          uint32_t vm_lo __attribute__((unused));
-#endif
+          /* Full scale input in phase across subbands, e.g. a square wave,
+           * exceeds 32 bits: accumulate in 64 and saturate. */
+          int64_t sum = 0;
 
-          mul0(vm, vm_lo, mdct_in[35], config->mdct.cos_l[k][35]);
-          for (j = 35; j; j -= 7) {
-            muladd(vm, vm_lo, mdct_in[j - 1], config->mdct.cos_l[k][j - 1]);
-            muladd(vm, vm_lo, mdct_in[j - 2], config->mdct.cos_l[k][j - 2]);
-            muladd(vm, vm_lo, mdct_in[j - 3], config->mdct.cos_l[k][j - 3]);
-            muladd(vm, vm_lo, mdct_in[j - 4], config->mdct.cos_l[k][j - 4]);
-            muladd(vm, vm_lo, mdct_in[j - 5], config->mdct.cos_l[k][j - 5]);
-            muladd(vm, vm_lo, mdct_in[j - 6], config->mdct.cos_l[k][j - 6]);
-            muladd(vm, vm_lo, mdct_in[j - 7], config->mdct.cos_l[k][j - 7]);
-          }
-          mulz(vm, vm_lo);
-          mdct_enc[band][k] = vm;
+          for (j = 0; j < 36; j++)
+            sum += mul(mdct_in[j], config->mdct.cos_l[k][j]);
+          mdct_enc[band][k] = sum > INT32_MAX   ? INT32_MAX
+                              : sum < INT32_MIN ? INT32_MIN
+                                                : (int32_t)sum;
         }
 
         /* Perform aliasing reduction butterfly */
