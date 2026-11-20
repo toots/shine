@@ -88,3 +88,8 @@ tests/*
 js/dist/
 !tests/golden.txt
 test-suite.log
+*.lo
+test-driver
+tools/*
+!tools/*.c
+!tools/*.sh

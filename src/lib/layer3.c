@@ -6,6 +6,7 @@
 #include "l3loop.h"
 #include "l3mdct.h"
 #include "l3subband.h"
+#include "psy.h"
 #include "tables.h"
 #include "types.h"
 
@@ -140,7 +141,13 @@ shine_global_config *shine_initialise(const shine_config_t *pub_config) {
   config->mpeg.frac_slots_per_frame = slots_numerator % config->wave.samplerate;
   config->mpeg.slot_lag = -config->mpeg.frac_slots_per_frame;
 
+  if (shine_psy_initialise(config) < 0) {
+    free(config);
+    return NULL;
+  }
+
   if (shine_open_bit_stream(&config->bs, BUFFER_SIZE) < 0) {
+    free(config->psy);
     free(config);
     return NULL;
   }
@@ -176,6 +183,9 @@ static void shine_encode_frame(shine_global_config *config, int stride) {
 
   /* apply mdct to the polyphase output */
   shine_mdct_sub(config, stride);
+
+  if (config->psy)
+    shine_psy_frame(config);
 
   /* bit and noise allocation */
   shine_iteration_loop(config);
@@ -239,5 +249,6 @@ unsigned char *shine_flush(shine_global_config *config, int *written) {
 
 void shine_close(shine_global_config *config) {
   shine_close_bit_stream(&config->bs);
+  free(config->psy);
   free(config);
 }

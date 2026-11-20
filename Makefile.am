@@ -1,12 +1,12 @@
 EXTRA_DIST = ChangeLog README.md README.old libshine.sym js tests/golden.txt \
-             tests/wasm.mjs tools/generate_tables.c \
+             tests/wasm.mjs tools/generate_tables.c tools/generate_psy_tables.c \
              tools/check-no-float.sh
 
 noinst_HEADERS = src/bin/main.h src/bin/wave.h \
                  src/lib/bitstream.h src/lib/huffman.h src/lib/l3bitstream.h \
                  src/lib/l3loop.h src/lib/l3mdct.h src/lib/l3subband.h \
                  src/lib/fixed_point.h src/lib/reservoir.h src/lib/tables.h \
-                 src/lib/types.h
+                 src/lib/types.h src/lib/psy.h src/lib/psy_tables.h
 
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS  = -I m4
@@ -15,10 +15,12 @@ ACLOCAL_AMFLAGS  = -I m4
 AM_CFLAGS = -Wall -Wextra -funroll-loops -fsigned-char
 
 lib_LTLIBRARIES      = libshine.la
-libshine_la_SOURCES  = src/lib/bitstream.c src/lib/huffman.c \
+# Everything but the model, which tests/psy_model.c includes.
+CORE_SOURCES         = src/lib/bitstream.c src/lib/huffman.c \
                        src/lib/l3bitstream.c src/lib/l3loop.c src/lib/l3mdct.c \
                        src/lib/l3subband.c src/lib/layer3.c src/lib/reservoir.c \
                        src/lib/tables.c src/lib/precomputed_tables.c
+libshine_la_SOURCES  = $(CORE_SOURCES) src/lib/psy.c
 
 libshine_la_LDFLAGS  = -no-undefined -version-info 4:0:1 -export-symbols $(srcdir)/libshine.sym
 libshine_ladir       = ${prefix}/include/shine
@@ -31,7 +33,7 @@ shineenc_LDADD   = libshine.la
 # One program per concern. A new test needs its program here and its
 # _SOURCES line below.
 TESTS          = tests/config tests/framing tests/flush tests/wave tests/cli \
-                 tests/golden tests/level
+                 tests/golden tests/level tests/psy_model tools/psy_oracle
 check_PROGRAMS = $(TESTS)
 TEST_HELPERS   = tests/helpers.c tests/helpers.h
 LDADD          = libshine.la
@@ -44,6 +46,15 @@ tests_wave_SOURCES    = tests/wave.c $(TEST_HELPERS)
 tests_cli_SOURCES     = tests/cli.c $(TEST_HELPERS)
 tests_golden_SOURCES  = tests/golden.c $(TEST_HELPERS)
 tests_level_SOURCES   = tests/level.c $(TEST_HELPERS)
+
+# Built from the library's sources, to reach the model's internals. The
+# oracle (doc/psy/tests.md §3) is deleted once phase 1 lands.
+tests_psy_model_SOURCES = tests/psy_model.c $(CORE_SOURCES)
+tests_psy_model_CFLAGS  = $(AM_CFLAGS)
+tests_psy_model_LDADD   = -lm
+tools_psy_oracle_SOURCES = tools/psy_oracle.c $(libshine_la_SOURCES)
+tools_psy_oracle_CFLAGS  = $(AM_CFLAGS)
+tools_psy_oracle_LDADD   = -lm
 
 AM_TESTS_ENVIRONMENT = SHINEENC='$(abs_top_builddir)/shineenc'; export SHINEENC; \
                        SHINE_GOLDEN='$(abs_top_srcdir)/tests/golden.txt'; export SHINE_GOLDEN;
