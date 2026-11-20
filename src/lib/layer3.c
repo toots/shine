@@ -136,7 +136,10 @@ shine_global_config *shine_initialise(shine_config_t *pub_config) {
   if (config->mpeg.frac_slots_per_frame == 0)
     config->mpeg.padding = 0;
 
-  shine_open_bit_stream(&config->bs, BUFFER_SIZE);
+  if (shine_open_bit_stream(&config->bs, BUFFER_SIZE) < 0) {
+    free(config);
+    return NULL;
+  }
 
   memset((char *)&config->side_info, 0, sizeof(shine_side_info_t));
 
