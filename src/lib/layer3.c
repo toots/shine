@@ -22,6 +22,7 @@ void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg) {
   mpeg->emphasis = SHINE_EMPHASIS_NONE;
   mpeg->copyright = 0;
   mpeg->original = 1;
+  mpeg->quality = 0;
 }
 
 int shine_mpeg_version(int samplerate_index) {
@@ -106,6 +107,10 @@ shine_global_config *shine_initialise(const shine_config_t *pub_config) {
   config->mpeg.emphasis = pub_config->mpeg.emphasis;
   config->mpeg.copyright = pub_config->mpeg.copyright;
   config->mpeg.original = pub_config->mpeg.original;
+  config->quality = pub_config->mpeg.quality < 0 ? 0
+                    : pub_config->mpeg.quality > SHINE_QUALITY_MAX
+                        ? SHINE_QUALITY_MAX
+                        : pub_config->mpeg.quality;
 
   /* Set default values. */
   config->ResvMax = 0;

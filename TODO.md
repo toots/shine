@@ -69,7 +69,7 @@ none now, checked in CI by `tools/check-no-float.sh`.
 - [x] Prefix the public enums and constants (`NONE`, `MONO`, `STEREO`,
       `MPEG_I`, `PCM_MONO`, `LAYER_III`, ...) with `SHINE_`.
 - [x] Take input samples as `const`.
-- [ ] Quality setting in the config, added with the psychoacoustic model,
+- [x] Quality setting in the config, added with the psychoacoustic model,
       which is the first thing it would select. Its lowest level keeps
       today's bit-exact fast path.
 - [x] Bump the version to 4.0.0.
