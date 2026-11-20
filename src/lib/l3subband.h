@@ -4,7 +4,8 @@
 #include "types.h"
 #include <stdint.h>
 
-void shine_window_filter_subband(int16_t **buffer, int32_t s[SBLIMIT], int k,
-                                 shine_global_config *config, int stride);
+void shine_window_filter_subband(const int16_t **buffer, int32_t s[SBLIMIT],
+                                 int k, shine_global_config *config,
+                                 int stride);
 
 #endif
