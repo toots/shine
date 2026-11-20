@@ -9,16 +9,8 @@
 
 #include "bitstream.h"
 
-/* Include arch-specific instructions,
- * when defined. */
-#if defined(__mips__) && (__mips == 32)
-#include "mult_mips_gcc.h"
-#elif defined(__arm__) && !defined(__thumb__)
-#include "mult_sarm_gcc.h"
-#endif
-
-/* Include and define generic instructions,
- * when not already defined above. */
+/* Fixed-point multiplies. Current compilers turn them into single
+ * instructions, e.g. smmul and smmulr on ARMv7, mult and mfhi on MIPS. */
 #include "mult_noarch_gcc.h"
 
 #ifndef SWAB32
