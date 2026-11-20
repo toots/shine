@@ -9,7 +9,7 @@
 #include "tables.h"
 #include "types.h"
 
-static int granules_per_frame[4] = {
+static const int granules_per_frame[4] = {
     1,  /* MPEG 2.5 */
     -1, /* Reserved */
     1,  /* MPEG II */
@@ -41,7 +41,7 @@ int shine_find_samplerate_index(int freq) {
   int i;
 
   for (i = 0; i < 9; i++)
-    if (freq == samplerates[i])
+    if (freq == shine_samplerates[i])
       return i;
 
   return -1; /* error - not a valid samplerate for encoder */
@@ -51,7 +51,7 @@ int shine_find_bitrate_index(int bitr, int mpeg_version) {
   int i;
 
   for (i = 0; i < 16; i++)
-    if (bitr == bitrates[i][mpeg_version])
+    if (bitr == shine_bitrates[i][mpeg_version])
       return i;
 
   return -1; /* error - not a valid samplerate for encoder */
