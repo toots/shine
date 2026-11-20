@@ -9,16 +9,8 @@
 #include "tables.h"
 #include "types.h"
 
-#define e 2.71828182845
-#define CBLIMIT 21
 #define SFB_LMAX 22
-#define en_tot_krit 10
-#define en_dif_krit 100
-#define en_scfsi_band_krit 10
-#define xm_scfsi_band_krit 10
 
-static void calc_scfsi(shine_psy_xmin_t *l3_xmin, int ch, int gr,
-                       shine_global_config *config);
 static int part2_length(int gr, int ch, shine_global_config *config);
 static int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE],
                                gr_info *cod_info, shine_global_config *config);
@@ -31,8 +23,6 @@ static void bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info);
 static void subdivide(gr_info *cod_info, shine_global_config *config);
 static int count1_bitcount(int ix[GRANULE_SIZE], gr_info *cod_info);
 static void calc_runlen(int ix[GRANULE_SIZE], gr_info *cod_info);
-static void calc_xmin(shine_psy_ratio_t *ratio, gr_info *cod_info,
-                      shine_psy_xmin_t *l3_xmin, int gr, int ch);
 static int quantize(int ix[GRANULE_SIZE], int stepsize,
                     shine_global_config *config);
 
@@ -70,11 +60,9 @@ int shine_inner_loop(int ix[GRANULE_SIZE], int max_bits, gr_info *cod_info,
  *  global gain. This module calls the inner iteration loop.
  */
 
-int shine_outer_loop(
-    int max_bits,
-    shine_psy_xmin_t *l3_xmin, /* the allowed distortion of the scalefactor */
-    int ix[GRANULE_SIZE],      /* vector of quantized values ix(0..575) */
-    int gr, int ch, shine_global_config *config) {
+int shine_outer_loop(int max_bits,
+                     int ix[GRANULE_SIZE], /* quantized values ix(0..575) */
+                     int gr, int ch, shine_global_config *config) {
   int bits, huff_bits;
   shine_side_info_t *side_info = &config->side_info;
   gr_info *cod_info = &side_info->gr[gr].ch[ch].tt;
@@ -96,7 +84,6 @@ int shine_outer_loop(
  * ------------------
  */
 void shine_iteration_loop(shine_global_config *config) {
-  shine_psy_xmin_t l3_xmin;
   gr_info *cod_info;
   int max_bits;
   int ch, gr, i;
@@ -108,12 +95,8 @@ void shine_iteration_loop(shine_global_config *config) {
       ix = config->l3_enc[ch][gr];
       config->l3loop.xr = config->mdct_freq[ch][gr];
 
-      /* Precalculate the square, abs,  and maximum,
-       * for use later on.
-       */
+      /* Precalculate the absolute values and their maximum. */
       for (i = GRANULE_SIZE, config->l3loop.xrmax = 0; i--;) {
-        config->l3loop.xrsq[i] =
-            mulsr(config->l3loop.xr[i], config->l3loop.xr[i]);
         config->l3loop.xrabs[i] = labs(config->l3loop.xr[i]);
         if (config->l3loop.xrabs[i] > config->l3loop.xrmax)
           config->l3loop.xrmax = config->l3loop.xrabs[i];
@@ -122,13 +105,8 @@ void shine_iteration_loop(shine_global_config *config) {
       cod_info = (gr_info *)&(config->side_info.gr[gr].ch[ch]);
       cod_info->sfb_lmax = SFB_LMAX - 1; /* gr_deco */
 
-      calc_xmin(&config->ratio, cod_info, &l3_xmin, gr, ch);
-
-      if (config->mpeg.version == MPEG_I)
-        calc_scfsi(&l3_xmin, ch, gr, config);
-
       /* calculation of number of available bit( per granule ) */
-      max_bits = shine_max_reservoir_bits(&config->pe[ch][gr], config);
+      max_bits = shine_max_reservoir_bits(config);
 
       /* reset of iteration variables */
       memset(config->scalefactor.l[gr][ch], 0,
@@ -156,7 +134,7 @@ void shine_iteration_loop(shine_global_config *config) {
       /* all spectral values zero ? */
       if (config->l3loop.xrmax)
         cod_info->part2_3_length =
-            shine_outer_loop(max_bits, &l3_xmin, ix, gr, ch, config);
+            shine_outer_loop(max_bits, ix, gr, ch, config);
 
       shine_ResvAdjust(cod_info, config);
       cod_info->global_gain = cod_info->quantizerStepSize + 210;
@@ -165,108 +143,6 @@ void shine_iteration_loop(shine_global_config *config) {
   } /* for ch */
 
   shine_ResvFrameEnd(config);
-}
-
-/*
- * calc_scfsi:
- * -----------
- * calculation of the scalefactor select information ( scfsi ).
- */
-void calc_scfsi(shine_psy_xmin_t *l3_xmin, int ch, int gr,
-                shine_global_config *config) {
-  shine_side_info_t *l3_side = &config->side_info;
-  /* This is the scfsi_band table from 2.4.2.7 of the IS */
-  static const int scfsi_band_long[5] = {0, 6, 11, 16, 21};
-
-  int scfsi_band;
-
-  int sfb, start, end, i;
-  int condition = 0;
-  int temp;
-
-  const int *scalefac_band_long =
-      &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
-
-  /* note. it goes quite a bit faster if you uncomment the next bit and exit
-     early from scfsi, but you then loose the advantage of common scale factors.
-
-  for(scfsi_band=0;scfsi_band<4;scfsi_band++)
-    l3_side->scfsi[ch][scfsi_band] = 0;
-  return;
-
-  */
-
-  config->l3loop.xrmaxl[gr] = config->l3loop.xrmax;
-
-  /* the total energy of the granule */
-  for (temp = 0, i = GRANULE_SIZE; i--;)
-    temp += config->l3loop.xrsq[i] >>
-            10; /* a bit of scaling to avoid overflow, (not very good) */
-  if (temp)
-    config->l3loop.en_tot[gr] =
-        log((double)temp * 4.768371584e-7) / LN2; /* 1024 / 0x7fffffff */
-  else
-    config->l3loop.en_tot[gr] = 0;
-
-  /* the energy of each scalefactor band, en */
-  /* the allowed distortion of each scalefactor band, xm */
-
-  for (sfb = 21; sfb--;) {
-    start = scalefac_band_long[sfb];
-    end = scalefac_band_long[sfb + 1];
-
-    for (temp = 0, i = start; i < end; i++)
-      temp += config->l3loop.xrsq[i] >> 10;
-    if (temp)
-      config->l3loop.en[gr][sfb] =
-          log((double)temp * 4.768371584e-7) / LN2; /* 1024 / 0x7fffffff */
-    else
-      config->l3loop.en[gr][sfb] = 0;
-
-    if (l3_xmin->l[gr][ch][sfb])
-      config->l3loop.xm[gr][sfb] = log(l3_xmin->l[gr][ch][sfb]) / LN2;
-    else
-      config->l3loop.xm[gr][sfb] = 0;
-  }
-
-  if (gr == 1) {
-    int gr2, tp;
-
-    for (gr2 = 2; gr2--;) {
-      /* The spectral values are not all zero */
-      if (config->l3loop.xrmaxl[gr2])
-        condition++;
-
-      condition++;
-    }
-    if (abs(config->l3loop.en_tot[0] - config->l3loop.en_tot[1]) < en_tot_krit)
-      condition++;
-    for (tp = 0, sfb = 21; sfb--;)
-      tp += abs(config->l3loop.en[0][sfb] - config->l3loop.en[1][sfb]);
-    if (tp < en_dif_krit)
-      condition++;
-
-    if (condition == 6) {
-      for (scfsi_band = 0; scfsi_band < 4; scfsi_band++) {
-        int sum0 = 0, sum1 = 0;
-        l3_side->scfsi[ch][scfsi_band] = 0;
-        start = scfsi_band_long[scfsi_band];
-        end = scfsi_band_long[scfsi_band + 1];
-        for (sfb = start; sfb < end; sfb++) {
-          sum0 += abs(config->l3loop.en[0][sfb] - config->l3loop.en[1][sfb]);
-          sum1 += abs(config->l3loop.xm[0][sfb] - config->l3loop.xm[1][sfb]);
-        }
-
-        if (sum0 < en_scfsi_band_krit && sum1 < xm_scfsi_band_krit) {
-          l3_side->scfsi[ch][scfsi_band] = 1;
-        } else
-          l3_side->scfsi[ch][scfsi_band] = 0;
-      } /* for scfsi_band */
-    } /* if condition == 6 */
-    else
-      for (scfsi_band = 0; scfsi_band < 4; scfsi_band++)
-        l3_side->scfsi[ch][scfsi_band] = 0;
-  } /* if gr == 1 */
 }
 
 /*
@@ -298,33 +174,6 @@ int part2_length(int gr, int ch, shine_global_config *config) {
       bits += (5 * slen2);
   }
   return bits;
-}
-
-/*
- * calc_xmin:
- * ----------
- * Calculate the allowed distortion for each scalefactor band,
- * as determined by the psychoacoustic model.
- * xmin(sb) = ratio(sb) * en(sb) / bw(sb)
- */
-void calc_xmin(shine_psy_ratio_t *ratio, gr_info *cod_info,
-               shine_psy_xmin_t *l3_xmin, int gr, int ch) {
-  int sfb;
-
-  for (sfb = cod_info->sfb_lmax; sfb--;) {
-    /*  note. xmin will always be zero with no psychoacoustic model
-
-        start = scalefac_band_long[ sfb ];
-        end   = scalefac_band_long[ sfb+1 ];
-        bw = end - start;
-
-        for ( en = 0, l = start; l < end; l++ )
-          en += config->l3loop.xrsq[l];
-
-        l3_xmin->l[gr][ch][sfb] = ratio->l[gr][ch][sfb] * en / bw;
-    */
-    l3_xmin->l[gr][ch][sfb] = 0;
-  }
 }
 
 /*
