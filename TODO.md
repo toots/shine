@@ -92,7 +92,7 @@ quality report before the next one starts.
 
 Bit-exact; formatting commits separate from functional ones.
 
-- [ ] Add `.clang-format` (LLVM, what the code already follows), normalize
+- [x] Add `.clang-format` (LLVM, what the code already follows), normalize
       CRLF line endings (12 files), reformat, check formatting in CI.
 - [ ] Remove `register`, `__BORLANDC__` branches, RISC OS leftovers,
       `README.old`.

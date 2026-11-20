@@ -30,7 +30,7 @@
 #else
 #define SWAB32(x)                                                              \
   (((unsigned int)(x) >> 24) | (((unsigned int)(x) >> 8) & 0xff00) |           \
-   (((unsigned int)(x)&0xff00) << 8) | ((unsigned int)(x) << 24))
+   (((unsigned int)(x) & 0xff00) << 8) | ((unsigned int)(x) << 24))
 #endif
 #endif
 
@@ -102,7 +102,7 @@ typedef struct {
   int32_t steptabi[128]; /* 2**(-x/4)  for x = -127..0 */
   /* 2**(-x/4) * 2**32 for x = 1..MAX_STEPSIZE, index 0 unused */
   uint32_t steptab_fraction[MAX_STEPSIZE + 1];
-  int int2idx[10000];    /* x**(3/4)   for x = 0..9999 */
+  int int2idx[10000]; /* x**(3/4)   for x = 0..9999 */
 } l3loop_t;
 
 typedef struct {
