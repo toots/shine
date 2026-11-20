@@ -76,8 +76,9 @@ typedef struct {
   int padding;
   int bits_per_frame;
   int bits_per_slot;
-  double frac_slots_per_frame;
-  double slot_lag;
+  /* Fractional slots per frame and padding lag, in 1/samplerate slots. */
+  long frac_slots_per_frame;
+  long slot_lag;
   int whole_slots_per_frame;
   int bitrate_index; /* + */    /* See Main.c and Layer3.c */
   int samplerate_index; /* + */ /* See Main.c and Layer3.c */
