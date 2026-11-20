@@ -9,17 +9,9 @@
 
 #include "bitstream.h"
 
-/* Fixed-point multiplies. Current compilers turn them into single
- * instructions, e.g. smmul and smmulr on ARMv7, mult and mfhi on MIPS. */
-#include "mult_noarch_gcc.h"
+#include "fixed_point.h"
 
-/* #define DEBUG if you want the library to dump info to stdout */
-
-#define BLKSIZE 1024
 #define HAN_SIZE 512 /* for loop unrolling, require that HAN_SIZE%8==0 */
-#define SCALE_BLOCK 12
-#define SCALE_RANGE 64
-#define SCALE 32768
 #define SBLIMIT 32
 
 /* The MDCT scales its output by 1/4 for headroom, which global_gain

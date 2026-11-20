@@ -259,8 +259,8 @@ int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config) {
  */
 static inline int ix_max(int ix[GRANULE_SIZE], unsigned int begin,
                          unsigned int end) {
-  register int i;
-  register int max = 0;
+  int i;
+  int max = 0;
 
   for (i = begin; i < end; i++)
     if (max < ix[i])
@@ -559,8 +559,8 @@ int bigv_bitcount(int ix[GRANULE_SIZE], gr_info *gi) {
 int count_bit(int ix[GRANULE_SIZE], unsigned int start, unsigned int end,
               unsigned int table) {
   unsigned linbits, ylen;
-  register int i, sum;
-  register int x, y;
+  int i, sum;
+  int x, y;
   const struct huffcodetab *h;
 
   if (!table)
