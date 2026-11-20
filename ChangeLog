@@ -16,6 +16,8 @@ x.y.z ()
 * shineenc: downmix stereo input with `-m` instead of encoding interleaved
   samples as mono.
 * shineenc: fix crashes on command lines made only of options.
+* shineenc: reject WAV files with no channels, and accept those with a zero
+  byte rate instead of dividing by it.
 
 3.1.1 (2017-07-28)
 =====

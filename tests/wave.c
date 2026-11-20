@@ -17,6 +17,8 @@ typedef struct {
   const int16_t *samples; /* interleaved, SAMPLES per channel */
   int data_length_unknown;
   int trailing_chunk_bytes;
+  int zero_byte_rate;
+  int zero_channels; /* in the fmt chunk only */
 } wav_t;
 
 static void put_u16(FILE *file, unsigned int value) {
@@ -44,9 +46,9 @@ static int write_wav(const char *path, const wav_t *wav) {
   fwrite("WAVEfmt ", 1, 8, file);
   put_u32(file, 16);
   put_u16(file, 1);
-  put_u16(file, wav->channels);
+  put_u16(file, wav->zero_channels ? 0 : wav->channels);
   put_u32(file, SAMPLERATE);
-  put_u32(file, SAMPLERATE * wav->channels * 2);
+  put_u32(file, wav->zero_byte_rate ? 0 : SAMPLERATE * wav->channels * 2);
   put_u16(file, wav->channels * 2);
   put_u16(file, 16);
 
@@ -148,6 +150,29 @@ static int expect_same(const char *name, const stream_t *stream,
   return 1;
 }
 
+/* Expects shineenc to reject `wav` with exit status 1. */
+static int check_rejected(const char *name, const wav_t *wav) {
+  char input[128], arguments[512];
+  int status;
+
+  snprintf(input, sizeof(input), "wave-%s.wav", name);
+  snprintf(arguments, sizeof(arguments), "-q '%s' wave-%s.mp3 2> /dev/null",
+           input, name);
+
+  if (!write_wav(input, wav)) {
+    printf("FAIL %s: cannot write %s\n", name, input);
+    return 0;
+  }
+  status = run_shineenc(name, arguments);
+  remove(input);
+  snprintf(input, sizeof(input), "wave-%s.mp3", name);
+  remove(input);
+
+  if (status >= 0 && status != 1)
+    printf("FAIL %s: exited with %d, expected 1\n", name, status);
+  return status == 1;
+}
+
 static int16_t mono[SAMPLES];
 static int16_t stereo[2 * SAMPLES];
 
@@ -166,10 +191,16 @@ static int check(const char *name, const char *options, const wav_t *wav,
 }
 
 int main(void) {
-  const wav_t plain = {1, mono, 0, 0};
-  const wav_t trailing_chunk = {1, mono, 0, 8000};
-  const wav_t unknown_length = {1, mono, 1, 0};
-  const wav_t dual_mono = {2, stereo, 0, 0};
+  const wav_t plain = {.channels = 1, .samples = mono};
+  const wav_t trailing_chunk = {.channels = 1, .samples = mono,
+                                .trailing_chunk_bytes = 8000};
+  const wav_t unknown_length = {.channels = 1, .samples = mono,
+                                .data_length_unknown = 1};
+  const wav_t dual_mono = {.channels = 2, .samples = stereo};
+  const wav_t zero_byte_rate = {.channels = 1, .samples = mono,
+                                .zero_byte_rate = 1};
+  const wav_t zero_channels = {.channels = 1, .samples = mono,
+                               .zero_channels = 1};
   int passed = 0, checked = 0;
   unsigned int seed = 1;
 
@@ -187,6 +218,12 @@ int main(void) {
   /* L = R, so the downmix is the mono signal itself. */
   checked++;
   passed += check("force-mono", "-m", &dual_mono, &plain, MONO);
+
+  /* The byte rate is redundant: encode as if it were right. */
+  checked++;
+  passed += check("zero-byte-rate", "", &zero_byte_rate, &plain, MONO);
+  checked++;
+  passed += check_rejected("zero-channels", &zero_channels);
 
   printf("%d/%d cases passed\n", passed, checked);
   return passed == checked && checked > 0 ? 0 : 1;

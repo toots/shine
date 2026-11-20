@@ -172,8 +172,8 @@ unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config,
   if (fmt_chunk.format != 1)
     error("Unknown WAVE format");
 
-  if (fmt_chunk.channels > 2)
-    error("More than 2 channels");
+  if (fmt_chunk.channels < 1 || fmt_chunk.channels > 2)
+    error("Unsupported number of channels");
 
   if (fmt_chunk.depth != 16)
     error("Unsupported PCM bit depth");
@@ -194,7 +194,9 @@ unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config,
   /* Streaming writers cannot know the length in advance. */
   wave->data_unbounded = data_chunk.length == 0xffffffff;
   wave->data_remaining = data_chunk.length;
-  wave->duration = data_chunk.length / fmt_chunk.byte_rate;
+  /* Informative only: do not reject files over it. */
+  wave->duration =
+      fmt_chunk.byte_rate ? data_chunk.length / fmt_chunk.byte_rate : 0;
 
   if (!quiet)
     printf("%s, %s %ldHz %ldbit, duration: %02ld:%02ld:%02ld\n",
