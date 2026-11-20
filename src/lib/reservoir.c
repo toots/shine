@@ -76,6 +76,7 @@ void shine_ResvFrameEnd(shine_global_config *config) {
   shine_side_info_t *l3_side = &config->side_info;
 
   ancillary_pad = 0;
+  l3_side->resvDrain = 0;
 
   /* just in case mean_bits is odd, this is necessary... */
   if ((config->wave.channels == 2) && (config->mean_bits & 1))

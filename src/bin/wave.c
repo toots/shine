@@ -59,7 +59,6 @@ typedef struct {
 #ifdef SHINE_BIG_ENDIAN
 #define native_fmt_chunk(fmt)                                                  \
   {                                                                            \
-    fmt.header.length = bswap_32(fmt.header.length);                           \
     fmt.format = bswap_16(fmt.format);                                         \
     fmt.channels = bswap_16(fmt.channels);                                     \
     fmt.sample_rate = bswap_32(fmt.sample_rate);                               \
@@ -94,6 +93,10 @@ unsigned char wave_get_chunk_header(FILE *file, int has_seek, const char id[4],
       else
         error("Read error");
     }
+
+#ifdef SHINE_BIG_ENDIAN
+    header->length = bswap_32(header->length);
+#endif
 
     /* chunks must be word-aligned, chunk data doesn't need to */
     chunk_length = header->length + header->length % 2;
@@ -169,8 +172,8 @@ unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config,
   if (fmt_chunk.format != 1)
     error("Unknown WAVE format");
 
-  if (fmt_chunk.channels > 2)
-    error("More than 2 channels");
+  if (fmt_chunk.channels < 1 || fmt_chunk.channels > 2)
+    error("Unsupported number of channels");
 
   if (fmt_chunk.depth != 16)
     error("Unsupported PCM bit depth");
@@ -188,8 +191,12 @@ unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config,
   config->wave.samplerate = fmt_chunk.sample_rate;
 
   wave->channels = fmt_chunk.channels;
-  wave->length = data_chunk.length;
-  wave->duration = data_chunk.length / fmt_chunk.byte_rate;
+  /* Streaming writers cannot know the length in advance. */
+  wave->data_unbounded = data_chunk.length == 0xffffffff;
+  wave->data_remaining = data_chunk.length;
+  /* Informative only: do not reject files over it. */
+  wave->duration =
+      fmt_chunk.byte_rate ? data_chunk.length / fmt_chunk.byte_rate : 0;
 
   if (!quiet)
     printf("%s, %s %ldHz %ldbit, duration: %02ld:%02ld:%02ld\n",
@@ -239,11 +246,16 @@ void swap_buffer(int16_t *sample_buffer, int length) {
  * -------------
  */
 
-/* TODO: respect data chunk length */
-int read_samples(int16_t *sample_buffer, int frame_size, FILE *file) {
-  int samples_read = 0;
+int read_samples(int16_t *sample_buffer, int frame_size, wave_t *wave) {
+  int samples_wanted = frame_size, samples_read;
 
-  samples_read = fread(sample_buffer, sizeof(int16_t), frame_size, file);
+  if (!wave->data_unbounded &&
+      wave->data_remaining / sizeof(int16_t) < (uint32_t)samples_wanted)
+    samples_wanted = wave->data_remaining / sizeof(int16_t);
+
+  samples_read =
+      fread(sample_buffer, sizeof(int16_t), samples_wanted, wave->file);
+  wave->data_remaining -= samples_read * sizeof(int16_t);
 
 #ifdef SHINE_BIG_ENDIAN
   swap_buffer(sample_buffer, samples_read);
@@ -266,5 +278,5 @@ int read_samples(int16_t *sample_buffer, int frame_size, FILE *file) {
  * reads into the given buffer.
  */
 int wave_get(int16_t *buffer, wave_t *wave, int samp_per_pass) {
-  return read_samples(buffer, samp_per_pass * wave->channels, wave->file);
+  return read_samples(buffer, samp_per_pass * wave->channels, wave);
 }

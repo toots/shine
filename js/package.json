@@ -1,10 +1,24 @@
 {
   "name": "@toots/shine.js",
-  "version": "1.0.3",
-  "description": "Shine fixed-point mp3 encoder",
-  "main": "dist/libshine_node.js",
-  "browser": "dist/libshine_browser.js",
+  "version": "2.0.0",
+  "description": "Shine fixed-point mp3 encoder, compiled to WebAssembly",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./libshine.d.ts",
+      "default": "./dist/shine.mjs"
+    }
+  },
   "types": "libshine.d.ts",
+  "files": [
+    "dist/shine.mjs",
+    "dist/shine_wasm.mjs",
+    "dist/shine.wasm",
+    "libshine.d.ts"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/toots/shine.git"

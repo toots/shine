@@ -135,8 +135,16 @@ unsigned char *shine_encode_buffer(shine_t s, int16_t **data, int *written);
 unsigned char *shine_encode_buffer_interleaved(shine_t s, int16_t *data,
                                                int *written);
 
-/* Flush all data currently in the encoding buffer. Should be used before
- * closing the encoder, to make all encoded data has been written. */
+/* Number of samples the encoded stream lags the input by, before any decoder
+ * delay. */
+int shine_encoder_delay(shine_t s);
+
+/* Drain the encoder and return all remaining data. Encodes silence until the
+ * last input sample has passed through the filterbank and the decoder delay,
+ * so callers tracking the real input length should trim the excess at the
+ * end. Should be called once, before closing the encoder.
+ *
+ * The returned pointer follows the same rules as `shine_encode_buffer`. */
 unsigned char *shine_flush(shine_t s, int *written);
 
 /* Close an encoder, freeing all associated memory. Encoder handler is not

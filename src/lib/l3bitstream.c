@@ -73,6 +73,10 @@ static void encodeMainData(shine_global_config *config) {
       Huffmancodebits(config, ix, gi);
     }
   }
+
+  /* Stuffing that did not fit in any part2_3_length, as ancillary data. */
+  for (int bits = si.resvDrain; bits > 0; bits -= 32)
+    shine_putbits(&config->bs, 0, bits < 32 ? bits : 32);
 }
 
 static void encodeSideInfo(shine_global_config *config) {
