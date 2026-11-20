@@ -90,10 +90,6 @@ shine_global_config *shine_initialise(shine_config_t *pub_config) {
   if (config == NULL)
     return config;
 
-  shine_subband_initialise(config);
-  shine_mdct_initialise(config);
-  shine_loop_initialise(config);
-
   /* Copy public config. */
   config->wave.channels = pub_config->wave.channels;
   config->wave.samplerate = pub_config->wave.samplerate;
@@ -128,13 +124,8 @@ shine_global_config *shine_initialise(shine_config_t *pub_config) {
   config->mpeg.whole_slots_per_frame =
       slots_numerator / config->wave.samplerate;
 
-  config->mpeg.frac_slots_per_frame =
-      (double)(slots_numerator % config->wave.samplerate) /
-      config->wave.samplerate;
+  config->mpeg.frac_slots_per_frame = slots_numerator % config->wave.samplerate;
   config->mpeg.slot_lag = -config->mpeg.frac_slots_per_frame;
-
-  if (config->mpeg.frac_slots_per_frame == 0)
-    config->mpeg.padding = 0;
 
   if (shine_open_bit_stream(&config->bs, BUFFER_SIZE) < 0) {
     free(config);
@@ -159,9 +150,10 @@ shine_global_config *shine_initialise(shine_config_t *pub_config) {
 static void shine_encode_frame(shine_global_config *config, int stride) {
   if (config->mpeg.frac_slots_per_frame) {
     config->mpeg.padding =
-        (config->mpeg.slot_lag <= (config->mpeg.frac_slots_per_frame - 1.0));
-    config->mpeg.slot_lag +=
-        (config->mpeg.padding - config->mpeg.frac_slots_per_frame);
+        config->mpeg.slot_lag <=
+        config->mpeg.frac_slots_per_frame - config->wave.samplerate;
+    config->mpeg.slot_lag += config->mpeg.padding * config->wave.samplerate -
+                             config->mpeg.frac_slots_per_frame;
   }
 
   config->mpeg.bits_per_frame =

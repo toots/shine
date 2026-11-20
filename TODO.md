@@ -48,19 +48,20 @@ change does more than it claims. The commit message says which kind it is.
 
 ## Fixed point
 
-Floating point still runs while encoding (arm64 disassembly):
+The library used floating point while encoding (arm64 disassembly). It uses
+none now, checked in CI by `tools/check-no-float.sh`.
 
-- [ ] `calc_scfsi` / `calc_xmin`: `log()` and `fdiv` every granule, on
+- [x] `calc_scfsi` / `calc_xmin`: `log()` and `fdiv` every granule, on
       all-zero thresholds. Delete with the dead psychoacoustic stubs.
-- [ ] Frame padding: `slot_lag` / `frac_slots_per_frame` are doubles,
+- [x] Frame padding: `slot_lag` / `frac_slots_per_frame` are doubles,
       updated every frame. Use an integer accumulator.
-- [ ] `shine_max_reservoir_bits`: `pe * 3.1`. Dead while the reservoir is
+- [x] `shine_max_reservoir_bits`: `pe * 3.1`. Dead while the reservoir is
       disabled; integer when restored.
-- [ ] `quantize()` beyond the lookup table: double `sqrt(sqrt(x) * x)`,
+- [x] `quantize()` beyond the lookup table: double `sqrt(sqrt(x) * x)`,
       about 1 coefficient in 10^4-10^5 on music. Use an integer x^(3/4).
-- [ ] Generate or precompute the init tables (`cos`, `sin`, `pow`, `modf`)
+- [x] Generate or precompute the init tables (`cos`, `sin`, `pow`, `modf`)
       without libm, for bit-exact output across platforms.
-- [ ] CI check that the encoding path has no floating point, e.g. building
+- [x] CI check that the encoding path has no floating point, e.g. building
       the library with `-mgeneral-regs-only` on arm64.
 
 ## API (major release)

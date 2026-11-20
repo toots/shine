@@ -2,46 +2,8 @@
 
 #include "l3mdct.h"
 #include "l3subband.h"
+#include "tables.h"
 #include "types.h"
-
-/* This is table B.9: coefficients for aliasing reduction */
-#define MDCT_CA(coef) (int32_t)(coef / sqrt(1.0 + (coef * coef)) * 0x7fffffff)
-#define MDCT_CS(coef) (int32_t)(1.0 / sqrt(1.0 + (coef * coef)) * 0x7fffffff)
-
-#define MDCT_CA0 MDCT_CA(-0.6)
-#define MDCT_CA1 MDCT_CA(-0.535)
-#define MDCT_CA2 MDCT_CA(-0.33)
-#define MDCT_CA3 MDCT_CA(-0.185)
-#define MDCT_CA4 MDCT_CA(-0.095)
-#define MDCT_CA5 MDCT_CA(-0.041)
-#define MDCT_CA6 MDCT_CA(-0.0142)
-#define MDCT_CA7 MDCT_CA(-0.0037)
-
-#define MDCT_CS0 MDCT_CS(-0.6)
-#define MDCT_CS1 MDCT_CS(-0.535)
-#define MDCT_CS2 MDCT_CS(-0.33)
-#define MDCT_CS3 MDCT_CS(-0.185)
-#define MDCT_CS4 MDCT_CS(-0.095)
-#define MDCT_CS5 MDCT_CS(-0.041)
-#define MDCT_CS6 MDCT_CS(-0.0142)
-#define MDCT_CS7 MDCT_CS(-0.0037)
-
-/*
- * shine_mdct_initialise:
- * -------------------
- */
-void shine_mdct_initialise(shine_global_config *config) {
-  int m, k;
-
-  /* prepare the mdct coefficients */
-  for (m = 18; m--;)
-    for (k = 36; k--;)
-      /* combine window and mdct coefficients into a single table */
-      /* scale and convert to fixed point before storing */
-      config->mdct.cos_l[m][k] =
-          (int32_t)(sin(PI36 * (k + 0.5)) *
-                    cos((PI / 72) * (2 * k + 19) * (2 * m + 1)) * 0x7fffffff);
-}
 
 /*
  * shine_mdct_sub:
@@ -95,7 +57,7 @@ void shine_mdct_sub(shine_global_config *config, int stride) {
           int64_t sum = 0;
 
           for (j = 0; j < 36; j++)
-            sum += mul(mdct_in[j], config->mdct.cos_l[k][j]);
+            sum += mul(mdct_in[j], shine_mdct_cosine[k][j]);
           mdct_enc[band][k] = sum > INT32_MAX   ? INT32_MAX
                               : sum < INT32_MIN ? INT32_MIN
                                                 : (int32_t)sum;
@@ -103,30 +65,10 @@ void shine_mdct_sub(shine_global_config *config, int stride) {
 
         /* Perform aliasing reduction butterfly */
         if (band != 0) {
-          cmuls(mdct_enc[band][0], mdct_enc[band - 1][17 - 0],
-                mdct_enc[band][0], mdct_enc[band - 1][17 - 0], MDCT_CS0,
-                MDCT_CA0);
-          cmuls(mdct_enc[band][1], mdct_enc[band - 1][17 - 1],
-                mdct_enc[band][1], mdct_enc[band - 1][17 - 1], MDCT_CS1,
-                MDCT_CA1);
-          cmuls(mdct_enc[band][2], mdct_enc[band - 1][17 - 2],
-                mdct_enc[band][2], mdct_enc[band - 1][17 - 2], MDCT_CS2,
-                MDCT_CA2);
-          cmuls(mdct_enc[band][3], mdct_enc[band - 1][17 - 3],
-                mdct_enc[band][3], mdct_enc[band - 1][17 - 3], MDCT_CS3,
-                MDCT_CA3);
-          cmuls(mdct_enc[band][4], mdct_enc[band - 1][17 - 4],
-                mdct_enc[band][4], mdct_enc[band - 1][17 - 4], MDCT_CS4,
-                MDCT_CA4);
-          cmuls(mdct_enc[band][5], mdct_enc[band - 1][17 - 5],
-                mdct_enc[band][5], mdct_enc[band - 1][17 - 5], MDCT_CS5,
-                MDCT_CA5);
-          cmuls(mdct_enc[band][6], mdct_enc[band - 1][17 - 6],
-                mdct_enc[band][6], mdct_enc[band - 1][17 - 6], MDCT_CS6,
-                MDCT_CA6);
-          cmuls(mdct_enc[band][7], mdct_enc[band - 1][17 - 7],
-                mdct_enc[band][7], mdct_enc[band - 1][17 - 7], MDCT_CS7,
-                MDCT_CA7);
+          for (k = 0; k < 8; k++)
+            cmuls(mdct_enc[band][k], mdct_enc[band - 1][17 - k],
+                  mdct_enc[band][k], mdct_enc[band - 1][17 - k],
+                  shine_mdct_alias_cs[k], shine_mdct_alias_ca[k]);
         }
       }
     }
