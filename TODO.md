@@ -41,9 +41,9 @@ change does more than it claims. The commit message says which kind it is.
 - [ ] The fixed-point chain has no headroom: MDCT sums of full scale input
       in phase across subbands exceed 32 bits and are saturated. Fix with
       the gain above.
-- [ ] 16 kHz scale factor band table typos (`tables.c`): `45` must be `54`,
+- [x] 16 kHz scale factor band table typos (`tables.c`): `45` must be `54`,
       `248` must be `284`.
-- [ ] Prefix the global `samplerates` and `bitrates` symbols with `shine_`;
+- [x] Prefix the global `samplerates` and `bitrates` symbols with `shine_`;
       make `granules_per_frame` const.
 
 ## Fixed point
