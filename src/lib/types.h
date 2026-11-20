@@ -51,6 +51,9 @@
 #define SCALE 32768
 #define SBLIMIT 32
 
+/* Largest quantizer step size: global_gain = step size + 210 has 8 bits. */
+#define MAX_STEPSIZE 45
+
 #ifndef MAX_CHANNELS
 #define MAX_CHANNELS 2
 #endif
@@ -97,6 +100,8 @@ typedef struct {
   int32_t xrmaxl[MAX_GRANULES];
   double steptab[128];   /* 2**(-x/4)  for x = -127..0 */
   int32_t steptabi[128]; /* 2**(-x/4)  for x = -127..0 */
+  /* 2**(-x/4) * 2**32 for x = 1..MAX_STEPSIZE, index 0 unused */
+  uint32_t steptab_fraction[MAX_STEPSIZE + 1];
   int int2idx[10000];    /* x**(3/4)   for x = 0..9999 */
 } l3loop_t;
 

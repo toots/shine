@@ -12,6 +12,8 @@ x.y.z ()
 * Add `shine_encoder_delay()`.
 * Fix garbage MDCT coefficients for full scale input in phase across
   subbands, such as square waves.
+* Fix out-of-bounds reads in the quantizer at low bitrates, which quantized
+  every coefficient to zero.
 * shineenc: fix skipping WAV chunks on big endian machines.
 * shineenc: stop at the end of the WAV data chunk instead of encoding the
   chunks after it as audio.
