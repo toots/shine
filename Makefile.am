@@ -30,7 +30,8 @@ shineenc_CFLAGS  = -I$(srcdir)/src/lib
 
 # One program per concern. A new test needs its program here and its
 # _SOURCES line below.
-TESTS          = tests/framing tests/flush tests/wave tests/cli tests/golden
+TESTS          = tests/framing tests/flush tests/wave tests/cli tests/golden \
+                 tests/level
 check_PROGRAMS = $(TESTS)
 TEST_HELPERS   = tests/helpers.c tests/helpers.h
 LDADD          = libshine.la
@@ -41,6 +42,7 @@ tests_flush_SOURCES   = tests/flush.c $(TEST_HELPERS)
 tests_wave_SOURCES    = tests/wave.c $(TEST_HELPERS)
 tests_cli_SOURCES     = tests/cli.c $(TEST_HELPERS)
 tests_golden_SOURCES  = tests/golden.c $(TEST_HELPERS)
+tests_level_SOURCES   = tests/level.c $(TEST_HELPERS)
 
 AM_TESTS_ENVIRONMENT = SHINEENC='$(abs_top_builddir)/shineenc'; export SHINEENC; \
                        SHINE_GOLDEN='$(abs_top_srcdir)/tests/golden.txt'; export SHINE_GOLDEN;
