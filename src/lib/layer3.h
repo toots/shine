@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* MPEG versions, as returned by shine_mpeg_version() and
  * shine_check_config(). */
 enum shine_mpeg_version {
@@ -158,5 +162,9 @@ unsigned char *shine_flush(shine_t s, int *written);
 /* Close an encoder, freeing all associated memory. Encoder handler is not
  * valid after this call. */
 void shine_close(shine_t s);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

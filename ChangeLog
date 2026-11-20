@@ -14,6 +14,7 @@ x.y.z ()
   - `shine_initialise()` takes a const config, `shine_encode_buffer()` samples
     as `int16_t *const *` and `shine_encode_buffer_interleaved()` as
     `const int16_t *`: the samples are not modified.
+  - `layer3.h` can be included from C++.
 * Remove the ARM and MIPS assembly multiplies: current compilers generate
   the same instructions from C. Output on those architectures now matches
   every other.
