@@ -37,7 +37,11 @@ static void subband_filter(void) {
 }
 
 static void mdct_cosine(void) {
-  printf("/* MDCT coefficients, combined with the window. */\n");
+  printf(
+      "/* MDCT coefficients, combined with the window. Scaled by 8/9, as the\n"
+      " * decoder's IMDCT and overlap-add have a gain of 9 where the rest of\n"
+      " * the encoder compensates 8, and by 1/4 for headroom: see\n"
+      " * MDCT_HEADROOM_STEPS. */\n");
   printf("const int32_t shine_mdct_cosine[18][36] = {\n");
   for (int m = 0; m < 18; m++) {
     printf("    {");
@@ -45,7 +49,7 @@ static void mdct_cosine(void) {
       printf("%s%d", k ? ", " : "",
              (int32_t)(sin(PI36 * (k + 0.5)) *
                        cos((PI / 72) * (2 * k + 19) * (2 * m + 1)) *
-                       0x7fffffff));
+                       (2.0 / 9.0) * 0x7fffffff));
     printf("},\n");
   }
   printf("};\n\n");
