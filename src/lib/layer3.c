@@ -198,6 +198,8 @@ unsigned char *shine_encode_buffer_interleaved(shine_global_config *config,
 }
 
 unsigned char *shine_flush(shine_global_config *config, int *written) {
+  shine_flush_bit_stream(&config->bs);
+
   *written = config->bs.data_position;
   config->bs.data_position = 0;
 

@@ -74,6 +74,20 @@ void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N) {
   }
 }
 
+/* Write out the whole bytes left in the cache. */
+void shine_flush_bit_stream(bitstream_t *bs) {
+  if (bs->data_position + sizeof(unsigned int) >= bs->data_size) {
+    bs->data = (unsigned char *)realloc(bs->data,
+                                        bs->data_size + (bs->data_size / 2));
+    bs->data_size += (bs->data_size / 2);
+  }
+
+  for (; bs->cache_bits <= 24; bs->cache_bits += 8) {
+    bs->data[bs->data_position++] = bs->cache >> 24;
+    bs->cache <<= 8;
+  }
+}
+
 int shine_get_bits_count(bitstream_t *bs) {
   return bs->data_position * 8 + 32 - bs->cache_bits;
 }
