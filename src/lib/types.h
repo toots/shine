@@ -42,7 +42,6 @@
 #define PI36 0.087266462599717
 #define PI64 0.049087385212
 #define SQRT2 1.41421356237
-#define LN2 0.69314718
 #define LN_TO_LOG10 0.2302585093
 #define BLKSIZE 1024
 #define HAN_SIZE 512 /* for loop unrolling, require that HAN_SIZE%8==0 */
@@ -90,16 +89,11 @@ typedef struct {
 } priv_shine_mpeg_t;
 
 typedef struct {
-  int32_t *xr;                  /* magnitudes of the spectral values */
-  int32_t xrsq[GRANULE_SIZE];   /* xr squared */
-  int32_t xrabs[GRANULE_SIZE];  /* xr absolute */
-  int32_t xrmax;                /* maximum of xrabs array */
-  int32_t en_tot[MAX_GRANULES]; /* gr */
-  int32_t en[MAX_GRANULES][21];
-  int32_t xm[MAX_GRANULES][21];
-  int32_t xrmaxl[MAX_GRANULES];
-  double steptab[128];   /* 2**(-x/4)  for x = -127..0 */
-  int32_t steptabi[128]; /* 2**(-x/4)  for x = -127..0 */
+  int32_t *xr;                 /* magnitudes of the spectral values */
+  int32_t xrabs[GRANULE_SIZE]; /* xr absolute */
+  int32_t xrmax;               /* maximum of xrabs array */
+  double steptab[128];         /* 2**(-x/4)  for x = -127..0 */
+  int32_t steptabi[128];       /* 2**(-x/4)  for x = -127..0 */
   /* 2**(-x/4) * 2**32 for x = 1..MAX_STEPSIZE, index 0 unused */
   uint32_t steptab_fraction[MAX_STEPSIZE + 1];
   int int2idx[10000]; /* x**(3/4)   for x = 0..9999 */
@@ -149,14 +143,6 @@ typedef struct {
 } shine_side_info_t;
 
 typedef struct {
-  double l[MAX_GRANULES][MAX_CHANNELS][21];
-} shine_psy_ratio_t;
-
-typedef struct {
-  double l[MAX_GRANULES][MAX_CHANNELS][21];
-} shine_psy_xmin_t;
-
-typedef struct {
   int32_t l[MAX_GRANULES][MAX_CHANNELS][22];    /* [cb] */
   int32_t s[MAX_GRANULES][MAX_CHANNELS][13][3]; /* [window][cb] */
 } shine_scalefac_t;
@@ -168,10 +154,8 @@ typedef struct shine_global_flags {
   shine_side_info_t side_info;
   int sideinfo_len;
   int mean_bits;
-  shine_psy_ratio_t ratio;
   shine_scalefac_t scalefactor;
   int16_t *buffer[MAX_CHANNELS];
-  double pe[MAX_CHANNELS][MAX_GRANULES];
   int l3_enc[MAX_CHANNELS][MAX_GRANULES][GRANULE_SIZE];
   int32_t l3_sb_sample[MAX_CHANNELS][MAX_GRANULES + 1][18][SBLIMIT];
   int32_t mdct_freq[MAX_CHANNELS][MAX_GRANULES][GRANULE_SIZE];
