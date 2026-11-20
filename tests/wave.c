@@ -117,7 +117,7 @@ static int shineenc(const char *name, const char *options, const wav_t *wav,
 }
 
 static int expect_frames(const char *name, const stream_t *stream,
-                         enum modes mode) {
+                         enum shine_mode mode) {
   shine_config_t config;
   int frames;
   /* Input frames, zero padded, plus the drain. */
@@ -126,7 +126,7 @@ static int expect_frames(const char *name, const stream_t *stream,
 
   shine_set_config_mpeg_defaults(&config.mpeg);
   config.wave.samplerate = SAMPLERATE;
-  config.wave.channels = mode == MONO ? PCM_MONO : PCM_STEREO;
+  config.wave.channels = mode == SHINE_MONO ? 1 : 2;
   config.mpeg.mode = mode;
 
   frames = walk_frames(stream, &config, name);
@@ -177,7 +177,7 @@ static int16_t stereo[2 * SAMPLES];
 
 /* Runs `wav` with `options` against the encoding of `reference`. */
 static int check(const char *name, const char *options, const wav_t *wav,
-                 const wav_t *reference, enum modes mode) {
+                 const wav_t *reference, enum shine_mode mode) {
   stream_t stream = {NULL, 0, 0}, expected = {NULL, 0, 0};
   int ok = shineenc(name, options, wav, &stream) &&
            expect_frames(name, &stream, mode) &&
@@ -210,17 +210,17 @@ int main(void) {
   }
 
   checked++;
-  passed += check("trailing-chunk", "", &trailing_chunk, &plain, MONO);
+  passed += check("trailing-chunk", "", &trailing_chunk, &plain, SHINE_MONO);
   checked++;
-  passed += check("unknown-length", "", &unknown_length, &plain, MONO);
+  passed += check("unknown-length", "", &unknown_length, &plain, SHINE_MONO);
 
   /* L = R, so the downmix is the mono signal itself. */
   checked++;
-  passed += check("force-mono", "-m", &dual_mono, &plain, MONO);
+  passed += check("force-mono", "-m", &dual_mono, &plain, SHINE_MONO);
 
   /* The byte rate is redundant: encode as if it were right. */
   checked++;
-  passed += check("zero-byte-rate", "", &zero_byte_rate, &plain, MONO);
+  passed += check("zero-byte-rate", "", &zero_byte_rate, &plain, SHINE_MONO);
   checked++;
   passed += check_rejected("zero-channels", &zero_channels);
 

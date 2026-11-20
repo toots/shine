@@ -12,11 +12,17 @@ The encoding API should be quite straight forward:
 
 ```c
 #include <shine/layer3.h>
-  
-(...)
+
+shine_config_t config;
+
+shine_set_config_mpeg_defaults(&config.mpeg);
+config.wave.channels = 2;
+config.wave.samplerate = 44100;
+config.mpeg.mode = SHINE_JOINT_STEREO;
+config.mpeg.bitrate = 128;
 
 /* See if samplerate and bitrate are valid */
-if (shine_check_config(config.wave.samplerate, config.mpeg.bitr) < 0)
+if (shine_check_config(config.wave.samplerate, config.mpeg.bitrate) < 0)
   error("Unsupported samplerate/bitrate configuration.");
 
 /* Initiate encoder */
@@ -27,13 +33,13 @@ int samples_per_pass = shine_samples_per_pass(s);
 
 /* All the magic happens here */
 while (read(buffer, infile, samples_per_pass)) {
-  data = shine_encode_buffer(s,buffer,&written);
+  data = shine_encode_buffer(s, buffer, &written);
   write(data, written);
 }
 
 /* Flush and write remaining data. */
-data = shine_flush(s,&written);
-write(written, data);
+data = shine_flush(s, &written);
+write(data, written);
 
 /* Close encoder. */
 shine_close(s);
