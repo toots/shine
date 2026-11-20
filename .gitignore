@@ -1,10 +1,6 @@
 *.swp
-obj
-libs
 compile
-android/
 js/src/post-node.js
-!android/*.mk
 shine
 shine.pc
 m4

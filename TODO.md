@@ -100,4 +100,3 @@ Bit-exact; formatting commits separate from functional ones.
 - [ ] Run the tests under QEMU on armv7 and MIPS (multiply assembly) and
       s390x (big endian), e.g. with `run-on-arch`.
 - [ ] Update `actions/checkout`.
-- [ ] Check the `android/` makefiles beyond building.

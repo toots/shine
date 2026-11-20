@@ -1,5 +1,3 @@
-.PHONY : android
-
 EXTRA_DIST = ChangeLog README.md README.old libshine.sym js tests/wasm.mjs
 
 noinst_HEADERS = src/bin/main.h src/bin/wave.h \
@@ -47,16 +45,6 @@ AM_TESTS_ENVIRONMENT = SHINEENC='$(abs_top_builddir)/shineenc'; export SHINEENC;
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = shine.pc
 
-android:
-	[ -d android/include ] || mkdir android/include
-	[ -d android/lib ] || mkdir android/lib
-	[ -d android/bin ] || mkdir android/bin
-	cp src/lib/layer3.h android/include
-	NDK_PROJECT_PATH=$(shell pwd) ndk-build APP_BUILD_SCRIPT=$(shell pwd)/android/Library.mk
-	mv libs/* android/lib
-	NDK_PROJECT_PATH=$(shell pwd) ndk-build APP_BUILD_SCRIPT=$(shell pwd)/android/Binary.mk
-	mv libs/* android/bin
-
 # WebAssembly build of the JavaScript package: `make wasm`, tested by
 # `make check-wasm`. Separate from all and check, and only available when
 # configure found a WebAssembly toolchain.
@@ -103,5 +91,4 @@ dist-hook:
 	rm -rf $(distdir)/$(JS_DIST) $(distdir)/js/node_modules
 
 clean-local:
-	-rm -rf obj libs android/lib android/bin android/include
 	-rm -rf $(JS_DIST)

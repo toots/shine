@@ -17,6 +17,8 @@ x.y.z ()
   samples as mono.
 * The JavaScript package is built to WebAssembly with clang instead of
   Emscripten (`make wasm`), and is now an ES module.
+* Remove the Android ndk-build files: cross-compile with the NDK's clang
+  through `configure --host` like for any other target.
 * JavaScript: `close()` encodes the samples still buffered instead of dropping
   them, and `stereoMode: StereoMode.STEREO` no longer means joint stereo.
 * shineenc: fix crashes on command lines made only of options.

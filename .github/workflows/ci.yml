@@ -56,23 +56,6 @@ jobs:
     - name: make check
       run: make check || (cat tests/*.log; exit 1)
 
-  android_build:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - uses: nttld/setup-ndk@v1
-      with:
-        ndk-version: r25b
-        local-cache: true
-    - name: Install autoconf/automake
-      run: sudo apt-get -y install automake autoconf
-    - name: bootstrap
-      run: ./bootstrap
-    - name: configure
-      run: ./configure
-    - name: make android
-      run: make android   
-
   wasm:
     runs-on: ubuntu-latest
     steps:
