@@ -37,6 +37,12 @@ int force_mono = 0;
 
 int verbose() { return _verbose; }
 
+/* In place: sample i only reads samples 2i and 2i + 1. */
+static void downmix_to_mono(int16_t *buffer, int samples) {
+  for (int i = 0; i < samples; i++)
+    buffer[i] = (buffer[2 * i] + buffer[2 * i + 1]) / 2;
+}
+
 /* Write out the MP3 file */
 int write_mp3(long bytes, void *buffer, void *config) {
   return fwrite(buffer, sizeof(unsigned char), bytes, outfile) /
@@ -206,6 +212,8 @@ int main(int argc, char **argv) {
 
   /* All the magic happens here */
   while (wave_get(buffer, &wave, samples_per_pass)) {
+    if (wave.channels == 2 && config.wave.channels == 1)
+      downmix_to_mono(buffer, samples_per_pass);
     data = shine_encode_buffer_interleaved(s, buffer, &written);
     if (write_mp3(written, data, &config) != written) {
       fprintf(stderr, "shineenc: write error\n");

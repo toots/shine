@@ -153,6 +153,7 @@ static int expect_same(const char *name, const stream_t *stream,
 }
 
 static int16_t mono[SAMPLES];
+static int16_t stereo[2 * SAMPLES];
 
 /* Runs `wav` with `options` against the encoding of `reference`. */
 static int check(const char *name, const char *options, const wav_t *wav,
@@ -172,18 +173,24 @@ int main(void) {
   const wav_t plain = {1, mono, 0, 0};
   const wav_t trailing_chunk = {1, mono, 0, 8000};
   const wav_t unknown_length = {1, mono, 1, 0};
+  const wav_t dual_mono = {2, stereo, 0, 0};
   int passed = 0, checked = 0;
   unsigned int seed = 1;
 
   for (int i = 0; i < SAMPLES; i++) {
     seed = seed * 1103515245 + 12345;
     mono[i] = (int16_t)(seed >> 16);
+    stereo[2 * i] = stereo[2 * i + 1] = mono[i];
   }
 
   checked++;
   passed += check("trailing-chunk", "", &trailing_chunk, &plain, MONO);
   checked++;
   passed += check("unknown-length", "", &unknown_length, &plain, MONO);
+
+  /* L = R, so the downmix is the mono signal itself. */
+  checked++;
+  passed += check("force-mono", "-m", &dual_mono, &plain, MONO);
 
   printf("%d/%d cases passed\n", passed, checked);
   return passed == checked && checked > 0 ? 0 : 1;

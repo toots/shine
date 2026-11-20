@@ -13,6 +13,8 @@ x.y.z ()
 * shineenc: fix skipping WAV chunks on big endian machines.
 * shineenc: stop at the end of the WAV data chunk instead of encoding the
   chunks after it as audio.
+* shineenc: downmix stereo input with `-m` instead of encoding interleaved
+  samples as mono.
 
 3.1.1 (2017-07-28)
 =====
