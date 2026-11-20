@@ -190,17 +190,16 @@ void shine_loop_initialise(shine_global_config *config) {
    * The 0.5 is for rounding.
    */
   for (i = 128; i--;) {
-    config->l3loop.steptab[i] = pow(2.0, (double)(127 - i) / 4);
-    if ((config->l3loop.steptab[i] * 2) >
-        0x7fffffff) /* MAXINT = 2**31 = 2**(124/4) */
+    double step = pow(2.0, (double)(127 - i) / 4);
+
+    if ((step * 2) > 0x7fffffff) /* MAXINT = 2**31 = 2**(124/4) */
       config->l3loop.steptabi[i] = 0x7fffffff;
     else
       /* The table is multiplied by 2 to give an extra bit of accuracy.
        * In quantize, the long multiply does not shift it's result left one
        * bit to compensate.
        */
-      config->l3loop.steptabi[i] =
-          (int32_t)((config->l3loop.steptab[i] * 2) + 0.5);
+      config->l3loop.steptabi[i] = (int32_t)((step * 2) + 0.5);
   }
 
   for (i = 1; i <= MAX_STEPSIZE; i++)
@@ -241,10 +240,25 @@ static int quantize_coarse(int ix[GRANULE_SIZE], int stepsize,
   return max;
 }
 
+/* floor(x**(3/4)) for x <= 165140, i.e. results up to 8192: the largest y
+ * with y**4 <= x**3, both below 2**53. */
+static int pow34(uint32_t x) {
+  uint64_t cube = (uint64_t)x * x * x;
+  int low = 0, high = 8192;
+
+  while (low < high) {
+    uint64_t middle = (low + high + 1) / 2;
+    if (middle * middle * middle * middle <= cube)
+      low = (int)middle;
+    else
+      high = (int)middle - 1;
+  }
+  return low;
+}
+
 int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config) {
   int i, max, ln;
   int32_t scalei;
-  double scale, dbl;
 
   if (stepsize > 0)
     return quantize_coarse(ix, stepsize, config);
@@ -262,15 +276,9 @@ int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config) {
        */
       ln = mulr(labs(config->l3loop.xr[i]), scalei);
 
-      if (ln < 10000)                       /* ln < 10000 catches most values */
-        ix[i] = config->l3loop.int2idx[ln]; /* quick look up method */
-      else {
-        /* outside table range so have to do it using floats */
-        scale = config->l3loop.steptab[stepsize + 127]; /* 2**(-stepsize/4) */
-        dbl = ((double)config->l3loop.xrabs[i]) * scale *
-              4.656612875e-10;              /* 0x7fffffff */
-        ix[i] = (int)sqrt(sqrt(dbl) * dbl); /* dbl**(3/4) */
-      }
+      /* The table covers about all values; the quick check above bounds the
+       * rest by 165140. */
+      ix[i] = ln < 10000 ? config->l3loop.int2idx[ln] : pow34(ln);
 
       /* calculate ixmax while we're here */
       /* note. ix cannot be negative */

@@ -93,7 +93,6 @@ typedef struct {
   int32_t *xr;                 /* magnitudes of the spectral values */
   int32_t xrabs[GRANULE_SIZE]; /* xr absolute */
   int32_t xrmax;               /* maximum of xrabs array */
-  double steptab[128];         /* 2**(-x/4)  for x = -127..0 */
   int32_t steptabi[128];       /* 2**(-x/4)  for x = -127..0 */
   /* 2**(-x/4) * 2**32 for x = 1..MAX_STEPSIZE, index 0 unused */
   uint32_t steptab_fraction[MAX_STEPSIZE + 1];
