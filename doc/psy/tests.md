@@ -19,7 +19,7 @@ for mono and stereo.
 | Part | Invariants |
 |---|---|
 | [spectral-analysis.md](spectral-analysis.md) | Partition line counts sum to 576 and 192. Every line is in exactly one partition and every partition in exactly one sfb. Band energies equal the direct sum of their MDCT line energies. A tone swept across an sfb edge moves its energy between the two bands with no jump and no loss. A full-scale sine has a total line energy of 1 within the stated tolerance, on every transform. |
-| [masking.md](masking.md) | Thresholds are finite and ≥ 0 on every input. With a lowering ≤ 1, the threshold is ≤ the partition energy, and equals energy × lowering when the spread threshold exceeded the energy. `mask_add(x, 0) = x`, and the result lies between the larger operand and the boosted sum. White noise gives tonality 0, a pure tone on a line centre gives the maximum. The threshold of a pure tone sits below the tone's energy. |
+| [masking.md](masking.md) | Thresholds are finite and ≥ 0 on every input. With a lowering ≤ 1, the threshold is ≤ the partition energy, and equals energy × lowering when the spread threshold exceeded the energy. `mask_add(x, 0) = x`, and the result lies between the larger operand and the boosted sum. A flat spectrum gives tonality 0, a pure tone on a line centre gives the maximum in its partition. On white noise the mean index falls as partitions widen. The threshold of a pure tone sits below the tone's energy. |
 | [ath.md](ath.md) | Band ATH > 0 in every band. A fade-in and a fade-out trace `adjust_factor` as in §4.2: it reaches 1 within one frame of a loud frame, and falls gradually. The same input at 0 dB and −20 dB gives the factor the curve predicts. |
 | [stereo.md](stereo.md) | L = R gives finite S thresholds with zero S energy. M/S thresholds never exceed their own energy. Mono and dual-channel output does not depend on any M/S parameter. |
 | [perceptual-entropy.md](perceptual-entropy.md) | PE is finite and ≥ the base on silence and on full-scale noise. It is continuous across the ratio cap. The smoothing factor is finite and positive on alternating silence and full-scale noise every frame. |
@@ -53,9 +53,19 @@ generated tables. Against it, on the synthetic signals and a music corpus:
 
 - decisions (block type, M/S choice) MUST agree on every synthetic decision
   test, and on at least `DECISION_AGREEMENT` = 99% of granules of the corpus;
-- band thresholds MUST agree within `THRESHOLD_TOLERANCE` = 0.5 dB in every
-  band whose energy is above its ATH;
-- PE MUST agree within 1%.
+- band thresholds MUST agree within `THRESHOLD_TOLERANCE` = 0.5 dB in at
+  least `NUMERIC_AGREEMENT` = 99.9% of the bands whose energy is above their
+  ATH;
+- PE MUST agree within 1% in at least `NUMERIC_AGREEMENT` of granules and
+  channels.
+
+The model has steps: the tonality index, the branches of `mask_add` and its
+`T` index ([masking.md](masking.md) §1–§2), and the L/R similarity test of
+the M/S correction ([stereo.md](stereo.md) §2). Where an operand sits at a
+step, one LSB of difference moves a threshold by several dB, and by more
+than 10 dB for a side threshold, so two correct implementations disagree
+there. The share outside tolerance is the measure of
+how often that happens. A systematic error shows up well above it.
 
 The oracle checks that the fixed-point arithmetic implements the spec. It
 does not judge quality. Once a phase lands with its goldens and its metric

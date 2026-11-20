@@ -281,8 +281,9 @@ links the rule that handles it now. Every entry is a conformance check
   the analytical integral at every rate. A 1 kHz tone's masking curve, in
   Bark, does not move with the sample rate beyond the partition
   quantisation.
-- **Answered by.** Widths from line edges, weights by partition width, rows
-  not normalised ([spectral-analysis.md](spectral-analysis.md) §3–§4).
+- **Answered by.** Widths from line edges, weights by the maskee partition's
+  width, rows not normalised
+  ([spectral-analysis.md](spectral-analysis.md) §3–§4).
 
 ## 15. Tonality on few lines; strongly tonal signals
 
@@ -299,7 +300,7 @@ links the rule that handles it now. Every entry is a conformance check
   tone/noise masking difference turns estimator variance into threshold
   variance. MDCT line energies add phase variance to that.
 - **How to tell.** A pure tone at each sfb gets a threshold below its energy,
-  never above band energy. White noise gives tonality 0. On a stationary
+  never above band energy. A flat spectrum gives tonality 0. On a stationary
   tone, one-line partitions keep a stable index from granule to granule.
 - **Answered by.** [masking.md](masking.md) §1, §3.3 (ceiling only with at
   least `MINVAL_MIN_LINES`), the tonality smoothing
@@ -337,8 +338,8 @@ links the rule that handles it now. Every entry is a conformance check
   whether a raised threshold can exceed the energy, and whether a lowered
   one is lowered from the capped value.
 - **How to tell.** An adjustment above 1 and one below 1, on a partition
-  whose spread threshold exceeds its energy: below 1 the result equals
-  energy × adjustment.
+  whose spread threshold exceeds its energy: above 1 the result equals the
+  energy, below 1 it equals energy × adjustment.
 - **Answered by.** [masking.md](masking.md) §3 order, adjustment applied once
   (§3.4, [perceptual-entropy.md](perceptual-entropy.md) §1).
 
