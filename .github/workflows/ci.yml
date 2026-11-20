@@ -56,6 +56,22 @@ jobs:
     - name: make check
       run: make check || (cat tests/*.log; exit 1)
 
+  fixed-point:
+    # arm64: -mgeneral-regs-only turns floating point into soft-float calls.
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install required packages
+      run: brew install autoconf automake libtool pkg-config
+    - name: bootstrap
+      run: ./bootstrap
+    - name: configure
+      run: ./configure CFLAGS="-O2 -mgeneral-regs-only"
+    - name: Build the library
+      run: make libshine.la
+    - name: Check the library uses no floating point
+      run: tools/check-no-float.sh .libs/libshine.a
+
   format:
     runs-on: ubuntu-latest
     steps:

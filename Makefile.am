@@ -1,5 +1,6 @@
 EXTRA_DIST = ChangeLog README.md README.old libshine.sym js tests/golden.txt \
-             tests/wasm.mjs tools/generate_tables.c
+             tests/wasm.mjs tools/generate_tables.c \
+             tools/check-no-float.sh
 
 noinst_HEADERS = src/bin/main.h src/bin/wave.h \
                  src/lib/bitstream.h src/lib/huffman.h src/lib/l3bitstream.h \
