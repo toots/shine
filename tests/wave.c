@@ -91,25 +91,21 @@ static int read_file(const char *path, stream_t *stream) {
  * printing why. */
 static int shineenc(const char *name, const char *options, const wav_t *wav,
                     stream_t *stream) {
-  const char *binary = getenv("SHINEENC");
-  char input[128], output[128], command[1024];
-  int ok = 0;
-
-  if (!binary) {
-    printf("FAIL %s: SHINEENC is not set\n", name);
-    return 0;
-  }
+  char input[128], output[128], arguments[512];
+  int ok = 0, status;
 
   snprintf(input, sizeof(input), "wave-%s.wav", name);
   snprintf(output, sizeof(output), "wave-%s.mp3", name);
-  snprintf(command, sizeof(command), "'%s' -q %s '%s' '%s'", binary, options,
-           input, output);
+  snprintf(arguments, sizeof(arguments), "-q %s '%s' '%s'", options, input,
+           output);
 
   if (!write_wav(input, wav))
     printf("FAIL %s: cannot write %s\n", name, input);
-  else if (system(command) != 0)
-    printf("FAIL %s: %s failed\n", name, command);
-  else if (!read_file(output, stream))
+  else if ((status = run_shineenc(name, arguments)) != 0) {
+    if (status > 0)
+      printf("FAIL %s: shineenc %s exited with %d\n", name, arguments,
+             status);
+  } else if (!read_file(output, stream))
     printf("FAIL %s: cannot read %s\n", name, output);
   else
     ok = 1;

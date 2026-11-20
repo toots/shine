@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 
 static const int samplerates[3][3] = {
     {11025, 12000, 8000},  /* MPEG-2.5 */
@@ -44,6 +45,25 @@ void stream_free(stream_t *stream) {
   free(stream->data);
   stream->data = NULL;
   stream->size = stream->capacity = 0;
+}
+
+int run_shineenc(const char *name, const char *arguments) {
+  const char *binary = getenv("SHINEENC");
+  char command[1024];
+  int status;
+
+  if (!binary) {
+    printf("FAIL %s: SHINEENC is not set\n", name);
+    return -1;
+  }
+
+  snprintf(command, sizeof(command), "'%s' %s", binary, arguments);
+  status = system(command);
+  if (status == -1 || !WIFEXITED(status)) {
+    printf("FAIL %s: %s did not exit normally\n", name, command);
+    return -1;
+  }
+  return WEXITSTATUS(status);
 }
 
 /* Loud, so that the encoder runs out of bits. */

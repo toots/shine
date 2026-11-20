@@ -29,6 +29,11 @@ void encode_noise(shine_t encoder, int channels, int input_samples,
 
 void stream_free(stream_t *stream);
 
+/* Runs `$SHINEENC <arguments>`. Returns its exit status, or -1 after
+ * printing why if it could not be run or did not exit normally (e.g. it
+ * crashed). */
+int run_shineenc(const char *name, const char *arguments);
+
 /* Walks the frame headers of `stream`, checking that each one is where the
  * previous frame ends, matches `config`, and that the last frame ends with
  * the stream. Returns the number of frames, or -1 after printing why. */
