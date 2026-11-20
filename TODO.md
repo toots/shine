@@ -35,10 +35,10 @@ change does more than it claims. The commit message says which kind it is.
 
 ## Correctness
 
-- [ ] Output is +1.02 dB too loud (gain 1.1246, about 9/8) at every rate and
+- [x] Output is +1.02 dB too loud (gain 1.1246, about 9/8) at every rate and
       bitrate: find the factor in the polyphase/MDCT scaling, then pin the
       level in a test. Full-scale input clips in the decoder.
-- [ ] The fixed-point chain has no headroom: MDCT sums of full scale input
+- [x] The fixed-point chain has no headroom: MDCT sums of full scale input
       in phase across subbands exceed 32 bits and are saturated. Fix with
       the gain above.
 - [x] 16 kHz scale factor band table typos (`tables.c`): `45` must be `54`,

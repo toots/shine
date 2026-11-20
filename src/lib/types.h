@@ -22,8 +22,13 @@
 #define SCALE 32768
 #define SBLIMIT 32
 
-/* Largest quantizer step size: global_gain = step size + 210 has 8 bits. */
-#define MAX_STEPSIZE 45
+/* The MDCT scales its output by 1/4 for headroom, which global_gain
+ * compensates exactly: 8 steps of 2**(1/4). */
+#define MDCT_HEADROOM_STEPS 8
+
+/* Largest quantizer step size: global_gain = step size + 210 +
+ * MDCT_HEADROOM_STEPS has 8 bits. */
+#define MAX_STEPSIZE (45 - MDCT_HEADROOM_STEPS)
 
 #ifndef MAX_CHANNELS
 #define MAX_CHANNELS 2
