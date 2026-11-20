@@ -149,8 +149,11 @@ shine_global_config *shine_initialise(shine_config_t *pub_config) {
   return config;
 }
 
-static unsigned char *shine_encode_buffer_internal(shine_global_config *config,
-                                                   int *written, int stride) {
+/* Analysis filterbank delay: polyphase 240 + MDCT 288. */
+#define SHINE_ENCODER_DELAY 528
+#define MP3_DECODER_DELAY 529
+
+static void shine_encode_frame(shine_global_config *config, int stride) {
   if (config->mpeg.frac_slots_per_frame) {
     config->mpeg.padding =
         (config->mpeg.slot_lag <= (config->mpeg.frac_slots_per_frame - 1.0));
@@ -171,8 +174,10 @@ static unsigned char *shine_encode_buffer_internal(shine_global_config *config,
 
   /* write the frame to the bitstream */
   shine_format_bitstream(config);
+}
 
-  /* Return data. */
+static unsigned char *shine_take_data(shine_global_config *config,
+                                      int *written) {
   *written = config->bs.data_position;
   config->bs.data_position = 0;
 
@@ -185,7 +190,8 @@ unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data,
   if (config->wave.channels == 2)
     config->buffer[1] = data[1];
 
-  return shine_encode_buffer_internal(config, written, 1);
+  shine_encode_frame(config, 1);
+  return shine_take_data(config, written);
 }
 
 unsigned char *shine_encode_buffer_interleaved(shine_global_config *config,
@@ -194,16 +200,31 @@ unsigned char *shine_encode_buffer_interleaved(shine_global_config *config,
   if (config->wave.channels == 2)
     config->buffer[1] = data + 1;
 
-  return shine_encode_buffer_internal(config, written, config->wave.channels);
+  shine_encode_frame(config, config->wave.channels);
+  return shine_take_data(config, written);
 }
 
+int shine_encoder_delay(shine_global_config *config) {
+  (void)config;
+  return SHINE_ENCODER_DELAY;
+}
+
+/* Encode enough silence for a decoder to output the last input sample. */
 unsigned char *shine_flush(shine_global_config *config, int *written) {
+  static int16_t silence[2 * 2 * GRANULE_SIZE];
+  int samples_per_pass = shine_samples_per_pass(config);
+  int frames = (SHINE_ENCODER_DELAY + MP3_DECODER_DELAY + samples_per_pass - 1) /
+               samples_per_pass;
+
+  for (int i = 0; i < frames; i++) {
+    config->buffer[0] = silence;
+    if (config->wave.channels == 2)
+      config->buffer[1] = silence + 1;
+    shine_encode_frame(config, config->wave.channels);
+  }
   shine_flush_bit_stream(&config->bs);
 
-  *written = config->bs.data_position;
-  config->bs.data_position = 0;
-
-  return config->bs.data;
+  return shine_take_data(config, written);
 }
 
 void shine_close(shine_global_config *config) {

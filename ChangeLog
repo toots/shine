@@ -7,6 +7,9 @@ x.y.z ()
 * Fix invalid streams for high bitrate mono (e.g. 320 kbps at 44.1 kHz):
   stuffing bits beyond the granule limit were never written.
 * Fix `shine_flush()` dropping the last bytes of the stream.
+* `shine_flush()` now encodes the samples still in the filterbank, so the
+  stream no longer ends 1057 samples short.
+* Add `shine_encoder_delay()`.
 
 3.1.1 (2017-07-28)
 =====
