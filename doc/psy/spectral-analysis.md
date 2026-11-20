@@ -106,12 +106,17 @@ and `max_t[b]`, `avg_t[b] = Σ E_t / numlines[b]` from the tonality spectrum.
 For maskee partition `i` and masker partition `j`:
 
 ```
-S[i][j] = s3(bval[i] − bval[j]) · bval_width[j] · norm[i]
+S[i][j] = s3(bval[i] − bval[j]) · bval_width[i] · norm[i]
 ```
 
-Each masker's contribution is weighted by its width in Bark, so the matrix is
-a discretisation of the spreading integral over unequal cells. Rows are not
-normalised to unit sum. For each row `i`, `[lo_i, hi_i]` is the range of `j`
+`s3` is a density per Bark: its integral is 1. A masker of energy `eb[j]`
+puts `eb[j]·s3(z − bval[j])` per Bark at `z`, and the maskee partition
+collects that density over its own width. The matrix is thus a
+discretisation of the spreading integral over unequal cells, and with
+`norm = 1` each column sums to about 1: spreading moves energy, it does not
+create it. Weighting by the masker's width instead would count width twice,
+since `eb` is an energy, not a density, and a tone's masking would grow with
+the width of the partition it falls in. Rows are not normalised to unit sum. For each row `i`, `[lo_i, hi_i]` is the range of `j`
 with `S[i][j] > 0`. Only that range is used.
 
 `norm[i]` is the per-partition SNR offset, **tuning**:

@@ -29,6 +29,13 @@ gives a large index. A high index means a tonal masker, which masks noise less.
 Silence is noise-like (0). A neighbourhood of one line carries no
 peak-to-average information and is noise-like.
 
+The index reads one realisation of the spectrum, not its expectation. On
+white noise, MDCT line energies spread widely, and a neighbourhood of a few
+lines reads as tonal: three one-line partitions give an index near 8. The
+mean index falls as partitions widen. Whether `TONALITY_SCALE` and the
+smoothing of [spectral-analysis.md](spectral-analysis.md) §1.2 handle this
+well enough is a perceptual judgement ([tests.md](tests.md) §4).
+
 ## 2. Spreading with non-linear addition
 
 For maskee partition `b`, with its spreading row `[lo, hi]`
@@ -157,8 +164,9 @@ if ml < 1: thr = thr · ml
 
 `adjust` is `MASK_ADJUST` for long windows and `MASK_ADJUST_SHORT` for short
 windows ([parameters.md](parameters.md) §1), fixed per stream. The lowering
-is applied here once, and nowhere else. A raised threshold may exceed the
-partition energy; a lowered one is lowered from the clamped value.
+is applied here once, and nowhere else. A raised threshold is raised before
+the clamp, so it never exceeds the partition energy; a lowered one is lowered
+from the clamped value.
 
 `masking_lower[b]` is a fixed tilt over the partition index, **tuning**:
 
