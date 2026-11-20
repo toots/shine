@@ -39,6 +39,19 @@ write(written, data);
 shine_close(s);
 ```
 
+Formatting
+----------
+
+C sources follow `.clang-format` and JavaScript follows `js/.prettierrc`, with
+the versions pinned in `.pre-commit-config.yaml`. CI checks them. To format on
+each commit:
+
+```bash
+pre-commit install
+```
+
+`pre-commit run --all-files` formats the whole tree.
+
 Testing
 -------
 
