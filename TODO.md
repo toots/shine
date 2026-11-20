@@ -18,7 +18,7 @@ change does more than it claims. The commit message says which kind it is.
   regression beyond tolerance on any item. Goldens are updated in the same
   commit, with the numbers in the message.
 
-- [ ] `tests/golden`: hash the stream of every configuration for a set of
+- [x] `tests/golden`: hash the stream of every configuration for a set of
       deterministic synthetic signals (tones, sweep, noise, transients,
       silence, full scale) against `tests/golden.txt`, with an environment
       variable to regenerate.
@@ -38,6 +38,9 @@ change does more than it claims. The commit message says which kind it is.
 - [ ] Output is +1.02 dB too loud (gain 1.1246, about 9/8) at every rate and
       bitrate: find the factor in the polyphase/MDCT scaling, then pin the
       level in a test. Full-scale input clips in the decoder.
+- [ ] The fixed-point chain has no headroom: MDCT sums of full scale input
+      in phase across subbands exceed 32 bits and are saturated. Fix with
+      the gain above.
 - [ ] 16 kHz scale factor band table typos (`tables.c`): `45` must be `54`,
       `248` must be `284`.
 - [ ] Prefix the global `samplerates` and `bitrates` symbols with `shine_`;
@@ -98,5 +101,8 @@ Bit-exact; formatting commits separate from functional ones.
 ## CI and packaging
 
 - [ ] Run the tests under QEMU on armv7 and MIPS (multiply assembly) and
-      s390x (big endian), e.g. with `run-on-arch`.
+      s390x (big endian), e.g. with `run-on-arch`. The ARM and MIPS
+      `mul0`/`muladd`/`mulz` accumulate full 64-bit products where the
+      generic version truncates each product, so the polyphase filter's
+      output differs by architecture. The MDCT uses `mul` per product.
 - [ ] Update `actions/checkout`.
