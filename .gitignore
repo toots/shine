@@ -85,3 +85,7 @@ shine-*.tar.gz
 *.o
 *.mp3
 node_modules
+tests/*
+!tests/*.c
+!tests/*.h
+test-suite.log

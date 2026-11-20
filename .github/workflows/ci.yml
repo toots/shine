@@ -30,6 +30,11 @@ jobs:
       run: ./configure
     - name: make
       run: make
+    - name: make check
+      run: make check || (cat tests/*.log; exit 1)
+    - name: make distcheck
+      if: matrix.os == 'ubuntu-latest'
+      run: make distcheck
     - name: make install on macos
       if: matrix.os == 'macos-latest'
       run: make install
@@ -39,6 +44,22 @@ jobs:
     - name: Test pkg-config setup
       run: pkg-config --libs shine
       
+  sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install required packages
+      run: sudo apt-get -y install automake autoconf pkg-config clang
+    - name: bootstrap
+      run: ./bootstrap
+    - name: configure
+      run: >
+        ./configure CC=clang
+        CFLAGS="-g -O1 -fno-omit-frame-pointer -fsanitize=address,undefined -fno-sanitize-recover=all"
+        LDFLAGS="-fsanitize=address,undefined"
+    - name: make check
+      run: make check || (cat tests/*.log; exit 1)
+
   android_build:
     runs-on: ubuntu-latest
     steps:

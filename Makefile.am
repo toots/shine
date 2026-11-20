@@ -29,6 +29,17 @@ shineenc_SOURCES = src/bin/main.c src/bin/wave.c
 shineenc_LDADD   = libshine.la
 shineenc_CFLAGS  = -I$(srcdir)/src/lib
 
+# One program per concern. A new test needs its program here and its
+# _SOURCES line below.
+TESTS          = tests/framing tests/flush
+check_PROGRAMS = $(TESTS)
+TEST_HELPERS   = tests/helpers.c tests/helpers.h
+LDADD          = libshine.la
+AM_CPPFLAGS    = -I$(srcdir)/src/lib
+
+tests_framing_SOURCES = tests/framing.c $(TEST_HELPERS)
+tests_flush_SOURCES   = tests/flush.c $(TEST_HELPERS)
+
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = shine.pc
 
