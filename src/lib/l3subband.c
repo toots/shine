@@ -5,33 +5,6 @@
 #include "types.h"
 
 /*
- * shine_subband_initialise:
- * ----------------------
- * Calculates the analysis filterbank coefficients and rounds to the
- * 9th decimal place accuracy of the filterbank tables in the ISO
- * document.  The coefficients are stored in #filter#
- */
-void shine_subband_initialise(shine_global_config *config) {
-  int i, j;
-  double filter;
-
-  for (i = MAX_CHANNELS; i--;) {
-    config->subband.off[i] = 0;
-    memset(config->subband.x[i], 0, sizeof(config->subband.x[i]));
-  }
-
-  for (i = SBLIMIT; i--;)
-    for (j = 64; j--;) {
-      if ((filter = 1e9 * cos((double)((2 * i + 1) * (16 - j) * PI64))) >= 0)
-        modf(filter + 0.5, &filter);
-      else
-        modf(filter - 0.5, &filter);
-      /* scale and convert to fixed point before storing */
-      config->subband.fl[i][j] = (int32_t)(filter * (0x7fffffff * 1e-9));
-    }
-}
-
-/*
  * shine_window_filter_subband:
  * -------------------------
  * Overlapping window on PCM samples
@@ -112,15 +85,15 @@ void shine_window_filter_subband(int16_t **buffer, int32_t s[SBLIMIT], int ch,
     uint32_t s_value_lo __attribute__((unused));
 #endif
 
-    mul0(s_value, s_value_lo, config->subband.fl[i][63], y[63]);
+    mul0(s_value, s_value_lo, shine_subband_filter[i][63], y[63]);
     for (j = 63; j; j -= 7) {
-      muladd(s_value, s_value_lo, config->subband.fl[i][j - 1], y[j - 1]);
-      muladd(s_value, s_value_lo, config->subband.fl[i][j - 2], y[j - 2]);
-      muladd(s_value, s_value_lo, config->subband.fl[i][j - 3], y[j - 3]);
-      muladd(s_value, s_value_lo, config->subband.fl[i][j - 4], y[j - 4]);
-      muladd(s_value, s_value_lo, config->subband.fl[i][j - 5], y[j - 5]);
-      muladd(s_value, s_value_lo, config->subband.fl[i][j - 6], y[j - 6]);
-      muladd(s_value, s_value_lo, config->subband.fl[i][j - 7], y[j - 7]);
+      muladd(s_value, s_value_lo, shine_subband_filter[i][j - 1], y[j - 1]);
+      muladd(s_value, s_value_lo, shine_subband_filter[i][j - 2], y[j - 2]);
+      muladd(s_value, s_value_lo, shine_subband_filter[i][j - 3], y[j - 3]);
+      muladd(s_value, s_value_lo, shine_subband_filter[i][j - 4], y[j - 4]);
+      muladd(s_value, s_value_lo, shine_subband_filter[i][j - 5], y[j - 5]);
+      muladd(s_value, s_value_lo, shine_subband_filter[i][j - 6], y[j - 6]);
+      muladd(s_value, s_value_lo, shine_subband_filter[i][j - 7], y[j - 7]);
     }
     mulz(s_value, s_value_lo);
     s[i] = s_value;

@@ -14,6 +14,8 @@ x.y.z ()
   subbands, such as square waves.
 * Fix out-of-bounds reads in the quantizer at low bitrates, which quantized
   every coefficient to zero.
+* The library uses no floating point and no libm anymore. Its tables are
+  precomputed and shared between encoders, about 50 KB less per encoder.
 * shineenc: fix skipping WAV chunks on big endian machines.
 * shineenc: stop at the end of the WAV data chunk instead of encoding the
   chunks after it as audio.

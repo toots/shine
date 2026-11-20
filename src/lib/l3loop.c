@@ -177,44 +177,6 @@ int part2_length(int gr, int ch, shine_global_config *config) {
 }
 
 /*
- * shine_loop_initialise:
- * -------------------
- * Calculates the look up tables used by the iteration loop.
- */
-void shine_loop_initialise(shine_global_config *config) {
-  int i;
-
-  /* quantize: stepsize conversion, fourth root of 2 table.
-   * The table is inverted (negative power) from the equation given
-   * in the spec because it is quicker to do x*y than x/y.
-   * The 0.5 is for rounding.
-   */
-  for (i = 128; i--;) {
-    double step = pow(2.0, (double)(127 - i) / 4);
-
-    if ((step * 2) > 0x7fffffff) /* MAXINT = 2**31 = 2**(124/4) */
-      config->l3loop.steptabi[i] = 0x7fffffff;
-    else
-      /* The table is multiplied by 2 to give an extra bit of accuracy.
-       * In quantize, the long multiply does not shift it's result left one
-       * bit to compensate.
-       */
-      config->l3loop.steptabi[i] = (int32_t)((step * 2) + 0.5);
-  }
-
-  for (i = 1; i <= MAX_STEPSIZE; i++)
-    config->l3loop.steptab_fraction[i] =
-        (uint32_t)(pow(2.0, -(double)i / 4) * 4294967296.0 + 0.5);
-
-  /* quantize: vector conversion, three quarter power table.
-   * The 0.5 is for rounding, the .0946 comes from the spec.
-   */
-  for (i = 10000; i--;)
-    config->l3loop.int2idx[i] =
-        (int)(sqrt(sqrt((double)i) * (double)i) - 0.0946 + 0.5);
-}
-
-/*
  * quantize:
  * ---------
  * Function: Quantization of the vector xr ( -> ix).
@@ -224,7 +186,7 @@ void shine_loop_initialise(shine_global_config *config) {
  * where steptabi would round 2**(-stepsize/4) to an integer. */
 static int quantize_coarse(int ix[GRANULE_SIZE], int stepsize,
                            shine_global_config *config) {
-  uint64_t fraction = config->l3loop.steptab_fraction[stepsize];
+  uint64_t fraction = shine_steptab_fraction[stepsize];
   int max = 0;
 
   for (int i = 0; i < GRANULE_SIZE; i++) {
@@ -232,7 +194,7 @@ static int quantize_coarse(int ix[GRANULE_SIZE], int stepsize,
     int ln =
         (int)(((uint64_t)config->l3loop.xrabs[i] * fraction + (1ULL << 62)) >>
               63);
-    ix[i] = config->l3loop.int2idx[ln];
+    ix[i] = shine_int2idx[ln];
     if (max < ix[i])
       max = ix[i];
   }
@@ -263,7 +225,7 @@ int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config) {
   if (stepsize > 0)
     return quantize_coarse(ix, stepsize, config);
 
-  scalei = config->l3loop.steptabi[stepsize + 127]; /* 2**(-stepsize/4) */
+  scalei = shine_steptabi[stepsize + 127]; /* 2**(-stepsize/4) */
 
   /* a quick check to see if ixmax will be less than 8192 */
   /* this speeds up the early calls to bin_search_StepSize */
@@ -278,7 +240,7 @@ int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config) {
 
       /* The table covers about all values; the quick check above bounds the
        * rest by 165140. */
-      ix[i] = ln < 10000 ? config->l3loop.int2idx[ln] : pow34(ln);
+      ix[i] = ln < 10000 ? shine_int2idx[ln] : pow34(ln);
 
       /* calculate ixmax while we're here */
       /* note. ix cannot be negative */
