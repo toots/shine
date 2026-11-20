@@ -162,7 +162,7 @@ void shine_iteration_loop(shine_global_config *config) {
       cod_info->global_gain = cod_info->quantizerStepSize + 210;
 
     } /* for gr */
-  }   /* for ch */
+  } /* for ch */
 
   shine_ResvFrameEnd(config);
 }
@@ -262,7 +262,7 @@ void calc_scfsi(shine_psy_xmin_t *l3_xmin, int ch, int gr,
         } else
           l3_side->scfsi[ch][scfsi_band] = 0;
       } /* for scfsi_band */
-    }   /* if condition == 6 */
+    } /* if condition == 6 */
     else
       for (scfsi_band = 0; scfsi_band < 4; scfsi_band++)
         l3_side->scfsi[ch][scfsi_band] = 0;
@@ -381,9 +381,9 @@ static int quantize_coarse(int ix[GRANULE_SIZE], int stepsize,
 
   for (int i = 0; i < GRANULE_SIZE; i++) {
     /* Rounded xrabs * 2**(-stepsize/4) / 2**31: at most 1. */
-    int ln = (int)(((uint64_t)config->l3loop.xrabs[i] * fraction +
-                    (1ULL << 62)) >>
-                   63);
+    int ln =
+        (int)(((uint64_t)config->l3loop.xrabs[i] * fraction + (1ULL << 62)) >>
+              63);
     ix[i] = config->l3loop.int2idx[ln];
     if (max < ix[i])
       max = ix[i];
