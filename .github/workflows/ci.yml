@@ -35,11 +35,7 @@ jobs:
     - name: make distcheck
       if: matrix.os == 'ubuntu-latest'
       run: make distcheck
-    - name: make install on macos
-      if: matrix.os == 'macos-latest'
-      run: make install
-    - name: make install on ubuntu
-      if: matrix.os == 'ubuntu-latest'
+    - name: make install
       run: sudo make install
     - name: Test pkg-config setup
       run: pkg-config --libs shine
