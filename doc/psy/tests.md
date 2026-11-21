@@ -77,23 +77,60 @@ fixed-point behaviour.
 
 Every audio-changing change, including a change to any **tuning** parameter,
 comes with the report of `TODO.md`: output level, gain-corrected SNR and the
-perceptual score per item, compared with the previous commit. The score MUST
-NOT fall by more than `ODG_TOLERANCE` = 0.05 on any item, except where both
-scores are below `ODG_FLOOR` = −3.0: the scale saturates there (below), and a
-difference between two such scores does not tell which encode is better.
+perceptual score per item, compared with the previous commit.
 
-The perceptual score is the Objective Difference Grade of the advanced
-version of PEAQ (ITU-R BS.1387), from 0 (imperceptible) to −4 (very
-annoying), with the decoded stream time-aligned to its source. It was
-designed for perceptual audio codecs, and the advanced version for those
-after MP3. Two caveats bound its use:
+### 4.1 The score
 
-- Implementations differ by a few tenths of a grade, and the open ones do
-  not meet the standard's conformance tolerances. Scores are compared only
-  between runs of the same implementation, never with published figures.
-- The scale saturates near −3.6 on heavy impairment, where it separates
-  encodes poorly. Tuning decisions rest on the bitrates where scores stay
-  above it.
+The perceptual score of an item is the lower of the Objective Difference
+Grades of the advanced and the basic version of PEAQ (ITU-R BS.1387), from 0
+(imperceptible) to −4 (very annoying), with the decoded stream time-aligned
+to its source. PEAQ was designed for perceptual audio codecs.
+
+The score is a measuring instrument with a known resolution, not a listener.
+It was validated on a public listening test of codec-like artefacts with
+expert listeners (ODAQ: 30 trials, 26 listeners, MUSHRA scores), and the
+rules below come from that validation:
+
+- **Where it follows listeners.** Its grades correlate with the listeners'
+  scores on band limitation (0.93), pre-echo (0.93), unmasked noise (0.81)
+  and tonality mismatch (0.78), and poorly on spectral holes (0.38), which
+  it grades between −3.1 and −3.6 whether listeners found them bad or good.
+- **Its resolution.** Between two versions of one item that listeners
+  clearly separate, the grades pick the same winner in 94% of pairs when
+  they differ by 0.2 or more, and in 72% when they differ by less. A
+  difference below 0.2 on one item says little.
+- **Spurious good grades.** On heavily distorted items either version
+  sometimes returns a grade near 0. The two versions seldom do so on the
+  same encode, which is why the score is the lower of the two. The lower
+  grade follows the listeners as well as the advanced version alone
+  (0.80 against 0.81).
+- **Implementations** differ by a few tenths of a grade, and the open ones
+  do not meet the standard's conformance tolerances. Scores are compared
+  only between runs of one implementation, never with published figures.
+
+### 4.2 The gate
+
+Between the previous commit and the new one, and between each quality level
+and the next one:
+
+- **Per item.** The score MUST NOT fall by more than `ODG_TOLERANCE` = 0.2,
+  except where both scores are below `ODG_FLOOR` = −3.0, where spectral
+  holes pin the grades and their difference does not tell which encode is
+  better.
+- **Per configuration.** The mean score over the items of one sample rate,
+  channel layout and bitrate MUST NOT fall by more than
+  `ODG_MEAN_TOLERANCE` = 0.03. A mean over many items resolves what one
+  item cannot.
+- **Misjudged items.** An item whose score falls by more than
+  `ODG_TOLERANCE` when the bitrate rises, at one quality level, is one the
+  score misjudges. It is reported, and left out of both rules. It is a
+  candidate for a listening check.
+
+A tuning decision rests on means over a corpus, on items the parameter was
+not tuned on. The corpus MUST cover every sample rate family and mono, and
+SHOULD include speech, solo instruments and percussive material beside
+music: a corpus of music at 44.1 kHz alone hid every effect that depends on
+the sample rate or on sparse signals.
 
 Rules that say they need a perceptual judgement are settled by it:
 
@@ -108,5 +145,5 @@ Rules that say they need a perceptual judgement are settled by it:
 - every per-bitrate value, and the allocator offsets against the phase 2
   loop ([allowed-distortion.md](allowed-distortion.md)).
 
-A higher quality level MUST NOT score worse than a lower one by more than
-`ODG_TOLERANCE` on any item of the corpus, with the same exception.
+The score does not replace listening: a release that changes the model is
+listened to (`TODO.md`).

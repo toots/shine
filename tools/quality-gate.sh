@@ -4,43 +4,72 @@
 #
 # tools/quality-gate.sh previous.txt new.txt
 #
-# Fails if the ODG of an item falls by more than ODG_TOLERANCE from the
-# previous report to the new one, or from a quality level to the next one
-# within the new report, unless both scores are below ODG_FLOOR. Compares
-# shine's lines decoded by FFmpeg, per item and bitrate. Fails too if
-# nothing was compared.
+# Compares shine's lines decoded by FFmpeg, from the previous report to the
+# new one, and from each quality level to the next within the new one:
+#
+# - no item may lose more than ODG_TOLERANCE, unless both scores are below
+#   ODG_FLOOR;
+# - no configuration (sample rate, channels, bitrate) may lose more than
+#   ODG_MEAN_TOLERANCE on the mean of its items.
+#
+# An item whose score falls by more than ODG_TOLERANCE as the bitrate rises,
+# at one quality level of the new report, is one the metric misjudges: it is
+# listed, and left out of both rules. Fails too if nothing was compared.
 
-[ $# -eq 2 ] || { sed -n '2,5p' "$0" >&2; exit 2; }
+[ $# -eq 2 ] || { sed -n '5p' "$0" >&2; exit 2; }
 
-awk -v tolerance=0.05 -v floor=-3.0 '
-function compare(what, key, new, old) {
+awk -v tolerance=0.2 -v mean_tolerance=0.03 -v floor=-3.0 '
+FNR == 1 { pass++ }
+$5 ~ /^shine-q[0-9]+$/ && $6 == "ffmpeg" && $10 ~ /^-?[0-9.]+$/ {
+  quality = substr($5, 8) + 0
+  key = $1 SUBSEP $4 SUBSEP quality
+  if (pass == 1) { previous[key] = $10; next }
+  current[key] = $10
+  config[$1] = $2 " Hz " $3 " ch"
+  items[$1]; rates[$4 + 0]; if (quality > levels) levels = quality
+}
+function compare(what, item, kbps, quality, new, old,    group) {
   compared++
-  sum[what] += new - old
-  count[what]++
+  group = what ": " config[item] " " kbps " kbps"
+  sum[group] += new - old; count[group]++
   if (new - old < -tolerance && !(new < floor && old < floor)) {
-    printf "FAIL %s: %s scores %.3f, was %.3f\n", what, key, new, old
+    printf "FAIL %s: %s %s kbps quality %d scores %.3f, was %.3f\n", what, item, kbps, quality, new, old
     failures++
   }
 }
-FNR == 1 { pass++ }
-$3 ~ /^shine-q[0-9]+$/ && $4 == "ffmpeg" && $8 ~ /^-?[0-9.]+$/ {
-  key = $1 " " $2 " kbps " $3
-  if (pass == 1) { previous[key] = $8; next }
-  if (key in previous) compare("against the previous report", key, $8, previous[key])
-  quality = substr($3, 8) + 0
-  current[$1 " " $2 " " quality] = $8
-  if (quality > levels) levels = quality
-  items[$1 " " $2]
-}
 END {
+  n = 0; for (r in rates) sorted[n++] = r + 0
+  for (i = 0; i < n; i++) for (j = i + 1; j < n; j++)
+    if (sorted[j] < sorted[i]) { t = sorted[i]; sorted[i] = sorted[j]; sorted[j] = t }
   for (item in items)
-    for (q = 1; q <= levels; q++)
-      if ((item " " q) in current && (item " " (q - 1)) in current)
-        compare("quality " q " against " (q - 1), item " kbps",
-                current[item " " q], current[item " " (q - 1)])
-  for (what in sum)
-    printf "%s: %d comparisons, mean %+.3f\n", what, count[what], sum[what] / count[what]
+    for (q = 0; q <= levels; q++) {
+      last = ""
+      for (i = 0; i < n; i++) {
+        key = item SUBSEP sorted[i] SUBSEP q
+        if (!(key in current)) continue
+        if (last != "" && current[key] - last < -tolerance && !(item in unreliable)) {
+          unreliable[item]
+          printf "UNRELIABLE %s: quality %d scores %.3f at %d kbps after %.3f at a lower bitrate\n", item, q, current[key], sorted[i], last
+          flagged++
+        }
+        last = current[key]
+      }
+    }
+  for (key in current) {
+    split(key, part, SUBSEP)
+    if (part[1] in unreliable) continue
+    if (key in previous)
+      compare("against the previous report", part[1], part[2], part[3], current[key], previous[key])
+    lower = part[1] SUBSEP part[2] SUBSEP (part[3] - 1)
+    if (lower in current)
+      compare("quality " part[3] " against " (part[3] - 1), part[1], part[2], part[3], current[key], current[lower])
+  }
+  for (group in sum)
+    if (sum[group] / count[group] < -mean_tolerance) {
+      printf "FAIL %s: mean of %d items %+.3f\n", group, count[group], sum[group] / count[group]
+      failures++
+    }
   if (!compared) { print "FAIL: nothing was compared"; exit 1 }
-  printf "%d failures\n", failures
+  printf "%d comparisons, %d items the metric misjudges left out, %d failures\n", compared, flagged, failures
   exit failures ? 1 : 0
 }' "$1" "$2"

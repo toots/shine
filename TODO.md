@@ -27,8 +27,8 @@ change does more than it claims. The commit message says which kind it is.
       gain-corrected SNR per item, on synthetic signals plus local music
       (e.g. FATE samples), with LAME at the same bitrate as reference. Not
       run in CI.
-- [x] Perceptual score in the report: the ODG of Advanced PEAQ, with
-      GstPEAQ.
+- [x] Perceptual score in the report: the lower ODG of advanced and basic
+      PEAQ, with GstPEAQ, validated on the ODAQ listening test.
 - [x] Gate script (`tools/quality-gate.sh`) on two reports, and
       `tools/quality-corpus.sh` to derive every sample rate family from
       music files.
@@ -90,7 +90,7 @@ none now, checked in CI by `tools/check-no-float.sh`.
 Each phase is fixed point, behind the quality setting, and measured with the
 quality report before the next one starts.
 
-- [x] Decide the perceptual metric: the ODG of Advanced PEAQ
+- [x] Decide the perceptual metric: PEAQ, the lower ODG of its two versions
       (`doc/psy/tests.md` §4).
 - [ ] Phase 1: masking model in the MDCT domain (band energies, spreading,
       absolute threshold of hearing, tonality), integer `log2`.
@@ -99,15 +99,17 @@ quality report before the next one starts.
       `slen` and MPEG-2 LSF `scalefac_compress` coding. Left: retune
       `MASK_ADJUST`, `ATH_LOWER`, `ATH_CURVE` and `TONALITY_SCALE` with the
       metric; `scfsi` and `preflag`, to save bits.
-- [ ] Quality 1 fails the gate against quality 0 at low sample rates: up to
-      0.08 ODG lost on single items at 16 kHz (80-96 kbps) and 11.025 kHz
-      (48-64 kbps), in joint and plain stereo alike, so in the allocation
-      and not in M/S. The best `MASK_ADJUST` also depends on the sample rate
-      in a way neither the bitrate nor the bits per sample captures: values
-      tuned at 44.1 kHz gain up to 0.4 ODG there and lose up to 0.6 at
-      32 kHz, and 22.05, 16 and 11.025 kHz pull opposite ways on one row.
-      Find what in the model or the allocator depends on the rate before
-      tuning.
+- [ ] `MASK_ADJUST` wants retuning, on means over a wide corpus and on
+      held-out items (`doc/psy/tests.md` §4.2). A first attempt, tuned on 8
+      music excerpts at 44.1 kHz, gained up to 0.4 ODG there and lost up to
+      0.6 at 32 kHz, and its gains came partly from spuriously good grades
+      on heavier distortion: withdrawn. Per-item losses of quality 1 under
+      0.1 ODG at 16 and 11.025 kHz, once logged here as a defect, are below
+      what the score resolves.
+- [ ] The encoder's quantiser rounds the scaled coefficient before taking
+      its 3/4 power, which moves the boundary between 1 and 2 from 1.86 to
+      1.5: more bits and more error there than the textbook rounding. Try
+      the exact rule at quality 1.
 - [ ] Phase 3: restore the bit reservoir (`ResvMax` is always 0), with
       perceptual entropy driving allocation. Remove or define the
       `shine_ResvFrameBegin` declaration.

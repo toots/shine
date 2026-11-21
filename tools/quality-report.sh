@@ -4,12 +4,15 @@
 # FFmpeg and, when installed, mpg123, with LAME at the same bitrate as
 # reference. Not run in CI.
 #
-# The perceptual score is the ODG of Advanced PEAQ (ITU-R BS.1387), from 0,
-# imperceptible, to -4, very annoying. It is computed by the peaq command of
-# GstPEAQ (https://github.com/HSU-ANT/gstpeaq), found in PATH or given as
-# PEAQ, with its plugin in GST_PLUGIN_PATH; the column is "-" without it.
-# GstPEAQ does not meet the standard's conformance tolerances: compare scores
-# from the same installation only.
+# The perceptual score, ODG, is the lower of the Objective Difference Grades
+# of the advanced and basic versions of PEAQ (ITU-R BS.1387), from 0,
+# imperceptible, to -4, very annoying: on heavy distortion each version
+# sometimes gives a spuriously good grade, seldom both (doc/psy/tests.md §4).
+# The columns adv and basic give the two grades. They are computed by the
+# peaq command of GstPEAQ (https://github.com/HSU-ANT/gstpeaq), found in PATH
+# or given as PEAQ, with its plugin in GST_PLUGIN_PATH; the columns are "-"
+# without it. GstPEAQ does not meet the standard's conformance tolerances:
+# compare scores from the same installation only.
 #
 # tools/quality-report.sh [-b "64 128"] [-q "0 1"] [-m j|s|d] [-s] [-g]
 #                          [-j jobs] [item.wav...]
@@ -44,7 +47,7 @@ while getopts b:q:m:sgj:H option; do
   g) gate=-g ;;
   j) jobs=$OPTARG ;;
   H) header= ;; # a parallel child: no header
-  *) sed -n '14,27p' "$0" >&2; exit 2 ;;
+  *) sed -n '17,31p' "$0" >&2; exit 2 ;;
   esac
 done
 shift $((OPTIND - 1))
@@ -85,19 +88,32 @@ decode_mpg123() {
   mpg123 -q -w "$work/mpg123.wav" "$1" && decode_ffmpeg "$work/mpg123.wav" "$2"
 }
 
-# The ODG of the decoded PCM, delayed by $1 samples. PEAQ does not align
-# its inputs: the decoded stream is trimmed to the reference.
+# The score of the decoded PCM, delayed by $1 samples, then the ODG of the
+# advanced and basic versions it is the lower of. PEAQ does not align its
+# inputs: the decoded stream is trimmed to the reference.
 odg() {
-  [ -n "$peaq" ] || { echo -; return; }
+  [ -n "$peaq" ] || { echo "- - -"; return; }
   frames=$(($(wc -c <"$work/reference.raw") / 2 / channels))
   ffmpeg -nostdin -loglevel error -y -f s16le -ar "$rate" -ac "$channels" \
     -i "$work/decoded.raw" \
     -af "atrim=start_sample=$1:end_sample=$(($1 + frames))" "$work/aligned.wav"
-  "$peaq" --advanced "$work/item.wav" "$work/aligned.wav" 2>/dev/null |
-    sed -n 's/^Objective Difference Grade: //p'
+  for version in advanced basic; do
+    # GstPEAQ sometimes hangs: give it two minutes.
+    "$peaq" --$version "$work/item.wav" "$work/aligned.wav" \
+      >"$work/peaq.txt" 2>/dev/null &
+    peaq_pid=$!
+    (sleep 120; kill $peaq_pid 2>/dev/null) >/dev/null 2>&1 &
+    watchdog=$!
+    wait $peaq_pid 2>/dev/null || true
+    kill $watchdog 2>/dev/null || true
+    sed -n 's/^Objective Difference Grade: //p' "$work/peaq.txt"
+  done | awk '{ v[NR] = $1 } END {
+    if (NR == 2) printf "%.3f %.3f %.3f\n", (v[1] < v[2] ? v[1] : v[2]), v[1], v[2]
+    else print "- - -" }'
 }
 
-# One line: item, bitrate, encoder, decoder, level, SNR, delay, ODG.
+# One line: item, rate, channels, bitrate, encoder, decoder, level, SNR,
+# delay, ODG.
 measure() {
   for decoder in ffmpeg mpg123; do
     [ $decoder = ffmpeg ] || [ -z "$gate" ] || continue
@@ -105,17 +121,19 @@ measure() {
     if decode_$decoder "$work/out.mp3" "$work/decoded.raw" 2>/dev/null &&
        result=$("$work/compare_pcm" "$channels" "$work/reference.raw" \
                 "$work/decoded.raw"); then
-      printf '%-28s %5s  %-8s %-7s %7s %7s %6s %7s\n' "$item" "$bitrate" "$1" \
-        $decoder $result "$(odg "${result##* }")"
+      printf '%-28s %5s %1s %5s  %-8s %-7s %7s %7s %6s %7s %7s %7s\n' "$item" \
+        "$rate" "$channels" "$bitrate" "$1" $decoder $result \
+        $(odg "${result##* }")
     else
-      printf '%-28s %5s  %-8s %-7s  failed\n' "$item" "$bitrate" "$1" $decoder
+      printf '%-28s %5s %1s %5s  %-8s %-7s  failed\n' "$item" "$rate" \
+        "$channels" "$bitrate" "$1" $decoder
     fi
   done
 }
 
 [ -z "$header" ] ||
-  printf '%-28s %5s  %-8s %-7s %7s %7s %6s %7s\n' item kbps encoder decoder \
-    "level" "SNR" delay ODG
+  printf '%-28s %5s %1s %5s  %-8s %-7s %7s %7s %6s %7s %7s %7s\n' item rate c \
+    kbps encoder decoder "level" "SNR" delay ODG adv basic
 if [ "$jobs" -gt 1 ] && [ $# -gt 1 ]; then
   printf '%s\n' "$@" | SHINEENC=$shineenc PEAQ=$peaq xargs -P "$jobs" -I{} \
     "$0" -H $gate -b "$bitrates" -q "$qualities" -m "$mode" {}
@@ -139,8 +157,8 @@ for path in "$@"; do
            "$work/out.mp3" >/dev/null 2>&1; then
         measure "shine-q$quality"
       else
-        printf '%-28s %5s  %-8s unsupported\n' "$item" "$bitrate" \
-          "shine-q$quality"
+        printf '%-28s %5s %1s %5s  %-8s unsupported\n' "$item" "$rate" \
+          "$channels" "$bitrate" "shine-q$quality"
       fi
     done
     if [ -z "$gate" ] && command -v lame >/dev/null; then
