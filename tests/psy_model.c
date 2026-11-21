@@ -47,6 +47,7 @@ enum {
   SCALEFACTOR_CODING,   /* noise-allocation §5 */
   ALLOCATION_BEST,      /* noise-allocation §4 */
   ALLOCATION_SILENCE,   /* noise-allocation §4 */
+  ALLOCATION_TIE,       /* noise-allocation §2 */
   NOISE_MEASURE,        /* noise-allocation §1, §2 */
   ALLOWED_DISTORTION,   /* allowed-distortion §2 */
   CHECK_COUNT
@@ -86,6 +87,7 @@ static const char *check_names[CHECK_COUNT] = {
     [SCALEFACTOR_CODING] = "scalefactor coding",
     [ALLOCATION_BEST] = "best attempt",
     [ALLOCATION_SILENCE] = "silent granule",
+    [ALLOCATION_TIE] = "bands allowed their whole energy",
     [NOISE_MEASURE] = "noise measure",
     [ALLOWED_DISTORTION] = "allowed distortion",
 };
@@ -1306,6 +1308,14 @@ static void check_granule(shine_t e) {
             "%s gr %d ch %d: ix up to %d, %d of %d bits", name, gr, ch, ix_max,
             bits, max_bits);
 
+      /* noise-allocation §2: never over, so never amplified. */
+      for (int sb = 0; sb < xmin_bands(e); sb++)
+        if (e->psy->xmin[gr][ch][sb] >=
+            e->psy->en[gr][e->psy->ms ? ch + 2 : ch][sb])
+          check(ALLOCATION_TIE, sf[sb] == 0,
+                "%s gr %d ch %d band %d: amplified by %d with its whole "
+                "energy allowed",
+                name, gr, ch, sb, sf[sb]);
       for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
         in_range &= sf[sb] >= 0 && sf[sb] <= (sb <= 10 ? 15 : 7) &&
                     (sb < xmin_bands(e) || sf[sb] == 0);
@@ -1356,7 +1366,8 @@ static int64_t distortion(shine_t e, int gr, int ch, const scalefactors_t *s,
 
   band_noise(e, e->psy, e->l3_enc[ch][gr], q, s, noise);
   for (int sb = 0; sb < e->psy->xmin_bands; sb++)
-    if (noise[sb] > e->psy->xmin[gr][ch][sb])
+    if (noise[sb] > e->psy->xmin[gr][ch][sb] &&
+        e->psy->xmin[gr][ch][sb] < e->psy->en[gr][e->psy->ms ? ch + 2 : ch][sb])
       d += noise[sb] - e->psy->xmin[gr][ch][sb];
   return d;
 }
@@ -1454,9 +1465,8 @@ static void check_noise_measure(void) {
             sum += (e->l3loop.xrabs[k] - x) * (e->l3loop.xrabs[k] - x);
           }
           sum *= exp2(PSY_LOG2_K_LONG / 65536.0);
-          /* Errors under 16 units vanish in the 64-bit sum. */
-          if (sum > 1e-14)
-            check(NOISE_MEASURE, fabs(db(noise[sb]) - 10 * log10(sum)) < 0.05,
+          if (sum > 0)
+            check(NOISE_MEASURE, fabs(db(noise[sb]) - 10 * log10(sum)) < 0.01,
                   "%d Hz step %d band %d: noise %.3f dB, reconstruction "
                   "gives %.3f dB",
                   rates[r], (int)step, sb, db(noise[sb]), 10 * log10(sum));

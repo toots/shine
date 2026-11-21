@@ -680,25 +680,31 @@ static uint64_t reconstruct(int ix, int step) {
   return -shift < 64 ? (product + (1ULL << (-shift - 1))) >> -shift : 0;
 }
 
-/* §2: noise per band, log2 in the energy unit. The errors are below 2^32,
- * shifted by 4: a band of under 128 lines sums in 64 bits. */
+/* §2: noise per band, log2 in the energy unit. The errors are below 2^32:
+ * each band shifts them so that its largest is below 2^28, and its squares,
+ * fewer than 256 of them, add up in 64 bits. */
 static void band_noise(shine_global_config *config, const psy_model_t *model,
                        const int *ix, int q, const scalefactors_t *s,
                        int32_t *noise) {
   const int *sfb = shine_scale_fact_band_index[config->mpeg.samplerate_index];
 
   for (int sb = 0; sb < model->xmin_bands; sb++) {
-    int step = band_step(q, s, sb);
-    uint64_t sum = 0;
+    int step = band_step(q, s, sb), shift;
+    uint64_t error[256], peak = 0, sum = 0;
+    int lines = sfb[sb + 1] - sfb[sb];
 
-    for (int k = sfb[sb]; k < sfb[sb + 1]; k++) {
-      int64_t error =
-          (int64_t)config->l3loop.xrabs[k] - (int64_t)reconstruct(ix[k], step);
-      uint64_t magnitude = (uint64_t)(error < 0 ? -error : error) >> 4;
+    for (int k = 0; k < lines; k++) {
+      int64_t difference = (int64_t)config->l3loop.xrabs[sfb[sb] + k] -
+                           (int64_t)reconstruct(ix[sfb[sb] + k], step);
 
-      sum += magnitude * magnitude;
+      error[k] = (uint64_t)(difference < 0 ? -difference : difference);
+      if (error[k] > peak)
+        peak = error[k];
     }
-    noise[sb] = scale(shine_psy_log2(sum), PSY_LOG2_K_LONG + 8 * ONE);
+    shift = peak >> 28 ? highest_bit(peak) - 27 : 0;
+    for (int k = 0; k < lines; k++)
+      sum += (error[k] >> shift) * (error[k] >> shift);
+    noise[sb] = scale(shine_psy_log2(sum), PSY_LOG2_K_LONG + 2 * shift * ONE);
   }
 }
 
@@ -728,6 +734,7 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
                        int gr, int ch, int max_bits) {
   const psy_model_t *model = config->psy;
   const int32_t *xmin = model->xmin[gr][ch];
+  const int32_t *en = model->en[gr][model->ms ? ch + 2 : ch];
   const int bands = model->xmin_bands;
   gr_info *gi = &config->side_info.gr[gr].ch[ch].tt;
   scalefactors_t s, best_s;
@@ -757,7 +764,8 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
       break;
     band_noise(config, model, ix, q, &s, noise);
     for (int sb = 0; sb < bands; sb++) {
-      over[sb] = noise[sb] > xmin[sb];
+      /* §2: a band allowed its whole energy is never over. */
+      over[sb] = noise[sb] > xmin[sb] && xmin[sb] < en[sb];
       if (over[sb]) {
         distortion += noise[sb] - xmin[sb];
         any_over = 1;

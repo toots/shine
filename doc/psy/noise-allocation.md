@@ -33,7 +33,9 @@ ix[k] = nint(|xr[k] / 2^(q_sb/4)|^(3/4) − 0.0946)
 ```
 
 `xr` is in the encoder's coefficient scale, which `q` and `global_gain`
-relate by a constant offset. A band MUST NOT be amplified past the range
+relate by a constant offset. The rounding is the encoder's quantiser's: it
+MAY differ from this formula in how it rounds, since the noise of §2 is
+measured on the `ix` it produced, whatever they are. A band MUST NOT be amplified past the range
 where the encoder represents its step exactly: an approximated step would
 be decoded with the exact one, and the band would be reconstructed at the
 wrong level.
@@ -50,9 +52,16 @@ energy unit of [conventions.md](conventions.md):
 noise[sb] = K · Σ_k (|xr[k]| − |ix[k]|^(4/3) · 2^(q_sb/4))²
 ```
 
-A band is **over** when `noise[sb] > xmin[sb]`. Only the bands that have an
-`xmin` count (long sfbs 0..20, 0..16 at fs ≤ 8 kHz); sfb21 has no scalefactor
-and is never over.
+A band is **over** when `noise[sb] > xmin[sb]` and `xmin[sb] < en0[sb]`,
+with `en0` the band's energy ([allowed-distortion.md](allowed-distortion.md)
+§2). Only the bands that have an `xmin` count (long sfbs 0..20, 0..16 at
+fs ≤ 8 kHz); sfb21 has no scalefactor and is never over.
+
+A band whose allowed distortion is its whole energy, below the threshold of
+hearing or fully masked, may be coded as silence. Its noise is then its
+energy, exactly its allowed distortion: without the second condition, the
+comparison of two equal quantities would be decided by rounding, and the
+loop would spend bits amplifying bands that need none.
 
 The distortion of a quantisation is
 
@@ -65,18 +74,19 @@ the total excess of noise over the allowed distortion, in octaves of energy.
 
 ## 3. Inner loop: fitting the bits
 
-Given the scalefactors, the inner loop chooses the smallest step size `q`
-whose granule fits the budget:
+Given the scalefactors, the inner loop chooses a step size `q` whose granule
+fits the budget while the next smaller step does not:
 
 ```
-bits(q) = part2_length + huffman_bits(ix(q)) ≤ max_bits
+bits(q) = part2_length + huffman_bits(ix(q)) ≤ max_bits < bits(q − 1)
 ```
 
 `part2_length` is the scalefactor bits of §5, `huffman_bits` the count of the
 encoder's code-table selection for `ix(q)`. `q` also MUST keep every `ix` at
-most `IX_MAX`. Bits fall as `q` rises, though not strictly, so the search MAY be
-a bisection followed by single steps upward. If no `q` in the encoder's
-range fits, the largest is used, where every line quantises to 0.
+most `IX_MAX`; a step that does not counts as not fitting. Bits fall as `q`
+rises, though not strictly: in the rare granule where several such steps
+exist, any of them is valid, so the search MAY be a bisection. If no `q` in
+the encoder's range fits, the attempt is not made (§4).
 
 ## 4. Outer loop: shaping the noise
 
