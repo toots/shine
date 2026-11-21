@@ -23,10 +23,13 @@ change does more than it claims. The commit message says which kind it is.
       silence, full scale) against `tests/golden.txt`, with an environment
       variable to regenerate.
 - [ ] Decoded-PCM goldens, using FFmpeg when available, skipped otherwise.
-- [ ] Quality report script: level, gain-corrected SNR and ViSQOL (audio
-      mode) per item, on synthetic signals plus local music (e.g. FATE
-      samples), with LAME at the same bitrate as reference. Not run in CI.
-- [ ] Decode with both FFmpeg and mpg123 in the report, to catch streams
+- [x] Quality report script (`tools/quality-report.sh`): level and
+      gain-corrected SNR per item, on synthetic signals plus local music
+      (e.g. FATE samples), with LAME at the same bitrate as reference. Not
+      run in CI.
+- [x] Perceptual score in the report: the ODG of Advanced PEAQ, with
+      GstPEAQ.
+- [x] Decode with both FFmpeg and mpg123 in the report, to catch streams
       only one decoder tolerates.
 - [ ] Listening check before release for psychoacoustic changes.
 - [x] Confirm the goldens are identical on Linux, macOS and other
@@ -45,6 +48,11 @@ change does more than it claims. The commit message says which kind it is.
       `248` must be `284`.
 - [x] Prefix the global `samplerates` and `bitrates` symbols with `shine_`;
       make `granules_per_frame` const.
+
+- [ ] Quality 0 counts and writes the Huffman tables of a granule with no
+      big values from the region addresses of the previous granule. Nothing
+      is coded with them, so streams decode right, but `table_select` holds
+      stale values. Fixing it changes the quality 0 goldens (decode-exact).
 
 ## Fixed point
 
@@ -69,7 +77,7 @@ none now, checked in CI by `tools/check-no-float.sh`.
 - [x] Prefix the public enums and constants (`NONE`, `MONO`, `STEREO`,
       `MPEG_I`, `PCM_MONO`, `LAYER_III`, ...) with `SHINE_`.
 - [x] Take input samples as `const`.
-- [ ] Quality setting in the config, added with the psychoacoustic model,
+- [x] Quality setting in the config, added with the psychoacoustic model,
       which is the first thing it would select. Its lowest level keeps
       today's bit-exact fast path.
 - [ ] Bump the version: `AC_INIT` still says 3.1.1.
@@ -79,12 +87,15 @@ none now, checked in CI by `tools/check-no-float.sh`.
 Each phase is fixed point, behind the quality setting, and measured with the
 quality report before the next one starts.
 
-- [ ] Decide the perceptual metric (ViSQOL proposed, PEAQ as alternative).
+- [x] Decide the perceptual metric: the ODG of Advanced PEAQ
+      (`doc/psy/tests.md` §4).
 - [ ] Phase 1: masking model in the MDCT domain (band energies, spreading,
       absolute threshold of hearing, tonality), integer `log2`.
 - [ ] Phase 2: noise allocation: outer loop raising scalefactors where noise
-      exceeds the threshold. Needs real scalefactor coding: MPEG-1
-      `slen`/`scfsi` and MPEG-2 LSF `scalefac_compress`, untested so far.
+      exceeds the threshold (`doc/psy/noise-allocation.md`), with MPEG-1
+      `slen` and MPEG-2 LSF `scalefac_compress` coding. Left: retune
+      `MASK_ADJUST`, `ATH_LOWER`, `ATH_CURVE` and `TONALITY_SCALE` with the
+      metric; `scfsi` and `preflag`, to save bits.
 - [ ] Phase 3: restore the bit reservoir (`ResvMax` is always 0), with
       perceptual entropy driving allocation. Remove or define the
       `shine_ResvFrameBegin` declaration.

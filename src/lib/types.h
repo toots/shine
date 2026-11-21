@@ -113,6 +113,7 @@ typedef struct {
 typedef struct shine_global_flags {
   priv_shine_wave_t wave;
   priv_shine_mpeg_t mpeg;
+  int quality; /* 0 to SHINE_QUALITY_MAX */
   bitstream_t bs;
   shine_side_info_t side_info;
   int sideinfo_len;
@@ -126,6 +127,7 @@ typedef struct shine_global_flags {
   int ResvMax;
   l3loop_t l3loop;
   subband_t subband;
+  struct psy_model *psy; /* NULL at quality 0 */
 } shine_global_config;
 
 #endif

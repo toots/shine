@@ -6,6 +6,7 @@
 #include "l3loop.h"
 #include "l3mdct.h"
 #include "l3subband.h"
+#include "psy.h"
 #include "tables.h"
 #include "types.h"
 
@@ -22,6 +23,7 @@ void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg) {
   mpeg->emphasis = SHINE_EMPHASIS_NONE;
   mpeg->copyright = 0;
   mpeg->original = 1;
+  mpeg->quality = 0;
 }
 
 int shine_mpeg_version(int samplerate_index) {
@@ -98,6 +100,10 @@ shine_global_config *shine_initialise(const shine_config_t *pub_config) {
   config->mpeg.emphasis = pub_config->mpeg.emphasis;
   config->mpeg.copyright = pub_config->mpeg.copyright;
   config->mpeg.original = pub_config->mpeg.original;
+  config->quality = pub_config->mpeg.quality < 0 ? 0
+                    : pub_config->mpeg.quality > SHINE_QUALITY_MAX
+                        ? SHINE_QUALITY_MAX
+                        : pub_config->mpeg.quality;
 
   /* Set default values. */
   config->ResvMax = 0;
@@ -127,7 +133,13 @@ shine_global_config *shine_initialise(const shine_config_t *pub_config) {
   config->mpeg.frac_slots_per_frame = slots_numerator % config->wave.samplerate;
   config->mpeg.slot_lag = -config->mpeg.frac_slots_per_frame;
 
+  if (shine_psy_initialise(config) < 0) {
+    free(config);
+    return NULL;
+  }
+
   if (shine_open_bit_stream(&config->bs, BUFFER_SIZE) < 0) {
+    free(config->psy);
     free(config);
     return NULL;
   }
@@ -163,6 +175,9 @@ static void shine_encode_frame(shine_global_config *config, int stride) {
 
   /* apply mdct to the polyphase output */
   shine_mdct_sub(config, stride);
+
+  if (config->psy)
+    shine_psy_frame(config);
 
   /* bit and noise allocation */
   shine_iteration_loop(config);
@@ -226,5 +241,6 @@ unsigned char *shine_flush(shine_global_config *config, int *written) {
 
 void shine_close(shine_global_config *config) {
   shine_close_bit_stream(&config->bs);
+  free(config->psy);
   free(config);
 }

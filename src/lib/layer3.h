@@ -34,6 +34,11 @@ enum shine_emphasis {
   SHINE_EMPHASIS_CCITT = 3  /* CCITT J.17 */
 };
 
+/* Highest quality level. Level 0 runs no psychoacoustic model and is the
+ * fastest; level 1 runs the masking model and chooses mid/side coding per
+ * frame in joint stereo. */
+#define SHINE_QUALITY_MAX 1
+
 /* The output MP3. */
 typedef struct {
   enum shine_mode mode; /* SHINE_MONO for one channel */
@@ -41,6 +46,7 @@ typedef struct {
   enum shine_emphasis emphasis;
   int copyright;
   int original;
+  int quality; /* 0 to SHINE_QUALITY_MAX, higher is slower; clamped */
 } shine_mpeg_t;
 
 typedef struct {

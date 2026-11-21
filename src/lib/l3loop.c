@@ -132,7 +132,13 @@ void shine_iteration_loop(shine_global_config *config) {
       cod_info->count1table_select = 0;
 
       /* all spectral values zero ? */
-      if (config->l3loop.xrmax)
+      if (config->psy) {
+        cod_info->quantizerStepSize = 0;
+        memset(ix, 0, GRANULE_SIZE * sizeof(*ix));
+        if (config->l3loop.xrmax)
+          cod_info->part2_3_length =
+              shine_psy_allocate(config, ix, gr, ch, max_bits);
+      } else if (config->l3loop.xrmax)
         cod_info->part2_3_length =
             shine_outer_loop(max_bits, ix, gr, ch, config);
 
@@ -185,12 +191,12 @@ int part2_length(int gr, int ch, shine_global_config *config) {
  */
 /* Step sizes above 0 only occur for full scale coefficients at low bitrates,
  * where steptabi would round 2**(-stepsize/4) to an integer. */
-static int quantize_coarse(int ix[GRANULE_SIZE], int stepsize,
-                           shine_global_config *config) {
+static int quantize_coarse(int ix[GRANULE_SIZE], int begin, int end,
+                           int stepsize, shine_global_config *config) {
   uint64_t fraction = shine_steptab_fraction[stepsize];
   int max = 0;
 
-  for (int i = 0; i < GRANULE_SIZE; i++) {
+  for (int i = begin; i < end; i++) {
     /* Rounded xrabs * 2**(-stepsize/4) / 2**31: at most 1. */
     int ln =
         (int)(((uint64_t)config->l3loop.xrabs[i] * fraction + (1ULL << 62)) >>
@@ -219,37 +225,47 @@ static int pow34(uint32_t x) {
   return low;
 }
 
-int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config) {
-  int i, max, ln;
+/* Quantizes lines begin..end - 1 with one step size, whose largest
+ * coefficient is xrmax. Returns the largest ix, above 8192 when the step is
+ * too small for the table range. */
+static int quantize_range(int ix[GRANULE_SIZE], int begin, int end,
+                          int stepsize, int32_t xrmax,
+                          shine_global_config *config) {
+  int max = 0;
   int32_t scalei;
 
   if (stepsize > 0)
-    return quantize_coarse(ix, stepsize, config);
+    return quantize_coarse(ix, begin, end, stepsize, config);
 
   scalei = shine_steptabi[stepsize + 127]; /* 2**(-stepsize/4) */
 
   /* a quick check to see if ixmax will be less than 8192 */
   /* this speeds up the early calls to bin_search_StepSize */
-  if ((mulr(config->l3loop.xrmax, scalei)) > 165140) /* 8192**(4/3) */
-    max = 16384; /* no point in continuing, stepsize not big enough */
-  else
-    for (i = 0, max = 0; i < GRANULE_SIZE; i++) {
-      /* This calculation is very sensitive. The multiply must round it's
-       * result or bad things happen to the quality.
-       */
-      ln = mulr(labs(config->l3loop.xr[i]), scalei);
+  if ((mulr(xrmax, scalei)) > 165140) /* 8192**(4/3) */
+    return 16384; /* no point in continuing, stepsize not big enough */
 
-      /* The table covers about all values; the quick check above bounds the
-       * rest by 165140. */
-      ix[i] = ln < 10000 ? shine_int2idx[ln] : pow34(ln);
+  for (int i = begin; i < end; i++) {
+    /* This calculation is very sensitive. The multiply must round it's
+     * result or bad things happen to the quality.
+     */
+    int ln = mulr(labs(config->l3loop.xr[i]), scalei);
 
-      /* calculate ixmax while we're here */
-      /* note. ix cannot be negative */
-      if (max < ix[i])
-        max = ix[i];
-    }
+    /* The table covers about all values; the quick check above bounds the
+     * rest by 165140. */
+    ix[i] = ln < 10000 ? shine_int2idx[ln] : pow34(ln);
+
+    /* calculate ixmax while we're here */
+    /* note. ix cannot be negative */
+    if (max < ix[i])
+      max = ix[i];
+  }
 
   return max;
+}
+
+int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config) {
+  return quantize_range(ix, 0, GRANULE_SIZE, stepsize, config->l3loop.xrmax,
+                        config);
 }
 
 /*
@@ -647,4 +663,29 @@ int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE],
   } while (count > 1);
 
   return next;
+}
+
+int shine_quantize_band(int ix[GRANULE_SIZE], int begin, int end, int stepsize,
+                        shine_global_config *config) {
+  int32_t xrmax = 0;
+
+  for (int i = begin; i < end; i++)
+    if (config->l3loop.xrabs[i] > xrmax)
+      xrmax = config->l3loop.xrabs[i];
+  return quantize_range(ix, begin, end, stepsize, xrmax, config);
+}
+
+int shine_count_bits(int ix[GRANULE_SIZE], gr_info *cod_info,
+                     shine_global_config *config) {
+  int bits;
+
+  /* subdivide leaves the region addresses as they were when there are no big
+   * values, and the table choice and count would read them: the count must
+   * depend on ix alone. */
+  cod_info->address1 = cod_info->address2 = cod_info->address3 = 0;
+  calc_runlen(ix, cod_info);
+  bits = count1_bitcount(ix, cod_info);
+  subdivide(cod_info, config);
+  bigv_tab_select(ix, cod_info);
+  return bits + bigv_bitcount(ix, cod_info);
 }

@@ -67,6 +67,8 @@ static void print_usage() {
   printf(" -c            set copyright flag, default off\n");
   printf(" -j            encode in joint stereo (stereo data only)\n");
   printf(" -d            encode in dual-channel (stereo data only)\n");
+  printf(" -Q <level>    set the quality level [0-%d], default 0\n",
+         SHINE_QUALITY_MAX);
   printf(" -q            quiet mode\n");
   printf(" -v            verbose mode\n");
 }
@@ -102,6 +104,12 @@ static int parse_command(int argc, char **argv, shine_config_t *config) {
 
     case 'd':
       stereo = SHINE_DUAL_CHANNEL;
+      break;
+
+    case 'Q':
+      if (++i == argc)
+        return 0;
+      config->mpeg.quality = atoi(argv[i]);
       break;
 
     case 'c':
