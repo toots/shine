@@ -85,6 +85,7 @@ be retuned together with the allocator of phase 2.
 | `TEMPORAL_SUSTAIN` | 0.01 s | tuning | [allowed-distortion.md](allowed-distortion.md) §3 |
 | `XMIN_FLOOR` | −200 dBFS | essential | [allowed-distortion.md](allowed-distortion.md) §2 |
 | `IX_MAX` | 8192 | essential | [noise-allocation.md](noise-allocation.md) §1 |
+| `PART2_3_MAX` | 4095 | essential | [noise-allocation.md](noise-allocation.md) §3.1 |
 | `OUTER_ATTEMPTS` | 8 per granule, per quality level | tuning | [noise-allocation.md](noise-allocation.md) §4 |
 | `DECISION_AGREEMENT` | 99% | conformance | [tests.md](tests.md) §3 |
 | `THRESHOLD_TOLERANCE` | 0.5 dB | conformance | [tests.md](tests.md) §3 |

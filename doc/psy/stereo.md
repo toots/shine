@@ -65,10 +65,10 @@ use M/S  if  Σ_{g,c} pe_MS[g][c] ≤ Σ_{g,c} pe[g][c]
 else     L/R
 ```
 
-When M/S is used, the M/S thresholds and `pe_MS` go to the allocator, and
-`ms_ener_ratio[g] = energy[3] / (energy[2] + energy[3])` is available to it.
-It is 0.5 when the sum is 0. The comparison is between PE totals, so ties go
-to M/S.
+When M/S is used, the M/S thresholds and `pe_MS` go to the allocator, which
+shares the granule's bits between mid and side by their PE
+([noise-allocation.md](noise-allocation.md) §3.1). The comparison is between
+PE totals, so ties go to M/S.
 
 M/S coding requires both coded channels to have the same block type in every
 granule of the frame. Coupling ([block-switching.md](block-switching.md) §2)

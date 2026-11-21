@@ -106,7 +106,8 @@ void shine_iteration_loop(shine_global_config *config) {
       cod_info->sfb_lmax = SFB_LMAX - 1; /* gr_deco */
 
       /* calculation of number of available bit( per granule ) */
-      max_bits = shine_max_reservoir_bits(config);
+      max_bits = config->psy ? shine_psy_channel_bits(config, gr, ch)
+                             : shine_max_reservoir_bits(config);
 
       /* reset of iteration variables */
       memset(config->scalefactor.l[gr][ch], 0,

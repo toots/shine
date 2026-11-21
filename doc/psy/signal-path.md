@@ -70,9 +70,7 @@ For each analysis channel `c`:
 - `pe[c]` for `c` ∈ {0, 1}. With M/S, `pe_MS[0]` (mid) and `pe_MS[1]`
   (side).
 - `loudness_sq[c]` for `c` ∈ {0, 1} ([ath.md](ath.md) §4.1).
-- `energy[c]`: total energy of the channel's long spectrum, which the
-  allocator MAY use to split bits between mid and side
-  ([stereo.md](stereo.md) §3).
+- `energy[c]`: total energy of the channel's long spectrum.
 
 All values are in the energy unit of [conventions.md](conventions.md).
 

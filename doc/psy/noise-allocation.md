@@ -8,8 +8,8 @@ allowed distortion `xmin` ([allowed-distortion.md](allowed-distortion.md)
 it does not.
 
 Long blocks only. Short blocks (phase 4) add their own scalefactor layout.
-The bit budget of a granule is fixed by the encoder until the reservoir
-(phase 3).
+The bits of a granule are fixed by the encoder until the reservoir
+(phase 3); §3 shares them between its channels.
 
 ## 1. Quantisation
 
@@ -73,6 +73,30 @@ the total excess of noise over the allowed distortion, in octaves of energy.
 `D = 0` when no band is over.
 
 ## 3. Inner loop: fitting the bits
+
+### 3.1 The budget of a channel
+
+A granule of two coded channels shares its bits between them in proportion
+to their perceptual entropy ([perceptual-entropy.md](perceptual-entropy.md)),
+the model's estimate of the bits each one needs:
+
+```
+max_bits[0] = int(granule_bits · pe[0] / (pe[0] + pe[1]))
+max_bits[1] = granule_bits − max_bits[0]
+```
+
+`pe` is that of the coded channels: `pe_MS` in an M/S frame
+([stereo.md](stereo.md) §3). `granule_bits` is what the encoder gives the
+granule for both channels. Neither share may exceed `PART2_3_MAX` = 4095,
+the largest `part2_3_length`: the excess goes to the other channel. A mono
+granule keeps all its bits.
+
+An equal split wastes on the channel that needs few bits what the other
+one lacks. In an M/S frame the side channel often needs a fraction of what
+the mid does, and the bits it leaves unused are stuffing. PE never falls
+below its base, so no channel gets nothing.
+
+### 3.2 The step size
 
 Given the scalefactors, the inner loop chooses a step size `q` whose granule
 fits the budget while the next smaller step does not:

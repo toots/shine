@@ -730,6 +730,27 @@ static int amplify(scalefactors_t *s, const int *over, int bands) {
   return raised;
 }
 
+/* The largest part2_3_length, 12 bits. */
+#define PART2_3_MAX 4095
+
+/* §3.1: the granule's bits, shared by perceptual entropy. */
+int shine_psy_channel_bits(const shine_global_config *config, int gr, int ch) {
+  const psy_model_t *model = config->psy;
+  const int *pe = &model->pe[gr][model->ms ? 2 : 0];
+  int granule_bits = config->mean_bits, first;
+
+  if (config->wave.channels == 1)
+    return granule_bits < PART2_3_MAX ? granule_bits : PART2_3_MAX;
+  if (granule_bits > 2 * PART2_3_MAX)
+    granule_bits = 2 * PART2_3_MAX;
+  first = (int)((int64_t)granule_bits * pe[0] / ((int64_t)pe[0] + pe[1]));
+  if (first > PART2_3_MAX)
+    first = PART2_3_MAX;
+  if (granule_bits - first > PART2_3_MAX)
+    first = granule_bits - PART2_3_MAX;
+  return ch ? granule_bits - first : first;
+}
+
 int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
                        int gr, int ch, int max_bits) {
   const psy_model_t *model = config->psy;

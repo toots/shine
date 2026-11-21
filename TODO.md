@@ -34,7 +34,12 @@ change does more than it claims. The commit message says which kind it is.
       music files.
 - [x] Decode with both FFmpeg and mpg123 in the report, to catch streams
       only one decoder tolerates.
-- [ ] Listening check before release for psychoacoustic changes.
+- [ ] Listening check before release for psychoacoustic changes. To check
+      first, at quality 1 against quality 0: the stereo image of wide mixes
+      at 64 to 96 kbps, since the score hardly sees it and the bits of a
+      granule now follow each channel's PE; castanets at 192 kbps, where the
+      score fell while the SNR rose; and the three items the gate still
+      fails (16 kHz at 64 and 128 kbps, 44.1 kHz at 96 kbps).
 - [x] Confirm the goldens are identical on Linux, macOS and other
       architectures: CI checks x86-64 and arm64 natively, armv7 and s390x
       emulated.

@@ -1281,10 +1281,6 @@ static void check_granule(shine_t e) {
 
   snprintf(name, sizeof(name), "%d Hz %d kbps mode %d", e->wave.samplerate,
            e->mpeg.bitrate, e->mpeg.mode);
-  const int max_bits = e->mean_bits / e->wave.channels > 4095
-                           ? 4095
-                           : e->mean_bits / e->wave.channels;
-
   for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
     for (int ch = 0; ch < e->wave.channels; ch++) {
       gr_info *gi = &e->side_info.gr[gr].ch[ch].tt;
@@ -1304,6 +1300,19 @@ static void check_granule(shine_t e) {
         magnitudes[k] = abs(e->l3_enc[ch][gr][k]);
       bits = (int)gi->part2_length + shine_count_bits(magnitudes, &counted, e);
 
+      /* noise-allocation §3.1, in floating point. */
+      const int32_t *pe = &e->psy->pe[gr][e->psy->ms ? 2 : 0];
+      int total = e->mean_bits > 8190 ? 8190 : e->mean_bits, max_bits;
+
+      if (e->wave.channels == 1)
+        max_bits = total > 4095 ? 4095 : total;
+      else {
+        int first = (int)floor((double)total * pe[0] / ((double)pe[0] + pe[1]));
+
+        first = first > 4095 ? 4095 : first;
+        first = total - first > 4095 ? total - 4095 : first;
+        max_bits = ch ? total - first : first;
+      }
       check(ALLOCATION_BOUNDS, ix_max <= PSY_IX_MAX && bits <= max_bits,
             "%s gr %d ch %d: ix up to %d, %d of %d bits", name, gr, ch, ix_max,
             bits, max_bits);
@@ -1396,7 +1405,6 @@ static void check_allocation_best(void) {
       int max_bits;
       for (int frame = 0; frame < 5; frame++) {
         encode_frame(e, music, &gain, &position, NULL);
-        max_bits = e->mean_bits / 2;
         for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
           for (int ch = 0; ch < 2; ch++) {
             gr_info *gi = &e->side_info.gr[gr].ch[ch].tt;
@@ -1406,6 +1414,7 @@ static void check_allocation_best(void) {
 
             prepare(e, gr, ch);
             memset(&zero, 0, sizeof(zero));
+            max_bits = shine_psy_channel_bits(e, gr, ch);
             if (fit(e, e->l3_enc[ch][gr], gi, max_bits, &zero, &q0) < 0)
               continue;
             d0 = distortion(e, gr, ch, &zero, q0);

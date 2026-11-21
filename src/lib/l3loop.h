@@ -14,6 +14,10 @@ int shine_quantize_band(int ix[GRANULE_SIZE], int begin, int end, int stepsize,
 int shine_count_bits(int ix[GRANULE_SIZE], gr_info *cod_info,
                      shine_global_config *config);
 
+/* The share of the granule's bits of channel ch (psy.c,
+ * doc/psy/noise-allocation.md §3.1). */
+int shine_psy_channel_bits(const shine_global_config *config, int gr, int ch);
+
 /* The noise allocation of the model (psy.c, doc/psy/noise-allocation.md):
  * step size, scalefactors and ix of the granule, with its part2_3_length
  * returned. */

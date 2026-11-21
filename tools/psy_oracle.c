@@ -531,14 +531,29 @@ static void compare_allocation(const oracle_t *o, shine_t encoder,
                                tally_t *tally, const char *name) {
   const psy_model_t *model = encoder->psy;
   const int bands = encoder->wave.samplerate <= 8000 ? 17 : 21;
-  int max_bits = shine_max_reservoir_bits(encoder);
 
   for (int g = 0; g < encoder->mpeg.granules_per_frame; g++)
     for (int ch = 0; ch < encoder->wave.channels; ch++) {
       const gr_info *gi = &encoder->side_info.gr[g].ch[ch].tt;
       double xr[GRANULE_SIZE], peak = 0;
       oracle_scalefactors_t s;
-      int q, same = 1;
+      int q, same = 1, max_bits;
+
+      /* noise-allocation.md §3.1 */
+      {
+        int base = o->ms ? 2 : 0;
+        int total = encoder->mean_bits > 8190 ? 8190 : encoder->mean_bits;
+        int first = (int)floor(total * o->pe[g][base] /
+                               (o->pe[g][base] + o->pe[g][base + 1]));
+
+        if (encoder->wave.channels == 1)
+          max_bits = total > 4095 ? 4095 : total;
+        else {
+          first = first > 4095 ? 4095 : first;
+          first = total - first > 4095 ? total - 4095 : first;
+          max_bits = ch ? total - first : first;
+        }
+      }
 
       for (int sb = 0; sb < bands; sb++) {
         double error = fabs(to_db(from_log(model->xmin[g][ch][sb])) -
