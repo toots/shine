@@ -76,10 +76,25 @@ fixed-point behaviour.
 
 Every audio-changing change, including a change to any **tuning** parameter,
 comes with the report of `TODO.md`: output level, gain-corrected SNR and the
-perceptual score per item, compared with the previous commit, with no
-regression beyond tolerance on any item. The perceptual metric is still to be
-chosen. Rules that say they need a perceptual judgement are settled by it:
+perceptual score per item, compared with the previous commit. The score MUST
+NOT fall by more than `ODG_TOLERANCE` = 0.05 on any item.
 
+The perceptual score is the Objective Difference Grade of the advanced
+version of PEAQ (ITU-R BS.1387), from 0 (imperceptible) to −4 (very
+annoying), with the decoded stream time-aligned to its source. It was
+designed for perceptual audio codecs, and the advanced version for those
+after MP3. Two caveats bound its use:
+
+- Implementations differ by a few tenths of a grade, and the open ones do
+  not meet the standard's conformance tolerances. Scores are compared only
+  between runs of the same implementation, never with published figures.
+- The scale saturates near −3.6 on heavy impairment, where it separates
+  encodes poorly. Tuning decisions rest on the bitrates where scores stay
+  above it.
+
+Rules that say they need a perceptual judgement are settled by it:
+
+- `TONALITY_SCALE` on noise-like spectra ([masking.md](masking.md) §1);
 - the tonality smoothing of the MDCT path
   ([spectral-analysis.md](spectral-analysis.md) §1.2) and the FFT windows
   ([spectral-analysis.md](spectral-analysis.md) §6);
@@ -90,4 +105,5 @@ chosen. Rules that say they need a perceptual judgement are settled by it:
 - every per-bitrate value, and the allocator offsets against the phase 2
   loop ([allowed-distortion.md](allowed-distortion.md)).
 
-A higher quality level MUST NOT score worse than a lower one on the corpus.
+A higher quality level MUST NOT score worse than a lower one by more than
+`ODG_TOLERANCE` on any item of the corpus.
