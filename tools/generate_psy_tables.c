@@ -1,6 +1,7 @@
 /* Generates src/lib/psy_tables.h, the constants of the psychoacoustic model
  * (doc/psy/), so that the library computes no floating point at run time.
- * It is also the input of the float oracle (tools/psy_oracle.c).
+ * A float oracle of a phase being built (doc/psy/tests.md §3) reads them
+ * too.
  *
  * It runs the library's own filterbank to measure the MDCT gain, so it is
  * built with it:
