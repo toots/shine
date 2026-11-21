@@ -445,6 +445,36 @@ static void energy_unit(void) {
          log_q16(LOUDNESS_FS_NOISE / (2.0 / LONG_LINES)));
 }
 
+/* The allocation (doc/psy/allowed-distortion.md, noise-allocation.md). */
+static void allocation_tables(void) {
+  long values[22];
+
+  printf("/* log2 fact[sb], the long band offsets "
+         "(doc/psy/allowed-distortion.md §1). */\n");
+  for (int sb = 0; sb < 22; sb++)
+    values[sb] = db_q16(sb <= 6    ? -0.5
+                        : sb <= 13 ? -0.25
+                        : sb <= 20 ? -0.025
+                                   : 0.5);
+  print_array("int32_t", "psy_band_offset", values, 22);
+  printf("/* XMIN_FLOOR, -200 dB below a full-scale sine. */\n");
+  printf("#define PSY_LOG2_XMIN_FLOOR %ld\n", db_q16(-200));
+  printf("/* ix^(4/3) for ix = 0..IX_MAX, Q14 (doc/psy/noise-allocation.md "
+         "§1). */\n");
+  printf("#define PSY_IX_MAX 8192\n");
+  printf("static const uint32_t psy_pow43[PSY_IX_MAX + 1] = {");
+  for (int i = 0; i <= 8192; i++)
+    printf("%s%luu", i ? ", " : "",
+           (unsigned long)fixed(pow(i, 4.0 / 3), 16384));
+  printf("};\n");
+  printf("/* 2^(r/4) for r = 0..3, Q30: the fraction of a quarter step. */\n");
+  printf("static const uint32_t psy_quarter_step[4] = {");
+  for (int r = 0; r < 4; r++)
+    printf("%s%luu", r ? ", " : "",
+           (unsigned long)fixed(pow(2, r / 4.0), 1073741824.0));
+  printf("};\n\n");
+}
+
 /* log2(1 + i/512) and 2^(i/512), for the integer log2 and its inverse
  * (doc/psy/fixed-point.md §2). */
 static void log_tables(void) {
@@ -474,6 +504,7 @@ int main(void) {
   ath_constants();
   pe_constants();
   energy_unit();
+  allocation_tables();
   log_tables();
   printf("#endif\n");
   return 0;
