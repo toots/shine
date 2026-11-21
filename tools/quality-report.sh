@@ -148,8 +148,9 @@ for path in "$@"; do
     "$work/item.wav"
   ffmpeg -nostdin -loglevel error -y -i "$work/item.wav" -f s16le \
     "$work/reference.raw"
+  # Plain stereo is shineenc's default.
   stereo=
-  [ "$channels" = 2 ] && stereo=-$mode
+  [ "$channels" = 2 ] && [ "$mode" != s ] && stereo=-$mode
 
   for bitrate in $bitrates; do
     for quality in $qualities; do
