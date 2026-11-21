@@ -27,7 +27,7 @@ metric report before the next one starts.
 | Phase | Parts |
 |---|---|
 | 1. Model | long analysis, partitions, spreading, tonality, threshold limits, ATH and its adaptation, M/S thresholds and decision, the PE formula |
-| 2. Noise allocation | allowed distortion per band, band offsets |
+| 2. Noise allocation | allowed distortion per band, band offsets, band ATH, the outer loop and scalefactor coding |
 | 3. Reservoir | PE smoothing, PE-driven bit demand |
 | 4. Short blocks | attack detection, block types, short analysis and thresholds, short pre-echo control, temporal masking between short windows |
 
@@ -55,13 +55,15 @@ Read in this order:
    block types, short-block pre-echo control.
 9. [allowed-distortion.md](allowed-distortion.md): the boundary with the
    noise allocation, temporal masking between short windows.
-10. [parameters.md](parameters.md): every constant, essential or tuning, and
+10. [noise-allocation.md](noise-allocation.md): quantisation, noise, the
+    inner and outer loops, scalefactor coding.
+11. [parameters.md](parameters.md): every constant, essential or tuning, and
     the per-bitrate set.
-11. [fixed-point.md](fixed-point.md): integer arithmetic, representations,
+12. [fixed-point.md](fixed-point.md): integer arithmetic, representations,
     generated tables.
-12. [tests.md](tests.md): invariants, the development oracle, the metric
+13. [tests.md](tests.md): invariants, the development oracle, the metric
     gate.
-13. [known-complexity.md](known-complexity.md): known pitfalls, each linked
+14. [known-complexity.md](known-complexity.md): known pitfalls, each linked
     to the rule that answers it, and each a conformance check.
 
 ## Analysis domain

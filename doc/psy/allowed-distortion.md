@@ -7,7 +7,7 @@ This is the boundary with the noise allocation loop. For each granule and
 coded channel, in the stereo mode chosen for the frame, the loop gets the
 model's band energies `en_psy` and thresholds `thm_psy`, and the channel's
 MDCT coefficients `xr`. It derives the allowed distortion `xmin` per band.
-The loop itself is specified with phase 2.
+The loop itself is [noise-allocation.md](noise-allocation.md).
 
 The thresholds are not absolute physical quantities. Their level is set by
 offsets tuned together with the allocator (`MASK_ADJUST`, the band offsets of

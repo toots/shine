@@ -26,7 +26,8 @@ Per frame, in this order:
    ([perceptual-entropy.md](perceptual-entropy.md)).
 5. **M/S decision** for the frame ([stereo.md](stereo.md) §3).
 6. **PE smoothing** (phase 3, [perceptual-entropy.md](perceptual-entropy.md) §3),
-   then **noise allocation** (phase 2, [allowed-distortion.md](allowed-distortion.md)).
+   then **noise allocation** (phase 2, [allowed-distortion.md](allowed-distortion.md),
+   [noise-allocation.md](noise-allocation.md)).
 
 Thresholds describe the granule whose MDCT they were computed from, so they
 are used in the same frame without delay. Only the block type needs look-ahead.
