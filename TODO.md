@@ -49,6 +49,11 @@ change does more than it claims. The commit message says which kind it is.
 - [x] Prefix the global `samplerates` and `bitrates` symbols with `shine_`;
       make `granules_per_frame` const.
 
+- [ ] Quality 0 counts and writes the Huffman tables of a granule with no
+      big values from the region addresses of the previous granule. Nothing
+      is coded with them, so streams decode right, but `table_select` holds
+      stale values. Fixing it changes the quality 0 goldens (decode-exact).
+
 ## Fixed point
 
 The library used floating point while encoding (arm64 disassembly). It uses
@@ -87,8 +92,10 @@ quality report before the next one starts.
 - [ ] Phase 1: masking model in the MDCT domain (band energies, spreading,
       absolute threshold of hearing, tonality), integer `log2`.
 - [ ] Phase 2: noise allocation: outer loop raising scalefactors where noise
-      exceeds the threshold. Needs real scalefactor coding: MPEG-1
-      `slen`/`scfsi` and MPEG-2 LSF `scalefac_compress`, untested so far.
+      exceeds the threshold (`doc/psy/noise-allocation.md`), with MPEG-1
+      `slen` and MPEG-2 LSF `scalefac_compress` coding. Left: retune
+      `MASK_ADJUST`, `ATH_LOWER`, `ATH_CURVE` and `TONALITY_SCALE` with the
+      metric; `scfsi` and `preflag`, to save bits.
 - [ ] Phase 3: restore the bit reservoir (`ResvMax` is always 0), with
       perceptual entropy driving allocation. Remove or define the
       `shine_ResvFrameBegin` declaration.

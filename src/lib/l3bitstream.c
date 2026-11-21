@@ -46,6 +46,22 @@ void shine_format_bitstream(shine_global_config *config) {
   encodeMainData(config);
 }
 
+/* MPEG-2 and 2.5 long block scalefactors without intensity stereo, for a
+ * scalefac_compress below 400 (ISO 13818-3 2.4.3.2): four groups of 6, 5,
+ * 5 and 5 bands. */
+static void encodeScalefactorsLSF(shine_global_config *config, gr_info *gi,
+                                  const int32_t *scalefactors) {
+  static const int group_bands[4] = {6, 5, 5, 5};
+  unsigned compress = gi->scalefac_compress;
+  unsigned slen[4] = {(compress >> 4) / 5, (compress >> 4) % 5,
+                      (compress & 15) >> 2, compress & 3};
+  int sfb = 0;
+
+  for (int group = 0; group < 4; group++)
+    for (int band = 0; band < group_bands[group]; band++, sfb++)
+      shine_putbits(&config->bs, scalefactors[sfb], slen[group]);
+}
+
 static void encodeMainData(shine_global_config *config) {
   int gr, ch, sfb;
   shine_side_info_t si = config->side_info;
@@ -53,9 +69,16 @@ static void encodeMainData(shine_global_config *config) {
   for (gr = 0; gr < config->mpeg.granules_per_frame; gr++) {
     for (ch = 0; ch < config->wave.channels; ch++) {
       gr_info *gi = &(si.gr[gr].ch[ch].tt);
-      unsigned slen1 = shine_slen1_tab[gi->scalefac_compress];
-      unsigned slen2 = shine_slen2_tab[gi->scalefac_compress];
       int *ix = &config->l3_enc[ch][gr][0];
+      unsigned slen1, slen2;
+
+      if (config->mpeg.version != SHINE_MPEG_I) {
+        encodeScalefactorsLSF(config, gi, config->scalefactor.l[gr][ch]);
+        Huffmancodebits(config, ix, gi);
+        continue;
+      }
+      slen1 = shine_slen1_tab[gi->scalefac_compress];
+      slen2 = shine_slen2_tab[gi->scalefac_compress];
 
       if (gr == 0 || si.scfsi[ch][0] == 0)
         for (sfb = 0; sfb < 6; sfb++)

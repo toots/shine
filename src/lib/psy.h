@@ -44,6 +44,8 @@ typedef struct psy_model {
   int band_part[PSY_LONG_BANDS + 1]; /* first partition of each band */
   int32_t minval[PSY_NPART_MAX];
   int32_t ath_part[PSY_NPART_MAX];
+  int32_t ath_band[PSY_LONG_BANDS];
+  int xmin_bands;                         /* bands with an allowed distortion */
   uint32_t loudness_weight[GRANULE_SIZE]; /* eql_w, Q32 */
 
   int64_t adjust_factor, adjust_limit; /* Q31 */
@@ -59,6 +61,9 @@ typedef struct psy_model {
   int32_t energy[MAX_GRANULES][PSY_CHANNELS];
   int32_t loudness[MAX_GRANULES][MAX_CHANNELS];
   int ms;
+  /* Allowed distortion per coded channel and band, PSY_LOG_ZERO for the
+   * bands that have none (doc/psy/allowed-distortion.md §2). */
+  int32_t xmin[MAX_GRANULES][MAX_CHANNELS][PSY_LONG_BANDS];
 } psy_model_t;
 
 /* Allocates the model of an encoder, or leaves config->psy NULL at the

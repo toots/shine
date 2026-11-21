@@ -2,6 +2,7 @@
  * section numbers below refer to it. Log-domain values are log2 in Q16. */
 
 #include "psy.h"
+#include "l3loop.h"
 #include "layer3.h"
 #include "tables.h"
 
@@ -373,6 +374,26 @@ static int32_t ath_weight(const psy_model_t *model) {
   return weight > 0 ? weight : 0;
 }
 
+/* §allowed-distortion 2, for the coded channel whose analysis channel is c.
+ * On the MDCT path the model's band energy is the coded one, so the masking
+ * part is thm · fact. */
+static void allowed_distortion(const psy_model_t *model, int32_t weight, int c,
+                               int32_t *xmin, int g) {
+  for (int sb = 0; sb < PSY_LONG_BANDS; sb++) {
+    int32_t en = model->en[g][c][sb], x;
+
+    if (sb >= model->xmin_bands) {
+      xmin[sb] = ZERO;
+      continue;
+    }
+    x = min32(en, ath_adjust(model, weight, model->ath_band[sb]) +
+                      psy_band_offset[sb]);
+    if (en != ZERO)
+      x = max32(x, scale(model->thm[g][c][sb], psy_band_offset[sb]));
+    xmin[sb] = max32(x, PSY_LOG2_XMIN_FLOOR);
+  }
+}
+
 /* Mid and side coefficients, (L ± R)/√2: below 2^31 in magnitude, as the
  * MDCT keeps each channel's below 0.705 * 2^31. */
 static int64_t mid_side(int64_t sum) {
@@ -438,6 +459,11 @@ void shine_psy_frame(shine_global_config *config) {
         config->mdct_freq[0][g][k] = (int32_t)mid_side(l + r);
         config->mdct_freq[1][g][k] = (int32_t)mid_side(l - r);
       }
+
+  for (int g = 0; g < granules; g++)
+    for (int ch = 0; ch < config->wave.channels; ch++)
+      allowed_distortion(model, weight, model->ms ? ch + 2 : ch,
+                         model->xmin[g][ch], g);
 }
 
 /* §ath 4.1: eql_w ∝ 10^(-ATH(f_k)/10), normalised to 2^32. */
@@ -518,6 +544,250 @@ int shine_psy_initialise(shine_global_config *config) {
   }
   model->band_part[PSY_LONG_BANDS] = model->npart;
 
+  /* §ath 2, per band; §allowed-distortion 2: bands 0..20, 0..16 at 8 kHz. */
+  for (int sb = 0; sb < PSY_LONG_BANDS; sb++) {
+    int32_t ath = ath_line[sfb[sb]];
+
+    for (int k = sfb[sb] + 1; k < sfb[sb + 1]; k++)
+      ath = min32(ath, ath_line[k]);
+    model->ath_band[sb] = ath + model->row->log2_ath_offset;
+  }
+  model->xmin_bands = config->wave.samplerate <= 8000 ? 17 : 21;
+
   config->psy = model;
   return 0;
+}
+
+/* Noise allocation (doc/psy/noise-allocation.md). */
+
+/* Inner loops per granule: bounds the encoding time (parameters.md §2). */
+#define OUTER_ATTEMPTS 8
+
+/* The lowest step size the quantizer represents exactly. */
+#define STEP_MIN -120
+
+typedef struct {
+  int sf[PSY_LONG_BANDS];
+  int scale; /* scalefac_scale */
+} scalefactors_t;
+
+/* §5: both formats code up to 15 in bands 0..10 and 7 in bands 11..20. */
+static int largest_scalefactor(int sb) { return sb <= 10 ? 15 : 7; }
+
+static int bits_for(int value) {
+  int bits = 0;
+
+  for (; value; value >>= 1)
+    bits++;
+  return bits;
+}
+
+static int group_max(const int *sf, int first, int last) {
+  int max = 0;
+
+  for (int sb = first; sb <= last; sb++)
+    if (sf[sb] > max)
+      max = sf[sb];
+  return max;
+}
+
+/* §5: the cheapest coding of the scalefactors. Returns part2_length. */
+static int scalefactor_coding(const scalefactors_t *s, int mpeg1,
+                              unsigned *compress) {
+  if (mpeg1) {
+    int need1 = bits_for(group_max(s->sf, 0, 10)),
+        need2 = bits_for(group_max(s->sf, 11, 20)), best = -1;
+
+    for (unsigned c = 0; c < 16; c++)
+      if (shine_slen1_tab[c] >= need1 && shine_slen2_tab[c] >= need2) {
+        int bits = 11 * shine_slen1_tab[c] + 10 * shine_slen2_tab[c];
+        if (best < 0 || bits < best) {
+          best = bits;
+          *compress = c;
+        }
+      }
+    return best;
+  } else {
+    int slen[4] = {
+        bits_for(group_max(s->sf, 0, 5)), bits_for(group_max(s->sf, 6, 10)),
+        bits_for(group_max(s->sf, 11, 15)), bits_for(group_max(s->sf, 16, 20))};
+
+    *compress =
+        (unsigned)(((5 * slen[0] + slen[1]) << 4) + (slen[2] << 2) + slen[3]);
+    return 6 * slen[0] + 5 * (slen[1] + slen[2] + slen[3]);
+  }
+}
+
+static int band_step(int q, const scalefactors_t *s, int sb) {
+  return q - 2 * (1 + s->scale) * s->sf[sb];
+}
+
+/* §1: every band at its own step. Returns the largest ix, above IX_MAX when
+ * a step is too small or below the exact range. */
+static int quantize_granule(shine_global_config *config, int *ix, int q,
+                            const scalefactors_t *s) {
+  const int *sfb = shine_scale_fact_band_index[config->mpeg.samplerate_index];
+  int max = 0;
+
+  for (int sb = 0; sb < PSY_LONG_BANDS; sb++) {
+    int step = band_step(q, s, sb), band_max;
+
+    if (step < STEP_MIN)
+      return PSY_IX_MAX + 1;
+    band_max = shine_quantize_band(ix, sfb[sb], sfb[sb + 1], step, config);
+    if (band_max > max)
+      max = band_max;
+  }
+  return max;
+}
+
+/* §3: the smallest step size, found by bisection, whose granule fits the
+ * budget. Returns the Huffman bits, or -1 if it does not fit even at the
+ * largest step size. */
+static int fit(shine_global_config *config, int *ix, gr_info *gi, int budget,
+               const scalefactors_t *s, int *q) {
+  int low = STEP_MIN - 1, high = MAX_STEPSIZE, bits;
+
+  if (quantize_granule(config, ix, high, s) > PSY_IX_MAX ||
+      shine_count_bits(ix, gi, config) > budget)
+    return -1;
+  while (high - low > 1) {
+    int middle = low + (high - low) / 2;
+
+    if (quantize_granule(config, ix, middle, s) <= PSY_IX_MAX &&
+        shine_count_bits(ix, gi, config) <= budget)
+      high = middle;
+    else
+      low = middle;
+  }
+  quantize_granule(config, ix, high, s);
+  bits = shine_count_bits(ix, gi, config);
+  *q = high;
+  return bits;
+}
+
+/* x̂ = ix^(4/3) · 2^(step/4) in the coefficient scale of quantize: the
+ * product of the Q14 power and the Q30 quarter step is scaled by
+ * 2^(step/4 rounded down + 31 - 44). */
+static uint64_t reconstruct(int ix, int step) {
+  int whole = step >= 0 ? step / 4 : -((3 - step) / 4), shift;
+  uint64_t product =
+      (uint64_t)psy_pow43[ix] * psy_quarter_step[step - 4 * whole];
+
+  shift = whole + 31 - 44;
+  if (shift >= 0)
+    return product << shift;
+  return -shift < 64 ? (product + (1ULL << (-shift - 1))) >> -shift : 0;
+}
+
+/* §2: noise per band, log2 in the energy unit. The errors are below 2^32,
+ * shifted by 4: a band of under 128 lines sums in 64 bits. */
+static void band_noise(shine_global_config *config, const psy_model_t *model,
+                       const int *ix, int q, const scalefactors_t *s,
+                       int32_t *noise) {
+  const int *sfb = shine_scale_fact_band_index[config->mpeg.samplerate_index];
+
+  for (int sb = 0; sb < model->xmin_bands; sb++) {
+    int step = band_step(q, s, sb);
+    uint64_t sum = 0;
+
+    for (int k = sfb[sb]; k < sfb[sb + 1]; k++) {
+      int64_t error =
+          (int64_t)config->l3loop.xrabs[k] - (int64_t)reconstruct(ix[k], step);
+      uint64_t magnitude = (uint64_t)(error < 0 ? -error : error) >> 4;
+
+      sum += magnitude * magnitude;
+    }
+    noise[sb] = scale(shine_psy_log2(sum), PSY_LOG2_K_LONG + 8 * ONE);
+  }
+}
+
+/* §4: raises every band that is over and can be amplified, switching to
+ * scalefac_scale = 1 when one reaches its largest scalefactor. Returns the
+ * number of bands raised. */
+static int amplify(scalefactors_t *s, const int *over, int bands) {
+  int raised = 0;
+
+  if (!s->scale)
+    for (int sb = 0; sb < bands; sb++)
+      if (over[sb] && s->sf[sb] == largest_scalefactor(sb)) {
+        s->scale = 1;
+        for (int b = 0; b < bands; b++)
+          s->sf[b] = (s->sf[b] + 1) / 2;
+        break;
+      }
+  for (int sb = 0; sb < bands; sb++)
+    if (over[sb] && s->sf[sb] < largest_scalefactor(sb)) {
+      s->sf[sb]++;
+      raised++;
+    }
+  return raised;
+}
+
+int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
+                       int gr, int ch, int max_bits) {
+  const psy_model_t *model = config->psy;
+  const int32_t *xmin = model->xmin[gr][ch];
+  const int bands = model->xmin_bands;
+  gr_info *gi = &config->side_info.gr[gr].ch[ch].tt;
+  scalefactors_t s, best_s;
+  gr_info best_gi;
+  int best_ix[GRANULE_SIZE], best_q, best_bits = 0, best_part2 = 0;
+  unsigned best_compress = 0;
+  int64_t best_distortion = -1;
+
+  memset(&s, 0, sizeof(s));
+  best_s = s;
+  best_gi = *gi;
+  /* Kept only if no attempt can be made: silence at the largest step. */
+  memset(best_ix, 0, sizeof(best_ix));
+  best_q = MAX_STEPSIZE;
+  for (int attempt = 0; attempt < OUTER_ATTEMPTS; attempt++) {
+    int32_t noise[PSY_LONG_BANDS];
+    int over[PSY_LONG_BANDS], any_over = 0, all_amplified = 1, q, bits;
+    unsigned compress;
+    int part2 =
+        scalefactor_coding(&s, config->mpeg.version == SHINE_MPEG_I, &compress);
+    int64_t distortion = 0;
+
+    if (part2 > max_bits)
+      break;
+    bits = fit(config, ix, gi, max_bits - part2, &s, &q);
+    if (bits < 0)
+      break;
+    band_noise(config, model, ix, q, &s, noise);
+    for (int sb = 0; sb < bands; sb++) {
+      over[sb] = noise[sb] > xmin[sb];
+      if (over[sb]) {
+        distortion += noise[sb] - xmin[sb];
+        any_over = 1;
+      }
+    }
+    if (best_distortion < 0 || distortion < best_distortion) {
+      best_distortion = distortion;
+      best_s = s;
+      best_q = q;
+      best_bits = bits;
+      best_part2 = part2;
+      best_compress = compress;
+      best_gi = *gi;
+      memcpy(best_ix, ix, sizeof(best_ix));
+    }
+    if (!any_over || !amplify(&s, over, bands))
+      break;
+    for (int sb = 0; sb < bands; sb++)
+      all_amplified &= s.sf[sb] > 0;
+    if (all_amplified)
+      break;
+  }
+
+  *gi = best_gi;
+  memcpy(ix, best_ix, sizeof(best_ix));
+  gi->quantizerStepSize = best_q;
+  gi->scalefac_scale = (unsigned)best_s.scale;
+  gi->scalefac_compress = best_compress;
+  gi->part2_length = (unsigned)best_part2;
+  for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
+    config->scalefactor.l[gr][ch][sb] = best_s.sf[sb];
+  return best_part2 + best_bits;
 }

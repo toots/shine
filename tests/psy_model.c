@@ -43,6 +43,12 @@ enum {
   LEADING_SILENCE,      /* signal-path §4, KC 9 */
   SILENCE_STATE,        /* signal-path §4, KC 5 */
   INDEPENDENT_ENCODERS, /* signal-path §5, KC 8, 20 */
+  ALLOCATION_BOUNDS,    /* noise-allocation §1, §3 */
+  SCALEFACTOR_CODING,   /* noise-allocation §5 */
+  ALLOCATION_BEST,      /* noise-allocation §4 */
+  ALLOCATION_SILENCE,   /* noise-allocation §4 */
+  NOISE_MEASURE,        /* noise-allocation §1, §2 */
+  ALLOWED_DISTORTION,   /* allowed-distortion §2 */
   CHECK_COUNT
 };
 
@@ -76,6 +82,12 @@ static const char *check_names[CHECK_COUNT] = {
     [LEADING_SILENCE] = "leading silence",
     [SILENCE_STATE] = "silence state",
     [INDEPENDENT_ENCODERS] = "independent encoders",
+    [ALLOCATION_BOUNDS] = "ix and bits within bounds",
+    [SCALEFACTOR_CODING] = "scalefactor coding",
+    [ALLOCATION_BEST] = "best attempt",
+    [ALLOCATION_SILENCE] = "silent granule",
+    [NOISE_MEASURE] = "noise measure",
+    [ALLOWED_DISTORTION] = "allowed distortion",
 };
 
 static int runs[CHECK_COUNT], failures[CHECK_COUNT];
@@ -128,6 +140,10 @@ static int lowest_bitrate(int samplerate) {
   return samplerate >= 32000 ? 32 : 8;
 }
 
+static int highest_bitrate(int samplerate) {
+  return samplerate >= 32000 ? 320 : samplerate >= 16000 ? 160 : 64;
+}
+
 /* A signal, sample n of channel ch, before clipping to 16 bits. */
 typedef double (*signal_t)(long n, int ch, const void *context);
 
@@ -135,8 +151,15 @@ static int16_t clip(double v) {
   return v > 32767 ? 32767 : v < -32768 ? -32768 : (int16_t)lrint(v);
 }
 
-/* Encodes one frame of `signal` from sample `*position`; returns the size
- * of the data written. */
+static void check_granule(shine_t e);
+
+/* allowed-distortion §2: long bands 0..20 have an xmin, 0..16 at 8 kHz. */
+static int xmin_bands(shine_t e) {
+  return e->wave.samplerate <= 8000 ? 17 : 21;
+}
+
+/* Encodes one frame of `signal` from sample `*position`, checking the
+ * allocation of every granule; returns the size of the data written. */
 static int encode_frame(shine_t encoder, signal_t signal, const void *context,
                         long *position, uint64_t *hash) {
   int16_t samples[2 * SHINE_MAX_SAMPLES];
@@ -148,6 +171,7 @@ static int encode_frame(shine_t encoder, signal_t signal, const void *context,
     for (int ch = 0; ch < channels; ch++)
       samples[i * channels + ch] = clip(signal(*position, ch, context));
   data = shine_encode_buffer_interleaved(encoder, samples, &written);
+  check_granule(encoder);
   if (hash)
     for (int i = 0; i < written; i++)
       *hash = (*hash ^ data[i]) * 0x100000001b3ULL;
@@ -1222,6 +1246,349 @@ static void check_independent_encoders(void) {
           "encoder %d: interleaving changes its stream", i);
 }
 
+/* noise-allocation §5, by brute force over every coding: the chosen one
+ * codes every scalefactor, with the fewest bits. */
+static int coding_bits(int mpeg1, unsigned compress, const int32_t *sf,
+                       int *codes) {
+  /* Both formats send bands 0..5, 6..10, 11..15 and 16..20 with one slen
+   * each: slen1, slen1, slen2, slen2 in MPEG-1. */
+  static const int groups[5] = {0, 6, 11, 16, 21};
+  int slen[4], bits = 0;
+
+  if (mpeg1) {
+    slen[0] = slen[1] = shine_slen1_tab[compress];
+    slen[2] = slen[3] = shine_slen2_tab[compress];
+  } else {
+    slen[0] = (compress >> 4) / 5;
+    slen[1] = (compress >> 4) % 5;
+    slen[2] = (compress & 15) >> 2;
+    slen[3] = compress & 3;
+  }
+  *codes = 1;
+  for (int g = 0; g < 4; g++)
+    for (int sb = groups[g]; sb < groups[g + 1]; sb++) {
+      *codes &= sf[sb] < (1 << slen[g]);
+      bits += slen[g];
+    }
+  return bits;
+}
+
+static void check_granule(shine_t e) {
+  const int mpeg1 = e->mpeg.version == SHINE_MPEG_I;
+  char name[64];
+
+  snprintf(name, sizeof(name), "%d Hz %d kbps mode %d", e->wave.samplerate,
+           e->mpeg.bitrate, e->mpeg.mode);
+  const int max_bits = e->mean_bits / e->wave.channels > 4095
+                           ? 4095
+                           : e->mean_bits / e->wave.channels;
+
+  for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
+    for (int ch = 0; ch < e->wave.channels; ch++) {
+      gr_info *gi = &e->side_info.gr[gr].ch[ch].tt;
+      const int32_t *sf = e->scalefactor.l[gr][ch];
+      int ix_max = 0, in_range = 1, codes, cheapest = -1;
+
+      for (int k = 0; k < GRANULE_SIZE; k++)
+        if (abs(e->l3_enc[ch][gr][k]) > ix_max)
+          ix_max = abs(e->l3_enc[ch][gr][k]);
+      /* part2_3_length also holds the frame's stuffing bits: count the
+       * granule's own. */
+      gr_info counted = *gi;
+      int magnitudes[GRANULE_SIZE], bits;
+
+      /* The bitstream writer signs ix in place. */
+      for (int k = 0; k < GRANULE_SIZE; k++)
+        magnitudes[k] = abs(e->l3_enc[ch][gr][k]);
+      bits = (int)gi->part2_length + shine_count_bits(magnitudes, &counted, e);
+
+      check(ALLOCATION_BOUNDS, ix_max <= PSY_IX_MAX && bits <= max_bits,
+            "%s gr %d ch %d: ix up to %d, %d of %d bits", name, gr, ch, ix_max,
+            bits, max_bits);
+
+      for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
+        in_range &= sf[sb] >= 0 && sf[sb] <= (sb <= 10 ? 15 : 7) &&
+                    (sb < xmin_bands(e) || sf[sb] == 0);
+      for (unsigned c = 0; c < (mpeg1 ? 16u : 400u); c++) {
+        int bits = coding_bits(mpeg1, c, sf, &codes);
+        if (codes && (cheapest < 0 || bits < cheapest))
+          cheapest = bits;
+      }
+      check(SCALEFACTOR_CODING,
+            in_range &&
+                coding_bits(mpeg1, gi->scalefac_compress, sf, &codes) ==
+                    (int)gi->part2_length &&
+                codes && (int)gi->part2_length == cheapest,
+            "%s gr %d ch %d: scalefac_compress %u, %u bits, cheapest %d", name,
+            gr, ch, gi->scalefac_compress, gi->part2_length, cheapest);
+    }
+}
+
+/* noise-allocation §1, §3, §5 on every rate, mono and joint stereo. */
+static void check_allocation_bounds(void) {
+  for (int r = 0; r < 9; r++)
+    for (int stereo = 0; stereo < 2; stereo++)
+      for (int b = 0; b < 2; b++) {
+        int bitrate = b ? highest_bitrate(rates[r]) : lowest_bitrate(rates[r]);
+        shine_t e =
+            open_encoder(rates[r], stereo + 1,
+                         stereo ? SHINE_JOINT_STEREO : SHINE_MONO, bitrate);
+        double gain = 1;
+        long position = 0;
+
+        /* encode_frame checks every granule. */
+        for (int frame = 0; frame < 6; frame++)
+          encode_frame(e, music, &gain, &position, NULL);
+        for (int mode = 0; mode < FAILURE_COUNT; mode++) {
+          position = 0;
+          for (int frame = 0; frame < 3; frame++)
+            encode_frame(e, failure_mode, &mode, &position, NULL);
+        }
+        shine_close(e);
+      }
+}
+
+/* D of the granule's current quantization, with the scalefactors s. */
+static int64_t distortion(shine_t e, int gr, int ch, const scalefactors_t *s,
+                          int q) {
+  int32_t noise[PSY_LONG_BANDS];
+  int64_t d = 0;
+
+  band_noise(e, e->psy, e->l3_enc[ch][gr], q, s, noise);
+  for (int sb = 0; sb < e->psy->xmin_bands; sb++)
+    if (noise[sb] > e->psy->xmin[gr][ch][sb])
+      d += noise[sb] - e->psy->xmin[gr][ch][sb];
+  return d;
+}
+
+/* Prepares granule gr, channel ch of the last frame as the iteration loop
+ * does. */
+static void prepare(shine_t e, int gr, int ch) {
+  e->l3loop.xr = e->mdct_freq[ch][gr];
+  e->l3loop.xrmax = 0;
+  for (int k = 0; k < GRANULE_SIZE; k++) {
+    e->l3loop.xrabs[k] = labs(e->l3loop.xr[k]);
+    if (e->l3loop.xrabs[k] > e->l3loop.xrmax)
+      e->l3loop.xrmax = e->l3loop.xrabs[k];
+  }
+}
+
+/* noise-allocation §4: the chosen attempt is no worse than attempt 0, and a
+ * granule with nothing over keeps its scalefactors at 0. */
+static void check_allocation_best(void) {
+  for (int r = 0; r < 9; r += 2)
+    for (int b = 0; b < 2; b++) {
+      int bitrate = b ? highest_bitrate(rates[r]) : lowest_bitrate(rates[r]);
+      shine_t e = open_encoder(rates[r], 2, SHINE_JOINT_STEREO, bitrate);
+      double gain = 1;
+      long position = 0;
+      int max_bits;
+      for (int frame = 0; frame < 5; frame++) {
+        encode_frame(e, music, &gain, &position, NULL);
+        max_bits = e->mean_bits / 2;
+        for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
+          for (int ch = 0; ch < 2; ch++) {
+            gr_info *gi = &e->side_info.gr[gr].ch[ch].tt;
+            scalefactors_t zero, chosen;
+            int q0, chosen_q;
+            int64_t d0, d;
+
+            prepare(e, gr, ch);
+            memset(&zero, 0, sizeof(zero));
+            if (fit(e, e->l3_enc[ch][gr], gi, max_bits, &zero, &q0) < 0)
+              continue;
+            d0 = distortion(e, gr, ch, &zero, q0);
+
+            shine_psy_allocate(e, e->l3_enc[ch][gr], gr, ch, max_bits);
+            chosen.scale = (int)gi->scalefac_scale;
+            for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
+              chosen.sf[sb] = (int)e->scalefactor.l[gr][ch][sb];
+            chosen_q = gi->quantizerStepSize;
+            d = distortion(e, gr, ch, &chosen, chosen_q);
+            check(ALLOCATION_BEST, d <= d0,
+                  "%d Hz %d kbps gr %d ch %d: D %lld, attempt 0 %lld", rates[r],
+                  bitrate, gr, ch, (long long)d, (long long)d0);
+
+            /* Nothing over: every band is allowed full scale. */
+            for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
+              e->psy->xmin[gr][ch][sb] = 40 * ONE;
+            shine_psy_allocate(e, e->l3_enc[ch][gr], gr, ch, max_bits);
+            for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
+              check(ALLOCATION_BEST, e->scalefactor.l[gr][ch][sb] == 0,
+                    "%d Hz: band %d amplified with nothing over", rates[r], sb);
+          }
+      }
+      shine_close(e);
+    }
+}
+
+/* noise-allocation §1-§2: the noise of each band against the reconstruction
+ * of the decoder's formula, in double precision. */
+static void check_noise_measure(void) {
+  for (int r = 0; r < 9; r += 4) {
+    shine_t e = open_encoder(rates[r], 1, SHINE_MONO, 64);
+    const int *sfb = shine_scale_fact_band_index[r];
+    double gain = 1;
+    long position = 0;
+
+    for (int frame = 0; frame < 4; frame++)
+      encode_frame(e, music, &gain, &position, NULL);
+    for (int scale = 0; scale < 2; scale++)
+      for (int q = -40; q <= 10; q += 7) {
+        scalefactors_t s;
+        int32_t noise[PSY_LONG_BANDS];
+
+        memset(&s, 0, sizeof(s));
+        s.scale = scale;
+        for (int sb = 0; sb < PSY_LONG_BANDS - 1; sb++)
+          s.sf[sb] = sb % 4;
+        prepare(e, 0, 0);
+        if (quantize_granule(e, e->l3_enc[0][0], q, &s) > PSY_IX_MAX)
+          continue;
+        band_noise(e, e->psy, e->l3_enc[0][0], q, &s, noise);
+        for (int sb = 0; sb < e->psy->xmin_bands; sb++) {
+          double step = q - 2 * (1 + scale) * s.sf[sb], sum = 0;
+
+          for (int k = sfb[sb]; k < sfb[sb + 1]; k++) {
+            double x = pow(e->l3_enc[0][0][k], 4.0 / 3) * pow(2, step / 4 + 31);
+            sum += (e->l3loop.xrabs[k] - x) * (e->l3loop.xrabs[k] - x);
+          }
+          sum *= exp2(PSY_LOG2_K_LONG / 65536.0);
+          /* Errors under 16 units vanish in the 64-bit sum. */
+          if (sum > 1e-14)
+            check(NOISE_MEASURE, fabs(db(noise[sb]) - 10 * log10(sum)) < 0.05,
+                  "%d Hz step %d band %d: noise %.3f dB, reconstruction "
+                  "gives %.3f dB",
+                  rates[r], (int)step, sb, db(noise[sb]), 10 * log10(sum));
+        }
+      }
+    shine_close(e);
+  }
+}
+
+/* allowed-distortion §2, recomputed from the model's outputs, on music and
+ * on a tone in the top bands at 8 kHz, which have no xmin and so keep their
+ * scalefactors at 0. */
+static void check_xmin(shine_t e) {
+  psy_model_t *m = e->psy;
+  int32_t weight = ath_weight(m);
+
+  for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
+    for (int ch = 0; ch < e->wave.channels; ch++) {
+      int c = m->ms ? ch + 2 : ch, ok = 1;
+
+      for (int sb = 0; sb < PSY_LONG_BANDS; sb++) {
+        int32_t en = m->en[gr][c][sb], x, expected;
+
+        if (sb >= xmin_bands(e)) {
+          ok &= m->xmin[gr][ch][sb] == PSY_LOG_ZERO &&
+                e->scalefactor.l[gr][ch][sb] == 0;
+          continue;
+        }
+        x = min32(en,
+                  ath_adjust(m, weight, m->ath_band[sb]) + psy_band_offset[sb]);
+        if (en != PSY_LOG_ZERO && m->thm[gr][c][sb] != PSY_LOG_ZERO)
+          x = max32(x, m->thm[gr][c][sb] + psy_band_offset[sb]);
+        expected = max32(x, PSY_LOG2_XMIN_FLOOR);
+        ok &= m->xmin[gr][ch][sb] == expected &&
+              m->xmin[gr][ch][sb] >= PSY_LOG2_XMIN_FLOOR;
+      }
+      check(ALLOWED_DISTORTION, ok, "%d Hz gr %d ch %d", e->wave.samplerate, gr,
+            ch);
+    }
+}
+
+static void check_allowed_distortion(void) {
+  for (int r = 0; r < 9; r += 2) {
+    shine_t e =
+        open_encoder(rates[r], 2, SHINE_JOINT_STEREO, lowest_bitrate(rates[r]));
+    double gain = 1;
+    long position = 0;
+
+    for (int frame = 0; frame < 6; frame++) {
+      encode_frame(e, music, &gain, &position, NULL);
+      check_xmin(e);
+    }
+    shine_close(e);
+  }
+  for (int b = 0; b < 2; b++) {
+    tone_t t = {570.5 * 8000 / 1152.0, 20000, 1, 8000};
+    shine_t e = open_encoder(8000, 1, SHINE_MONO, b ? 64 : 8);
+    long position = 0;
+
+    for (int frame = 0; frame < 8; frame++) {
+      encode_frame(e, tone, &t, &position, NULL);
+      check_xmin(e);
+    }
+    shine_close(e);
+  }
+}
+
+/* noise-allocation §4: only the bands that are over are raised, and the
+ * switch to scalefac_scale = 1 halves every scalefactor, rounded up. */
+static void check_amplify(void) {
+  scalefactors_t s;
+  int over[PSY_LONG_BANDS] = {0}, raised, only_over = 1;
+
+  memset(&s, 0, sizeof(s));
+  over[3] = over[12] = 1;
+  raised = amplify(&s, over, 21);
+  for (int sb = 0; sb < 21; sb++)
+    only_over &= s.sf[sb] == (over[sb] ? 1 : 0);
+  check(ALLOCATION_BEST, raised == 2 && only_over && !s.scale,
+        "raising bands 3 and 12 raised %d bands", raised);
+
+  for (int sb = 0; sb < 21; sb++)
+    s.sf[sb] = sb % 6;
+  s.sf[12] = 7; /* at its largest */
+  raised = amplify(&s, over, 21);
+  only_over = s.scale == 1;
+  for (int sb = 0; sb < 21; sb++) {
+    int halved = ((sb == 12 ? 7 : sb % 6) + 1) / 2;
+    only_over &= s.sf[sb] == halved + (over[sb] ? 1 : 0);
+  }
+  check(ALLOCATION_BEST, raised == 2 && only_over,
+        "the switch to scalefac_scale 1 left the wrong scalefactors");
+}
+
+/* noise-allocation §4: silence has step size and scalefactors 0, and codes
+ * nothing. part2_3_length may hold the frame's stuffing bits. */
+static void check_allocation_silence(void) {
+  for (int r = 0; r < 9; r += 3) {
+    shine_t e = open_encoder(rates[r], 2, SHINE_JOINT_STEREO, 64);
+    double gain = 1;
+    long position = 0;
+
+    /* After music, so that no field holds its initial 0 by chance. */
+    for (int frame = 0; frame < 3; frame++)
+      encode_frame(e, music, &gain, &position, NULL);
+    for (int frame = 0; frame < 3; frame++) {
+      encode_frame(e, silence, NULL, &position, NULL);
+      for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
+        for (int ch = 0; ch < 2; ch++) {
+          gr_info *gi = &e->side_info.gr[gr].ch[ch].tt;
+          int amplified = 0, silent = 1;
+
+          /* The filterbank's tail of the music comes first. */
+          for (int k = 0; k < GRANULE_SIZE; k++)
+            silent &= e->mdct_freq[ch][gr][k] == 0;
+          if (!silent)
+            continue;
+          for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
+            amplified |= e->scalefactor.l[gr][ch][sb] != 0;
+          check(ALLOCATION_SILENCE,
+                gi->quantizerStepSize == 0 && !amplified &&
+                    gi->global_gain == 210 + MDCT_HEADROOM_STEPS &&
+                    gi->part2_length == 0 && gi->big_values == 0 &&
+                    gi->count1 == 0,
+                "%d Hz gr %d ch %d: step %d, global_gain %u", rates[r], gr, ch,
+                gi->quantizerStepSize, gi->global_gain);
+        }
+    }
+    shine_close(e);
+  }
+}
+
 int main(void) {
   int status = 0, total = 0;
 
@@ -1251,6 +1618,12 @@ int main(void) {
   check_leading_silence();
   check_silence_state();
   check_independent_encoders();
+  check_allocation_bounds();
+  check_allocation_best();
+  check_allocation_silence();
+  check_amplify();
+  check_noise_measure();
+  check_allowed_distortion();
 
   for (int i = 0; i < CHECK_COUNT; i++) {
     printf("%-30s %6d run, %d failed\n", check_names[i], runs[i], failures[i]);
