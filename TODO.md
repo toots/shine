@@ -27,7 +27,8 @@ change does more than it claims. The commit message says which kind it is.
       gain-corrected SNR per item, on synthetic signals plus local music
       (e.g. FATE samples), with LAME at the same bitrate as reference. Not
       run in CI.
-- [ ] Perceptual score in the report: ViSQOL (audio mode) or PEAQ.
+- [x] Perceptual score in the report: the ODG of Advanced PEAQ, with
+      GstPEAQ.
 - [x] Decode with both FFmpeg and mpg123 in the report, to catch streams
       only one decoder tolerates.
 - [ ] Listening check before release for psychoacoustic changes.
