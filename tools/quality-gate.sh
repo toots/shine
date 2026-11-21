@@ -22,9 +22,10 @@ function compare(what, key, new, old) {
     failures++
   }
 }
+FNR == 1 { pass++ }
 $3 ~ /^shine-q[0-9]+$/ && $4 == "ffmpeg" && $8 ~ /^-?[0-9.]+$/ {
   key = $1 " " $2 " kbps " $3
-  if (FILENAME == ARGV[1]) { previous[key] = $8; next }
+  if (pass == 1) { previous[key] = $8; next }
   if (key in previous) compare("against the previous report", key, $8, previous[key])
   quality = substr($3, 8) + 0
   current[$1 " " $2 " " quality] = $8
