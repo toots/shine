@@ -82,7 +82,8 @@ none now, checked in CI by `tools/check-no-float.sh`.
 Each phase is fixed point, behind the quality setting, and measured with the
 quality report before the next one starts.
 
-- [ ] Decide the perceptual metric (ViSQOL proposed, PEAQ as alternative).
+- [x] Decide the perceptual metric: the ODG of Advanced PEAQ
+      (`doc/psy/tests.md` §4).
 - [ ] Phase 1: masking model in the MDCT domain (band energies, spreading,
       absolute threshold of hearing, tonality), integer `log2`.
 - [ ] Phase 2: noise allocation: outer loop raising scalefactors where noise

@@ -77,5 +77,5 @@ The thresholds are not absolute physical quantities. Their level rests on an
 assumed playback level ([ath.md](ath.md) §1) and on offsets tuned together
 with the allocator ([allowed-distortion.md](allowed-distortion.md)). Every
 **tuning** parameter is a recommended starting point, to be confirmed by the
-metric report ([tests.md](tests.md) §4). The perceptual metric is not chosen
-yet. Rules that need a perceptual judgement say so.
+metric report ([tests.md](tests.md) §4), whose perceptual score is the ODG of
+Advanced PEAQ. Rules that need a perceptual judgement say so.
