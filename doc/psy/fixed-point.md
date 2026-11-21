@@ -96,3 +96,4 @@ point. Its output is the shared input of the library and of the float oracle
 | Attack filter | Q15 taps on 16-bit input samples, 32-bit accumulators, exact. |
 | Attack peaks and ratios | integers; ratios as cross-products. |
 | Allowed distortion | log domain, returned to the loop in the form the loop quantises against. |
+| Noise allocation | reconstruction from a generated `ix^(4/3)` table and the step's `2^(q/4)`; squared errors summed in 64 bits per band, then `log2`, compared with `xmin` and summed into `D` in the log domain. |
