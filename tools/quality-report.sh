@@ -1,8 +1,15 @@
 #!/bin/sh
-# Quality report (TODO.md, quality gates): output level and gain-corrected
-# SNR per item, bitrate and quality level, decoded with FFmpeg and, when
-# installed, mpg123, with LAME at the same bitrate as reference. Not run in
-# CI. The perceptual score is not part of it yet: the metric is not chosen.
+# Quality report (TODO.md, quality gates): output level, gain-corrected SNR
+# and the perceptual score per item, bitrate and quality level, decoded with
+# FFmpeg and, when installed, mpg123, with LAME at the same bitrate as
+# reference. Not run in CI.
+#
+# The perceptual score is the ODG of Advanced PEAQ (ITU-R BS.1387), from 0,
+# imperceptible, to -4, very annoying. It is computed by the peaq command of
+# GstPEAQ (https://github.com/HSU-ANT/gstpeaq), found in PATH or given as
+# PEAQ, with its plugin in GST_PLUGIN_PATH; the column is "-" without it.
+# GstPEAQ does not meet the standard's conformance tolerances: compare scores
+# from the same installation only.
 #
 # tools/quality-report.sh [-b "64 128"] [-q "0 1"] [-m j|s|d] [-s] [item.wav...]
 #
@@ -28,12 +35,13 @@ while getopts b:q:m:s option; do
   q) qualities=$OPTARG ;;
   m) mode=$OPTARG ;;
   s) synthetic=1 ;;
-  *) sed -n '7,17p' "$0" >&2; exit 2 ;;
+  *) sed -n '14,24p' "$0" >&2; exit 2 ;;
   esac
 done
 shift $((OPTIND - 1))
 
 shineenc=${SHINEENC:-./shineenc}
+peaq=${PEAQ:-$(command -v peaq || true)}
 command -v ffmpeg >/dev/null || { echo "ffmpeg is required" >&2; exit 2; }
 [ -x "$shineenc" ] || { echo "$shineenc is not executable" >&2; exit 2; }
 if [ -z "$qualities" ]; then
@@ -68,23 +76,35 @@ decode_mpg123() {
   mpg123 -q -w "$work/mpg123.wav" "$1" && decode_ffmpeg "$work/mpg123.wav" "$2"
 }
 
-# One line: item, bitrate, encoder, decoder, level, SNR, delay.
+# The ODG of the decoded PCM, delayed by $1 samples. PEAQ does not align
+# its inputs: the decoded stream is trimmed to the reference.
+odg() {
+  [ -n "$peaq" ] || { echo -; return; }
+  frames=$(($(wc -c <"$work/reference.raw") / 2 / channels))
+  ffmpeg -nostdin -loglevel error -y -f s16le -ar "$rate" -ac "$channels" \
+    -i "$work/decoded.raw" \
+    -af "atrim=start_sample=$1:end_sample=$(($1 + frames))" "$work/aligned.wav"
+  "$peaq" --advanced "$work/item.wav" "$work/aligned.wav" 2>/dev/null |
+    sed -n 's/^Objective Difference Grade: //p'
+}
+
+# One line: item, bitrate, encoder, decoder, level, SNR, delay, ODG.
 measure() {
   for decoder in ffmpeg mpg123; do
     [ $decoder = ffmpeg ] || command -v mpg123 >/dev/null || continue
     if decode_$decoder "$work/out.mp3" "$work/decoded.raw" 2>/dev/null &&
        result=$("$work/compare_pcm" "$channels" "$work/reference.raw" \
                 "$work/decoded.raw"); then
-      printf '%-28s %5s  %-8s %-7s %7s %7s %6s\n' "$item" "$bitrate" "$1" \
-        $decoder $result
+      printf '%-28s %5s  %-8s %-7s %7s %7s %6s %7s\n' "$item" "$bitrate" "$1" \
+        $decoder $result "$(odg "${result##* }")"
     else
       printf '%-28s %5s  %-8s %-7s  failed\n' "$item" "$bitrate" "$1" $decoder
     fi
   done
 }
 
-printf '%-28s %5s  %-8s %-7s %7s %7s %6s\n' item kbps encoder decoder \
-  "level" "SNR" delay
+printf '%-28s %5s  %-8s %-7s %7s %7s %6s %7s\n' item kbps encoder decoder \
+  "level" "SNR" delay ODG
 for path in "$@"; do
   item=$(basename "$path")
   set -- $(ffprobe -v error -select_streams a:0 -show_entries \
