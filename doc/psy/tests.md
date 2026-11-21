@@ -78,7 +78,9 @@ fixed-point behaviour.
 Every audio-changing change, including a change to any **tuning** parameter,
 comes with the report of `TODO.md`: output level, gain-corrected SNR and the
 perceptual score per item, compared with the previous commit. The score MUST
-NOT fall by more than `ODG_TOLERANCE` = 0.05 on any item.
+NOT fall by more than `ODG_TOLERANCE` = 0.05 on any item, except where both
+scores are below `ODG_FLOOR` = −3.0: the scale saturates there (below), and a
+difference between two such scores does not tell which encode is better.
 
 The perceptual score is the Objective Difference Grade of the advanced
 version of PEAQ (ITU-R BS.1387), from 0 (imperceptible) to −4 (very
@@ -107,4 +109,4 @@ Rules that say they need a perceptual judgement are settled by it:
   loop ([allowed-distortion.md](allowed-distortion.md)).
 
 A higher quality level MUST NOT score worse than a lower one by more than
-`ODG_TOLERANCE` on any item of the corpus.
+`ODG_TOLERANCE` on any item of the corpus, with the same exception.

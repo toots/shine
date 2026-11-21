@@ -11,13 +11,16 @@
 # GstPEAQ does not meet the standard's conformance tolerances: compare scores
 # from the same installation only.
 #
-# tools/quality-report.sh [-b "64 128"] [-q "0 1"] [-m j|s|d] [-s] [item.wav...]
+# tools/quality-report.sh [-b "64 128"] [-q "0 1"] [-m j|s|d] [-s] [-g]
+#                          [-j jobs] [item.wav...]
 #
 #   -b  bitrates in kbps (default: 64 128 192)
 #   -q  quality levels (default: every level)
 #   -m  stereo mode for two-channel items: j joint (default), s, d dual
 #   -s  add synthetic items made by FFmpeg: a tone, a sweep, pink noise,
 #       bursts on one channel against a tone on the other
+#   -g  only what tools/quality-gate.sh reads: shine, decoded by FFmpeg
+#   -j  items measured in parallel (default: 1); lines then come unordered
 #
 # Items are any files FFmpeg reads. SHINEENC is the encoder to measure,
 # ./shineenc by default: run the script on two builds and compare the
@@ -29,13 +32,19 @@ bitrates="64 128 192"
 qualities=
 mode=j
 synthetic=
-while getopts b:q:m:s option; do
+gate=
+jobs=1
+header=1
+while getopts b:q:m:sgj:H option; do
   case $option in
   b) bitrates=$OPTARG ;;
   q) qualities=$OPTARG ;;
   m) mode=$OPTARG ;;
   s) synthetic=1 ;;
-  *) sed -n '14,24p' "$0" >&2; exit 2 ;;
+  g) gate=-g ;;
+  j) jobs=$OPTARG ;;
+  H) header= ;; # a parallel child: no header
+  *) sed -n '14,27p' "$0" >&2; exit 2 ;;
   esac
 done
 shift $((OPTIND - 1))
@@ -91,6 +100,7 @@ odg() {
 # One line: item, bitrate, encoder, decoder, level, SNR, delay, ODG.
 measure() {
   for decoder in ffmpeg mpg123; do
+    [ $decoder = ffmpeg ] || [ -z "$gate" ] || continue
     [ $decoder = ffmpeg ] || command -v mpg123 >/dev/null || continue
     if decode_$decoder "$work/out.mp3" "$work/decoded.raw" 2>/dev/null &&
        result=$("$work/compare_pcm" "$channels" "$work/reference.raw" \
@@ -103,8 +113,14 @@ measure() {
   done
 }
 
-printf '%-28s %5s  %-8s %-7s %7s %7s %6s %7s\n' item kbps encoder decoder \
-  "level" "SNR" delay ODG
+[ -z "$header" ] ||
+  printf '%-28s %5s  %-8s %-7s %7s %7s %6s %7s\n' item kbps encoder decoder \
+    "level" "SNR" delay ODG
+if [ "$jobs" -gt 1 ] && [ $# -gt 1 ]; then
+  printf '%s\n' "$@" | SHINEENC=$shineenc PEAQ=$peaq xargs -P "$jobs" -I{} \
+    "$0" -H $gate -b "$bitrates" -q "$qualities" -m "$mode" {}
+  exit
+fi
 for path in "$@"; do
   item=$(basename "$path")
   set -- $(ffprobe -v error -select_streams a:0 -show_entries \
@@ -127,7 +143,7 @@ for path in "$@"; do
           "shine-q$quality"
       fi
     done
-    if command -v lame >/dev/null; then
+    if [ -z "$gate" ] && command -v lame >/dev/null; then
       lame_mode=$mode
       [ "$channels" = 2 ] || lame_mode=m
       lame --silent -b "$bitrate" -m "$lame_mode" "$work/item.wav" \

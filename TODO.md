@@ -29,6 +29,9 @@ change does more than it claims. The commit message says which kind it is.
       run in CI.
 - [x] Perceptual score in the report: the ODG of Advanced PEAQ, with
       GstPEAQ.
+- [x] Gate script (`tools/quality-gate.sh`) on two reports, and
+      `tools/quality-corpus.sh` to derive every sample rate family from
+      music files.
 - [x] Decode with both FFmpeg and mpg123 in the report, to catch streams
       only one decoder tolerates.
 - [ ] Listening check before release for psychoacoustic changes.
@@ -96,6 +99,15 @@ quality report before the next one starts.
       `slen` and MPEG-2 LSF `scalefac_compress` coding. Left: retune
       `MASK_ADJUST`, `ATH_LOWER`, `ATH_CURVE` and `TONALITY_SCALE` with the
       metric; `scfsi` and `preflag`, to save bits.
+- [ ] Quality 1 fails the gate against quality 0 at low sample rates: up to
+      0.08 ODG lost on single items at 16 kHz (80-96 kbps) and 11.025 kHz
+      (48-64 kbps), in joint and plain stereo alike, so in the allocation
+      and not in M/S. The best `MASK_ADJUST` also depends on the sample rate
+      in a way neither the bitrate nor the bits per sample captures: values
+      tuned at 44.1 kHz gain up to 0.4 ODG there and lose up to 0.6 at
+      32 kHz, and 22.05, 16 and 11.025 kHz pull opposite ways on one row.
+      Find what in the model or the allocator depends on the rate before
+      tuning.
 - [ ] Phase 3: restore the bit reservoir (`ResvMax` is always 0), with
       perceptual entropy driving allocation. Remove or define the
       `shine_ResvFrameBegin` declaration.
