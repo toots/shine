@@ -113,11 +113,11 @@ int shine_check_config(int samplerate, int bitrate);
  * Checking for valid configuration values is left for the application to
  * implement. You can use the `shine_find_bitrate_index` and
  * `shine_find_samplerate_index` functions or the `bitrates` and
- * `samplerates` arrays above to check those parameters. Mono and stereo
- * mode for wave and mpeg should also be consistent with each other.
+ * `samplerates` arrays above to check those parameters. `wave.channels` must
+ * be 1 or 2, with `mpeg.mode` SHINE_MONO exactly when it is 1.
  *
- * This function returns NULL if it was not able to allocate memory data for
- * the encoder. */
+ * This function returns NULL on an invalid configuration, or if it was not
+ * able to allocate memory data for the encoder. */
 shine_t shine_initialise(const shine_config_t *config);
 
 /* Maximum possible value for the function below. */

@@ -15,6 +15,9 @@ x.y.z ()
     as `int16_t *const *` and `shine_encode_buffer_interleaved()` as
     `const int16_t *`: the samples are not modified.
   - `layer3.h` can be included from C++.
+* `shine_initialise()` returns NULL unless `wave.channels` is 1 or 2 and
+  `mpeg.mode` is `SHINE_MONO` exactly when it is 1. More channels overflowed
+  the encoder's state, and a mismatched mode gave invalid streams.
 * Remove the ARM and MIPS assembly multiplies: current compilers generate
   the same instructions from C. Output on those architectures now matches
   every other.

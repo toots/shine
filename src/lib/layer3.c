@@ -86,6 +86,14 @@ shine_global_config *shine_initialise(const shine_config_t *pub_config) {
                          pub_config->mpeg.bitrate) < 0)
     return NULL;
 
+  /* The channel count sizes the per-channel state, and the mode written in
+   * the header must describe the same number of channels. */
+  if (pub_config->wave.channels < 1 || pub_config->wave.channels > 2 ||
+      pub_config->mpeg.mode < SHINE_STEREO ||
+      pub_config->mpeg.mode > SHINE_MONO ||
+      (pub_config->wave.channels == 1) != (pub_config->mpeg.mode == SHINE_MONO))
+    return NULL;
+
   config = calloc(1, sizeof(shine_global_config));
   if (config == NULL)
     return config;
