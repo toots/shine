@@ -105,88 +105,13 @@ of 7 runs (5 for LAME), in multiples of realtime.
 | | 44.1 kHz stereo 128 kbps (joint) | 44.1 kHz stereo 320 kbps | 22.05 kHz mono 64 kbps |
 |---|---|---|---|
 | `shineenc` | 445x | 382x | 1360x |
-| `shineenc`, before the 2026 rework | 316x | 283x | 1039x |
 | WebAssembly (Node 26) | 201x | 184x | 730x |
-| WebAssembly, before the 2026 rework (Emscripten) | 192x | 179x | 710x |
 | LAME 4.0 `-q 7` | 267x | 309x | 1014x |
 | LAME 4.0 `-q 2` | 68x | 81x | 192x |
 
-"Before the 2026 rework" is commit `ab5e352`. Both `shineenc` builds use
-`CFLAGS=-O2`. LAME runs with `-b <bitrate>` and `-m j`, `-m s` or `-m m`:
-`-q 2` is its default quality, `-q 7` its fastest setting that still uses a
-psychoacoustic model, which shine does not have.
-
-### ⚠ The following are outdated tests ⚠
-
-On a macbook pro (`arm64`/M1 pro, `FPU`, December 30, 2022):
-
-Lame, `88.7x` realtime:
-```bash
-LAME 3.100 64bits (http://lame.sf.net)
-Using polyphase lowpass filter, transition band: 16538 Hz - 17071 Hz
-Encoding /tmp/decoded.wav to /tmp/lame.mp3
-Encoding as 44.1 kHz j-stereo MPEG-1 Layer III (11x) 128 kbps qval=3
-    Frame          |  CPU time/estim | REAL time/estim | play/CPU |    ETA
- 12203/12203 (100%)|    0:03/    0:03|    0:04/    0:04|   88.773x|    0:00
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-   kbps        LR    MS  %     long switch short %
-  128.0       32.6  67.4        96.4   1.9   1.7
-Writing LAME Tag...done
-ReplayGain: -9.3dB
-lame -b 128 /tmp/decoded.wav /tmp/lame.mp3  3.55s user 0.05s system 99% cpu 3.609 total
-```
-
-Shine, `318.0x` realtime:
-```
-shineenc (Liquidsoap version)
-WAVE PCM Data, stereo 44100Hz 16bit, duration: 00:05:18
-MPEG-I layer III, stereo  Psychoacoustic Model: Shine
-Bitrate: 128 kbps  De-emphasis: none   Original
-Encoding "/tmp/bla.wav" to "/tmp/shine.mp3"
-Finished in 00:00:01 (318.0x realtime)
-```
-
-On a [Raspberry Pi](http://www.raspberrypi.org/) (`ARM`, `FPU`):
-
-Lame, `1.8x` realtime:
-```bash
-pi@raspberrypi ~ $ lame bla.wav bla.mp3
-LAME 3.99.5 32bits (http://lame.sf.net)
-Using polyphase lowpass filter, transition band: 16538 Hz - 17071 Hz
-Encoding bla.wav to bla.mp3
-Encoding as 44.1 kHz j-stereo MPEG-1 Layer III (11x) 128 kbps qval=3
-    Frame          |  CPU time/estim | REAL time/estim | play/CPU |    ETA
- 12987/12987 (100%)|    3:06/    3:06|    3:06/    3:06|   1.8216x|    0:00
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-   kbps        LR    MS  %     long switch short %
-  128.0        0.1  99.9        89.1   6.1   4.9
-Writing LAME Tag...done
-ReplayGain: -10.5dB
-```
-
-Shine, `3.6x` realtime:
-```bash
-pi@raspberrypi ~ $ shineenc bla.wav bla.mp3
-shineenc (Liquidsoap version)
-WAVE PCM Data, stereo 44100Hz 16bit, duration: 00:05:39
-MPEG-I layer III, stereo  Psychoacoustic Model: Shine
-Bitrate: 128 kbps  De-emphasis: none   Original
-Encoding "bla.wav" to "bla.mp3"
-Finished in 00:01:35 (3.6x realtime)
-```
-
-On a Google Nexus 5 (`ARM`, `FPU`):
-
-Shine, `14s`, `24.2x` realtime:
-```bash
-u0_a65@hammerhead:/mnt/sdcard $ shineenc bla.wav bla.mp3
-shineenc (Liquidsoap version)
-WAVE PCM Data, stereo 44100Hz 16bit, duration: 00:05:39
-MPEG-I layer III, stereo  Psychoacoustic Model: Shine
-Bitrate: 128 kbps  De-emphasis: none   Original
-Encoding "bla.wav" to "bla.mp3"
-Finished in 00:00:14 (24.2x realtime)
-```
+`shineenc` is built with `CFLAGS=-O2`. LAME runs with `-b <bitrate>` and
+`-m j`, `-m s` or `-m m`: `-q 2` is its default quality, `-q 7` its fastest
+setting that still uses a psychoacoustic model, which shine does not have.
 
 Limitations
 -----------
