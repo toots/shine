@@ -52,15 +52,13 @@ void shine_mdct_sub(shine_global_config *config, int stride) {
          * domain.
          */
         for (k = 18; k--;) {
-          /* Full scale input in phase across subbands, e.g. a square wave,
-           * exceeds 32 bits: accumulate in 64 and saturate. */
-          int64_t sum = 0;
+          /* With the headroom in shine_mdct_cosine, the sum of the absolute
+           * values of the terms is at most 0.705 * 2**31 for any input. */
+          int32_t sum = 0;
 
           for (j = 0; j < 36; j++)
             sum += mul(mdct_in[j], shine_mdct_cosine[k][j]);
-          mdct_enc[band][k] = sum > INT32_MAX   ? INT32_MAX
-                              : sum < INT32_MIN ? INT32_MIN
-                                                : (int32_t)sum;
+          mdct_enc[band][k] = sum;
         }
 
         /* Perform aliasing reduction butterfly */

@@ -137,7 +137,8 @@ void shine_iteration_loop(shine_global_config *config) {
             shine_outer_loop(max_bits, ix, gr, ch, config);
 
       shine_ResvAdjust(cod_info, config);
-      cod_info->global_gain = cod_info->quantizerStepSize + 210;
+      cod_info->global_gain =
+          cod_info->quantizerStepSize + 210 + MDCT_HEADROOM_STEPS;
 
     } /* for gr */
   } /* for ch */
