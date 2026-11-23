@@ -99,10 +99,10 @@ void shine_mdct_sub(shine_global_config *config, int stride) {
         }
       }
       if (block_type == BLOCK_SHORT)
-        reorder_short(short_lines,
-                      shine_scale_fact_band_index_short
-                          [config->mpeg.samplerate_index],
-                      config->mdct_freq[ch][gr]);
+        reorder_short(
+            short_lines,
+            shine_scale_fact_band_index_short[config->mpeg.samplerate_index],
+            config->mdct_freq[ch][gr]);
     }
 
     /* Save latest granule's subband samples to be used in the next mdct call */

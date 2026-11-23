@@ -30,9 +30,9 @@ static void fill(int16_t *samples, int count, int channels, int frame,
                  unsigned *seed) {
   for (int i = 0; i < count; i++)
     for (int ch = 0; ch < channels; ch++)
-      samples[i * channels + ch] = frame % 9 >= 7
-                                       ? noise(seed)
-                                       : (int16_t)(((i + 7 * ch) % 32 - 16) * 20);
+      samples[i * channels + ch] =
+          frame % 9 >= 7 ? noise(seed)
+                         : (int16_t)(((i + 7 * ch) % 32 - 16) * 20);
 }
 
 static int used_reservoir;
@@ -43,7 +43,8 @@ static int check_stream(const shine_config_t *config, const char *name,
   const int mpeg1 = config->wave.samplerate >= 32000;
   const int channels = config->wave.channels;
   const int padded = (mpeg1 ? 144 : 72) * config->mpeg.bitrate * 1000 %
-                         config->wave.samplerate != 0;
+                         config->wave.samplerate !=
+                     0;
   const int side_bytes =
       4 + (mpeg1 ? (channels == 1 ? 17 : 32) : (channels == 1 ? 9 : 17));
   stream_t stream = {NULL, 0, 0};
@@ -75,8 +76,8 @@ static int check_stream(const shine_config_t *config, const char *name,
     } else
       data = shine_flush(encoder, &written);
     if (written && (data[0] != 0xff || (data[1] & 0xe0) != 0xe0)) {
-      printf("FAIL %s quality %d: call %d does not return whole frames\n",
-             name, quality, frame);
+      printf("FAIL %s quality %d: call %d does not return whole frames\n", name,
+             quality, frame);
       goto end;
     }
     if (written) {

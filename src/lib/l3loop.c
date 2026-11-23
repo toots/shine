@@ -149,7 +149,6 @@ void shine_iteration_loop(shine_global_config *config) {
       cod_info->global_gain =
           cod_info->quantizerStepSize + 210 + MDCT_HEADROOM_STEPS +
           (cod_info->block_type == BLOCK_SHORT ? SHORT_HEADROOM_STEPS : 0);
-
     }
   }
 
@@ -401,8 +400,8 @@ void subdivide(gr_info *cod_info, shine_global_config *config) {
     unsigned boundary =
         cod_info->block_type == BLOCK_SHORT
             ? 36
-            : (unsigned)shine_scale_fact_band_index[config->mpeg
-                                                        .samplerate_index][8];
+            : (unsigned)
+                  shine_scale_fact_band_index[config->mpeg.samplerate_index][8];
     unsigned bigvalues_region = 2 * cod_info->big_values;
 
     cod_info->address1 =

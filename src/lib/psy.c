@@ -552,8 +552,8 @@ int shine_psy_initialise(shine_global_config *config) {
   model->adapt_ath = 1;
   model->adjust_factor = PSY_ADJUST_INITIAL;
   for (int i = 0; i < PSY_PE_HISTORY; i++)
-    model->pe_history[i] = (700LL << 8) * config->mpeg.granules_per_frame *
-                           config->wave.channels;
+    model->pe_history[i] =
+        (700LL << 8) * config->mpeg.granules_per_frame * config->wave.channels;
   model->adjust_limit = PSY_ADJUST_ONE;
 
   /* Nearest table bitrate, ties to the higher one. */
@@ -700,8 +700,8 @@ static int fit(shine_global_config *config, int *ix, gr_info *gi, int budget,
                const scalefactors_t *s, int *q) {
   /* A short block's global_gain is SHORT_HEADROOM_STEPS above its step. */
   int low = STEP_MIN - 1, bits;
-  int high = MAX_STEPSIZE -
-             (gi->block_type == BLOCK_SHORT ? SHORT_HEADROOM_STEPS : 0);
+  int high =
+      MAX_STEPSIZE - (gi->block_type == BLOCK_SHORT ? SHORT_HEADROOM_STEPS : 0);
 
   if (quantize_granule(config, ix, high, s) > PSY_IX_MAX ||
       shine_count_bits(ix, gi, config) > budget)
@@ -802,8 +802,8 @@ void shine_psy_granule_bits(shine_global_config *config, int gr) {
 
   /* demand - mean, with demand = mean * T * mode_gr * pe / F. */
   if (model->pe_filter > 0)
-    change = mean * PE_TAPS_SUM * config->mpeg.granules_per_frame *
-                 pe_granule / model->pe_filter -
+    change = mean * PE_TAPS_SUM * config->mpeg.granules_per_frame * pe_granule /
+                 model->pe_filter -
              mean;
   limit = reservoir >> RESV_SPEND_SHIFT;
   change = change < 0 ? 0 : change < limit ? change : limit;
@@ -944,9 +944,8 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
       else
         high = middle;
     }
-    if (low > best_q &&
-        under_at(config, ix, gi, low, &best_s, xmin, en, floor_bits, best_bits,
-                 &bits)) {
+    if (low > best_q && under_at(config, ix, gi, low, &best_s, xmin, en,
+                                 floor_bits, best_bits, &bits)) {
       best_q = low;
       best_bits = bits;
       best_gi = *gi;

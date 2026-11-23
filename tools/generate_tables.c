@@ -58,12 +58,15 @@ static void mdct_cosine(void) {
 /* Window of block type `type` (ISO 11172-3 2.4.3.4.10.3), sample i of 36. */
 static double block_window(int type, int i) {
   if (type == 1)
-    return i < 18 ? sin(PI36 * (i + 0.5))
-                  : i < 24 ? 1 : i < 30 ? sin(PI / 12 * (i - 18 + 0.5)) : 0;
+    return i < 18   ? sin(PI36 * (i + 0.5))
+           : i < 24 ? 1
+           : i < 30 ? sin(PI / 12 * (i - 18 + 0.5))
+                    : 0;
   if (type == 3)
-    return i < 6 ? 0
-                 : i < 12 ? sin(PI / 12 * (i - 6 + 0.5))
-                          : i < 18 ? 1 : sin(PI36 * (i + 0.5));
+    return i < 6    ? 0
+           : i < 12 ? sin(PI / 12 * (i - 6 + 0.5))
+           : i < 18 ? 1
+                    : sin(PI36 * (i + 0.5));
   return sin(PI36 * (i + 0.5));
 }
 
@@ -73,8 +76,7 @@ static void mdct_cosine_switching(void) {
   printf("/* As shine_mdct_cosine, with the windows of block types 1 (start)\n"
          " * and 3 (stop). */\n");
   for (int type = 1; type <= 3; type += 2) {
-    printf("const int32_t shine_mdct_cosine_%s[18][36] = {\n",
-           names[type / 2]);
+    printf("const int32_t shine_mdct_cosine_%s[18][36] = {\n", names[type / 2]);
     for (int m = 0; m < 18; m++) {
       printf("    {");
       for (int k = 0; k < 36; k++)

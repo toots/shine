@@ -1292,8 +1292,8 @@ static int coding_bits(int mpeg1, unsigned compress, const int32_t *sf,
 
 /* perceptual-entropy §3: k[i] / 5. */
 static const double spec_taps[9] = {-0.0207887, -0.0378413, -0.0432472,
-                                  -0.031183,  0,          0.0467745,
-                                  0.10091,    0.151365,   0.187098};
+                                    -0.031183,  0,          0.0467745,
+                                    0.10091,    0.151365,   0.187098};
 
 /* The filter output F on the model's PE history. */
 static double pe_filter(const psy_model_t *m) {
@@ -1318,9 +1318,10 @@ static double granule_budget(shine_t e, int gr) {
   for (int ch = 0; ch < channels; ch++)
     pe += m->pe[gr][(m->ms ? 2 : 0) + ch];
   /* The smoothed PE, over PE_STEADY per channel. */
-  demand = filtered > 0 ? mean * (pe * 670 * 5 * granules * channels / filtered) /
-                              (670 * 5 / taps * channels)
-                        : mean;
+  demand = filtered > 0
+               ? mean * (pe * 670 * 5 * granules * channels / filtered) /
+                     (670 * 5 / taps * channels)
+               : mean;
   bits = mean + fmin(fmax(0, demand - mean), reservoir / 2);
   return fmin(bits, channels * 4095);
 }
@@ -1377,14 +1378,14 @@ static void check_surplus(shine_t e, int gr, int ch, int max_bits,
           fitted_bits <= floor_bits ? "no room" : "a band over");
     return;
   }
-  check(ALLOCATION_SURPLUS,
-        q >= fitted_q &&
-            (q == fitted_q ||
-             under(e, gr, ch, &s, q, floor_bits, fitted_bits)) &&
-            (q == MAX_STEPSIZE ||
-             !under(e, gr, ch, &s, q + 1, floor_bits, fitted_bits)),
-        "%s gr %d ch %d: step %d after %d, at least %d bits of %d", name, gr,
-        ch, q, fitted_q, floor_bits, fitted_bits);
+  check(
+      ALLOCATION_SURPLUS,
+      q >= fitted_q &&
+          (q == fitted_q || under(e, gr, ch, &s, q, floor_bits, fitted_bits)) &&
+          (q == MAX_STEPSIZE ||
+           !under(e, gr, ch, &s, q + 1, floor_bits, fitted_bits)),
+      "%s gr %d ch %d: step %d after %d, at least %d bits of %d", name, gr, ch,
+      q, fitted_q, floor_bits, fitted_bits);
 }
 
 static void check_granule(shine_t e) {
@@ -1446,7 +1447,8 @@ static void check_granule(shine_t e) {
       prepare(e, gr, ch);
       check_surplus(e, gr, ch, max_bits, reservoir, name);
       /* What the encoder's reservoir became after this channel. */
-      reservoir += e->mean_bits / e->wave.channels - (e->l3loop.xrmax ? bits : 0);
+      reservoir +=
+          e->mean_bits / e->wave.channels - (e->l3loop.xrmax ? bits : 0);
 
       /* noise-allocation §2: never over, so never amplified. */
       for (int sb = 0; sb < xmin_bands(e); sb++)
@@ -1765,9 +1767,9 @@ static void check_reservoir_steady(void) {
 static double quiet_then_burst(long n, int ch, const void *context) {
   const tone_t *t = context;
 
-  return n >= (long)t->right ? 30000 * noise_at(n, ch)
-                             : 300 * sin(2 * M_PI * t->frequency * n /
-                                         t->samplerate);
+  return n >= (long)t->right
+             ? 30000 * noise_at(n, ch)
+             : 300 * sin(2 * M_PI * t->frequency * n / t->samplerate);
 }
 
 /* reservoir §3: a burst after a quiet passage gets more than the mean, from
@@ -1815,9 +1817,9 @@ static void check_stream_layout(void) {
 
   for (int r = 0; r < 9; r++)
     for (int mode = 0; mode < 2; mode++) {
-      shine_t e = open_encoder(rates[r], mode ? 2 : 1,
-                               mode ? SHINE_JOINT_STEREO : SHINE_MONO,
-                               r < 3 ? 96 : 32);
+      shine_t e =
+          open_encoder(rates[r], mode ? 2 : 1,
+                       mode ? SHINE_JOINT_STEREO : SHINE_MONO, r < 3 ? 96 : 32);
       const int header_bytes = e->sideinfo_len / 8;
       int16_t samples[2 * SHINE_MAX_SAMPLES];
       int out_size = 0, main_size = 0, laid_size = 0, frames = 0, position = 0;
@@ -1871,8 +1873,8 @@ static void check_stream_layout(void) {
             "%d Hz mode %d: the main data is not laid out in order", rates[r],
             mode);
       check(STREAM_LAYOUT, main_size > laid_size - 2000 && main_size > 1000,
-            "%d Hz mode %d: %d bytes of main data in %d of capacity",
-            rates[r], mode, main_size, laid_size);
+            "%d Hz mode %d: %d bytes of main data in %d of capacity", rates[r],
+            mode, main_size, laid_size);
       shine_close(e);
     }
 }
@@ -1884,8 +1886,8 @@ static void check_block_sequence(void) {
 
   for (int r = 0; r < 9; r++)
     for (int p = 0; p < 5; p++) {
-      shine_t e = open_encoder(rates[r], 2, SHINE_JOINT_STEREO,
-                               r < 3 ? 128 : 32);
+      shine_t e =
+          open_encoder(rates[r], 2, SHINE_JOINT_STEREO, r < 3 ? 128 : 32);
       unsigned previous = BLOCK_NORM;
       double gain = 1;
       long position = 0;
@@ -1945,8 +1947,8 @@ static void check_pe_smoothing(void) {
               e->psy->pe_filter > 0 && pe_filter(e->psy) > 0 &&
                   fabs(e->psy->pe_filter / 65536.0 / pe_filter(e->psy) - 1) <
                       1e-4,
-              "%d Hz signal %d frame %d: F is %.1f, expected %.1f", rates[r],
-              s, frame, e->psy->pe_filter / 65536.0, pe_filter(e->psy));
+              "%d Hz signal %d frame %d: F is %.1f, expected %.1f", rates[r], s,
+              frame, e->psy->pe_filter / 65536.0, pe_filter(e->psy));
       }
       shine_close(e);
     }

@@ -601,11 +601,12 @@ static void compare_allocation(const oracle_t *o, shine_t encoder,
         const int nch = encoder->wave.channels;
         double mean = encoder->mean_bits;
         double reservoir = encoder->psy->reservoir[g];
-        double pe = o->pe[g][o->ms ? 2 : 0] +
-                    (nch == 2 ? o->pe[g][o->ms ? 3 : 1] : 0);
+        double pe =
+            o->pe[g][o->ms ? 2 : 0] + (nch == 2 ? o->pe[g][o->ms ? 3 : 1] : 0);
         double smoothed = o->pe_filtered > 0
-                              ? pe * 670 * 5 * encoder->mpeg.granules_per_frame *
-                                    nch / o->pe_filtered
+                              ? pe * 670 * 5 *
+                                    encoder->mpeg.granules_per_frame * nch /
+                                    o->pe_filtered
                               : 739.3719 * nch;
         double demand = mean * smoothed / (739.3719 * nch), bits;
 
@@ -619,8 +620,7 @@ static void compare_allocation(const oracle_t *o, shine_t encoder,
             tally->budget_failures++ < 3 && verbose)
           printf("  %s: gr %d: %d bits, oracle %.1f (mean %.0f, reservoir "
                  "%.0f)\n",
-                 name, g, encoder->psy->granule_bits[g], bits, mean,
-                 reservoir);
+                 name, g, encoder->psy->granule_bits[g], bits, mean, reservoir);
       }
 
       /* noise-allocation.md §3.1, on the granule's bits. */
@@ -660,10 +660,10 @@ static void compare_allocation(const oracle_t *o, shine_t encoder,
         if (encoder->l3loop.xrabs[k] > encoder->l3loop.xrmax)
           encoder->l3loop.xrmax = encoder->l3loop.xrabs[k];
       }
-      outcome = peak == 0 ? 0
-                          : oracle_allocate(encoder, xr, en, o->xmin[g][ch],
-                                            bands, max_bits, &s, &q,
-                                            &fitted_bits);
+      outcome = peak == 0
+                    ? 0
+                    : oracle_allocate(encoder, xr, en, o->xmin[g][ch], bands,
+                                      max_bits, &s, &q, &fitted_bits);
       /* What the encoder's reservoir can take after this channel. */
       {
         int channel_room = room, used = 0;
@@ -687,14 +687,13 @@ static void compare_allocation(const oracle_t *o, shine_t encoder,
         if (outcome == 2 && channel_room > 0) {
 
           tally->surplus += encoder_q > q;
-          step_agrees =
-              encoder_q >= q &&
-              (encoder_q == q ||
-               oracle_under(encoder, xr, en, o->xmin[g][ch], bands, &s,
-                            encoder_q, low, fitted_bits)) &&
-              (encoder_q == MAX_STEPSIZE ||
-               !oracle_under(encoder, xr, en, o->xmin[g][ch], bands, &s,
-                             encoder_q + 1, low, fitted_bits));
+          step_agrees = encoder_q >= q &&
+                        (encoder_q == q ||
+                         oracle_under(encoder, xr, en, o->xmin[g][ch], bands,
+                                      &s, encoder_q, low, fitted_bits)) &&
+                        (encoder_q == MAX_STEPSIZE ||
+                         !oracle_under(encoder, xr, en, o->xmin[g][ch], bands,
+                                       &s, encoder_q + 1, low, fitted_bits));
         } else
           step_agrees = encoder_q == q;
       }

@@ -122,8 +122,8 @@ typedef struct {
 typedef struct shine_global_flags {
   priv_shine_wave_t wave;
   priv_shine_mpeg_t mpeg;
-  int quality; /* 0 to SHINE_QUALITY_MAX */
-  bitstream_t bs;      /* the frame being written */
+  int quality;           /* 0 to SHINE_QUALITY_MAX */
+  bitstream_t bs;        /* the frame being written */
   frame_stream_t stream; /* the frames written */
   shine_side_info_t side_info;
   int sideinfo_len;

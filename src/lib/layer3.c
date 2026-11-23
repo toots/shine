@@ -211,8 +211,7 @@ static void shine_encode_frame(shine_global_config *config, int stride) {
   shine_format_bitstream(config);
   shine_flush_bit_stream(&config->bs);
   /* ponytail: out of memory drops the frame, as the bit writer drops bits. */
-  shine_stream_frame(&config->stream, config->bs.data,
-                     config->sideinfo_len / 8,
+  shine_stream_frame(&config->stream, config->bs.data, config->sideinfo_len / 8,
                      config->bs.data_position - config->sideinfo_len / 8,
                      config->mpeg.bits_per_frame / 8);
   config->bs.data_position = 0;
