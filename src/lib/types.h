@@ -5,8 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <math.h>
-
 #define GRANULE_SIZE 576
 
 #include "bitstream.h"
@@ -36,14 +34,6 @@
 
 /* #define DEBUG if you want the library to dump info to stdout */
 
-#define PI 3.14159265358979
-#define PI4 0.78539816339745
-#define PI12 0.26179938779915
-#define PI36 0.087266462599717
-#define PI64 0.049087385212
-#define SQRT2 1.41421356237
-#define LN2 0.69314718
-#define LN_TO_LOG10 0.2302585093
 #define BLKSIZE 1024
 #define HAN_SIZE 512 /* for loop unrolling, require that HAN_SIZE%8==0 */
 #define SCALE_BLOCK 12
@@ -77,8 +67,9 @@ typedef struct {
   int padding;
   int bits_per_frame;
   int bits_per_slot;
-  double frac_slots_per_frame;
-  double slot_lag;
+  /* Fractional slots per frame and padding lag, in 1/samplerate slots. */
+  long frac_slots_per_frame;
+  long slot_lag;
   int whole_slots_per_frame;
   int bitrate_index; /* + */    /* See Main.c and Layer3.c */
   int samplerate_index; /* + */ /* See Main.c and Layer3.c */
@@ -90,28 +81,13 @@ typedef struct {
 } priv_shine_mpeg_t;
 
 typedef struct {
-  int32_t *xr;                  /* magnitudes of the spectral values */
-  int32_t xrsq[GRANULE_SIZE];   /* xr squared */
-  int32_t xrabs[GRANULE_SIZE];  /* xr absolute */
-  int32_t xrmax;                /* maximum of xrabs array */
-  int32_t en_tot[MAX_GRANULES]; /* gr */
-  int32_t en[MAX_GRANULES][21];
-  int32_t xm[MAX_GRANULES][21];
-  int32_t xrmaxl[MAX_GRANULES];
-  double steptab[128];   /* 2**(-x/4)  for x = -127..0 */
-  int32_t steptabi[128]; /* 2**(-x/4)  for x = -127..0 */
-  /* 2**(-x/4) * 2**32 for x = 1..MAX_STEPSIZE, index 0 unused */
-  uint32_t steptab_fraction[MAX_STEPSIZE + 1];
-  int int2idx[10000]; /* x**(3/4)   for x = 0..9999 */
+  int32_t *xr;                 /* magnitudes of the spectral values */
+  int32_t xrabs[GRANULE_SIZE]; /* xr absolute */
+  int32_t xrmax;               /* maximum of xrabs array */
 } l3loop_t;
 
 typedef struct {
-  int32_t cos_l[18][36];
-} mdct_t;
-
-typedef struct {
   int off[MAX_CHANNELS];
-  int32_t fl[SBLIMIT][64];
   int32_t x[MAX_CHANNELS][HAN_SIZE];
 } subband_t;
 
@@ -149,14 +125,6 @@ typedef struct {
 } shine_side_info_t;
 
 typedef struct {
-  double l[MAX_GRANULES][MAX_CHANNELS][21];
-} shine_psy_ratio_t;
-
-typedef struct {
-  double l[MAX_GRANULES][MAX_CHANNELS][21];
-} shine_psy_xmin_t;
-
-typedef struct {
   int32_t l[MAX_GRANULES][MAX_CHANNELS][22];    /* [cb] */
   int32_t s[MAX_GRANULES][MAX_CHANNELS][13][3]; /* [window][cb] */
 } shine_scalefac_t;
@@ -168,17 +136,14 @@ typedef struct shine_global_flags {
   shine_side_info_t side_info;
   int sideinfo_len;
   int mean_bits;
-  shine_psy_ratio_t ratio;
   shine_scalefac_t scalefactor;
   int16_t *buffer[MAX_CHANNELS];
-  double pe[MAX_CHANNELS][MAX_GRANULES];
   int l3_enc[MAX_CHANNELS][MAX_GRANULES][GRANULE_SIZE];
   int32_t l3_sb_sample[MAX_CHANNELS][MAX_GRANULES + 1][18][SBLIMIT];
   int32_t mdct_freq[MAX_CHANNELS][MAX_GRANULES][GRANULE_SIZE];
   int ResvSize;
   int ResvMax;
   l3loop_t l3loop;
-  mdct_t mdct;
   subband_t subband;
 } shine_global_config;
 

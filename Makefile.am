@@ -1,5 +1,6 @@
 EXTRA_DIST = ChangeLog README.md README.old libshine.sym js tests/golden.txt \
-             tests/wasm.mjs
+             tests/wasm.mjs tools/generate_tables.c \
+             tools/check-no-float.sh
 
 noinst_HEADERS = src/bin/main.h src/bin/wave.h \
                  src/lib/bitstream.h src/lib/huffman.h src/lib/l3bitstream.h \
@@ -17,9 +18,9 @@ lib_LTLIBRARIES      = libshine.la
 libshine_la_SOURCES  = src/lib/bitstream.c src/lib/huffman.c \
                        src/lib/l3bitstream.c src/lib/l3loop.c src/lib/l3mdct.c \
                        src/lib/l3subband.c src/lib/layer3.c src/lib/reservoir.c \
-                       src/lib/tables.c
+                       src/lib/tables.c src/lib/precomputed_tables.c
 
-libshine_la_LDFLAGS  = -lm -no-undefined -version-info 4:0:1 -export-symbols $(srcdir)/libshine.sym
+libshine_la_LDFLAGS  = -no-undefined -version-info 4:0:1 -export-symbols $(srcdir)/libshine.sym
 libshine_ladir       = ${prefix}/include/shine
 libshine_la_HEADERS  = src/lib/layer3.h
 

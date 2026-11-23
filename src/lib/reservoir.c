@@ -14,39 +14,15 @@
  * shine_max_reservoir_bits:
  * ------------
  * Called at the beginning of each granule to get the max bit
- * allowance for the current granule based on reservoir size
- * and perceptual entropy.
+ * allowance for the current granule.
  */
-int shine_max_reservoir_bits(double *pe, shine_global_config *config) {
-  int more_bits, max_bits, add_bits, over_bits;
-  int mean_bits = config->mean_bits;
+int shine_max_reservoir_bits(shine_global_config *config) {
+  /* ponytail: the reservoir is disabled (ResvMax is 0), so every granule gets
+   * the mean. Allocation from perceptual entropy comes with the
+   * psychoacoustic model. */
+  int max_bits = config->mean_bits / config->wave.channels;
 
-  mean_bits /= config->wave.channels;
-  max_bits = mean_bits;
-
-  if (max_bits > 4095)
-    max_bits = 4095;
-  if (!config->ResvMax)
-    return max_bits;
-
-  more_bits = *pe * 3.1 - mean_bits;
-  add_bits = 0;
-  if (more_bits > 100) {
-    int frac = (config->ResvSize * 6) / 10;
-
-    if (frac < more_bits)
-      add_bits = frac;
-    else
-      add_bits = more_bits;
-  }
-  over_bits = config->ResvSize - ((config->ResvMax << 3) / 10) - add_bits;
-  if (over_bits > 0)
-    add_bits += over_bits;
-
-  max_bits += add_bits;
-  if (max_bits > 4095)
-    max_bits = 4095;
-  return max_bits;
+  return max_bits > 4095 ? 4095 : max_bits;
 }
 
 /*

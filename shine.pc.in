@@ -7,4 +7,4 @@ Name: shine
 Description: Fixed-point mp3 encoding library.
 Version: @VERSION@
 Cflags: -I${includedir}
-Libs: -L${libdir} -lm -lshine
+Libs: -L${libdir} -lshine
