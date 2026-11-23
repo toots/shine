@@ -39,6 +39,33 @@ write(written, data);
 shine_close(s);
 ```
 
+Testing
+-------
+
+```bash
+make check
+```
+
+Each program in `tests/` checks one concern, usually over every supported
+samplerate, bitrate and channel mode, using the encoding and frame parsing
+helpers in `tests/helpers.h`. A regression fix should come with a test that
+fails without the fix: add `tests/<name>.c` and list it in `TESTS` and a
+`tests_<name>_SOURCES` line in `Makefile.am`.
+
+CI also runs the tests under AddressSanitizer and UndefinedBehaviorSanitizer.
+To do the same locally:
+
+```bash
+./configure CC=clang \
+  CFLAGS="-g -O1 -fsanitize=address,undefined -fno-sanitize-recover=all" \
+  LDFLAGS="-fsanitize=address,undefined"
+make check
+```
+
+`make check-wasm` tests the WebAssembly build of the JavaScript package against
+the native encoder, when `configure` found a WebAssembly toolchain: see
+[js/README.md](js/README.md).
+
 How fast is it?
 ---------------
 

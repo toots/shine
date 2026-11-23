@@ -1,0 +1,102 @@
+# TODO
+
+Work towards the next major release. Breaking the API is acceptable.
+
+## Quality gates
+
+Every change is one of three kinds, each with a gate that fails when the
+change does more than it claims. The commit message says which kind it is.
+
+- **Bit-exact** (formatting, dead code, refactors, API renames): golden hashes
+  of the encoded stream, for every configuration and synthetic signal, are
+  unchanged.
+- **Decode-exact** (stream changes that decode identically, e.g. `scfsi`
+  flags while scalefactors are all zero): golden hashes of the decoded PCM
+  are unchanged.
+- **Audio-changing**: a metric report on a corpus, compared with the
+  previous commit: output level, gain-corrected SNR, perceptual score. No
+  regression beyond tolerance on any item. Goldens are updated in the same
+  commit, with the numbers in the message.
+
+- [ ] `tests/golden`: hash the stream of every configuration for a set of
+      deterministic synthetic signals (tones, sweep, noise, transients,
+      silence, full scale) against `tests/golden.txt`, with an environment
+      variable to regenerate.
+- [ ] Decoded-PCM goldens, using FFmpeg when available, skipped otherwise.
+- [ ] Quality report script: level, gain-corrected SNR and ViSQOL (audio
+      mode) per item, on synthetic signals plus local music (e.g. FATE
+      samples), with LAME at the same bitrate as reference. Not run in CI.
+- [ ] Decode with both FFmpeg and mpg123 in the report, to catch streams
+      only one decoder tolerates.
+- [ ] Listening check before release for psychoacoustic changes.
+- [ ] Confirm the goldens are identical on Linux, macOS and the
+      architectures below. libm-generated init tables and the ARM/MIPS
+      multiply headers may differ.
+
+## Correctness
+
+- [ ] Output is +1.02 dB too loud (gain 1.1246, about 9/8) at every rate and
+      bitrate: find the factor in the polyphase/MDCT scaling, then pin the
+      level in a test. Full-scale input clips in the decoder.
+- [ ] 16 kHz scale factor band table typos (`tables.c`): `45` must be `54`,
+      `248` must be `284`.
+- [ ] Prefix the global `samplerates` and `bitrates` symbols with `shine_`;
+      make `granules_per_frame` const.
+
+## Fixed point
+
+Floating point still runs while encoding (arm64 disassembly):
+
+- [ ] `calc_scfsi` / `calc_xmin`: `log()` and `fdiv` every granule, on
+      all-zero thresholds. Delete with the dead psychoacoustic stubs.
+- [ ] Frame padding: `slot_lag` / `frac_slots_per_frame` are doubles,
+      updated every frame. Use an integer accumulator.
+- [ ] `shine_max_reservoir_bits`: `pe * 3.1`. Dead while the reservoir is
+      disabled; integer when restored.
+- [ ] `quantize()` beyond the lookup table: double `sqrt(sqrt(x) * x)`,
+      about 1 coefficient in 10^4-10^5 on music. Use an integer x^(3/4).
+- [ ] Generate or precompute the init tables (`cos`, `sin`, `pow`, `modf`)
+      without libm, for bit-exact output across platforms.
+- [ ] CI check that the encoding path has no floating point, e.g. building
+      the library with `-mgeneral-regs-only` on arm64.
+
+## API (major release)
+
+- [ ] Prefix the public enums and constants (`NONE`, `MONO`, `STEREO`,
+      `MPEG_I`, `PCM_MONO`, `LAYER_III`, ...) with `SHINE_`.
+- [ ] Take input samples as `const`.
+- [ ] Quality setting in the config. Its lowest level keeps today's
+      bit-exact fast path.
+- [ ] Bump the version: `AC_INIT` still says 3.1.1.
+
+## Psychoacoustics
+
+Each phase is fixed point, behind the quality setting, and measured with the
+quality report before the next one starts.
+
+- [ ] Decide the perceptual metric (ViSQOL proposed, PEAQ as alternative).
+- [ ] Phase 1: masking model in the MDCT domain (band energies, spreading,
+      absolute threshold of hearing, tonality), integer `log2`.
+- [ ] Phase 2: noise allocation: outer loop raising scalefactors where noise
+      exceeds the threshold. Needs real scalefactor coding: MPEG-1
+      `slen`/`scfsi` and MPEG-2 LSF `scalefac_compress`, untested so far.
+- [ ] Phase 3: restore the bit reservoir (`ResvMax` is always 0), with
+      perceptual entropy driving allocation. Remove or define the
+      `shine_ResvFrameBegin` declaration.
+- [ ] Phase 4: block switching (short blocks) for transients.
+
+## Cleanup and formatting
+
+Bit-exact; formatting commits separate from functional ones.
+
+- [ ] Add `.clang-format` (LLVM, what the code already follows), normalize
+      CRLF line endings (12 files), reformat, check formatting in CI.
+- [ ] Remove `register`, `__BORLANDC__` branches, RISC OS leftovers,
+      `README.old`.
+- [ ] Fix `-Wextra` warnings (unused parameters, sign comparisons, `rzero`).
+
+## CI and packaging
+
+- [ ] Run the tests under QEMU on armv7 and MIPS (multiply assembly) and
+      s390x (big endian), e.g. with `run-on-arch`.
+- [ ] Update `actions/checkout`.

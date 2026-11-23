@@ -1,10 +1,6 @@
 *.swp
-obj
-libs
 compile
-android/
 js/src/post-node.js
-!android/*.mk
 shine
 shine.pc
 m4
@@ -85,3 +81,9 @@ shine-*.tar.gz
 *.o
 *.mp3
 node_modules
+tests/*
+!tests/*.c
+!tests/*.h
+!tests/*.mjs
+js/dist/
+test-suite.log

@@ -2,6 +2,28 @@ x.y.z ()
 =====
 * Be more specific when enabling MIPS assembly routines.
 * Fix wave header reading on big endian machines (#34)
+* Fix invalid streams at 8, 16 and 32 kHz for bitrates whose frame size is
+  a whole number of bytes (wrong padding bit).
+* Fix invalid streams for high bitrate mono (e.g. 320 kbps at 44.1 kHz):
+  stuffing bits beyond the granule limit were never written.
+* Fix `shine_flush()` dropping the last bytes of the stream.
+* `shine_flush()` now encodes the samples still in the filterbank, so the
+  stream no longer ends 1057 samples short.
+* Add `shine_encoder_delay()`.
+* shineenc: fix skipping WAV chunks on big endian machines.
+* shineenc: stop at the end of the WAV data chunk instead of encoding the
+  chunks after it as audio.
+* shineenc: downmix stereo input with `-m` instead of encoding interleaved
+  samples as mono.
+* The JavaScript package is built to WebAssembly with clang instead of
+  Emscripten (`make wasm`), and is now an ES module.
+* Remove the Android ndk-build files: cross-compile with the NDK's clang
+  through `configure --host` like for any other target.
+* JavaScript: `close()` encodes the samples still buffered instead of dropping
+  them, and `stereoMode: StereoMode.STEREO` no longer means joint stereo.
+* shineenc: fix crashes on command lines made only of options.
+* shineenc: reject WAV files with no channels, and accept those with a zero
+  byte rate instead of dividing by it.
 
 3.1.1 (2017-07-28)
 =====

@@ -1,7 +1,9 @@
-<script src="libshine_node.js"></script>
 <script src="encode.js"></script>
 <script src="rounds.js"></script>
-<script>
+<script type="module">
+  import { Shine } from "../../dist/shine.mjs";
+  window.Shine = Shine;
+
   var log = function (msg) {
     var el = document.getElementById("output");
     el.innerHTML = el.innerHTML + "<br>" + msg;
@@ -21,7 +23,8 @@
       });
     });
   };
-  window.addEventListener("load", onLoad, false);
+  if (document.readyState === "complete") onLoad();
+  else window.addEventListener("load", onLoad, false);
 </script>
 <a href="#" id="download-link">Download encoded file</a>
 <div id="output"></div>

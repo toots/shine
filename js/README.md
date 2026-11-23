@@ -2,7 +2,8 @@ Shine encoder library for Javascript
 ====================================
 
 This package contains a build of the [shine](https://github.com/toots/shine) fixed-point
-mp3 encoder compiled for Javascript and wasm using [emscripten-core/emscripten](https://github.com/emscripten-core/emscripten).
+mp3 encoder compiled to WebAssembly with clang. The module is embedded in the package,
+so it works as is in Node.js (16 and later), browsers and bundlers. It is an ES module.
 
 Install
 -------
@@ -25,16 +26,12 @@ Using `pnpm`:
 pnpm install @toots/shine.js
 ```
 
-In a HTML page:
-
-When using `webpack`, the package should point to the correct
-`libshine_browser.js` file automatically.
-
-When using directly as a script, you can load the `libshine_node.js`
-file as:
+In a HTML page, import it as a module:
 
 ```html
-<script src="libshine_node.js"></script>
+<script type="module">
+  import { Shine } from "./dist/shine.mjs";
+</script>
 ```
 
 See: [test/browser](https://github.com/toots/shine/tree/main/js/test/browser) for an example.
@@ -45,112 +42,56 @@ How to use?
 The encoding API should be quite straight forward:
 
 ```js
-import { Shine, StereoModel } from "@toots/shine.js";
+import { Shine, StereoMode } from "@toots/shine.js";
 
-const exec = async () => {
-  await Shine.initialized;
+await Shine.initialized;
 
-  shine = new Shine({
-    samplerate: 44100,
-    bitrate: 128,
-    channels: 2,
-    stereoModel: StereoModel.STEREO
-  });
-  
-  // All the magic happens here
-  while (..) {
-    // data here is an array of channels.
-    // Channels must have the same number of samples
-    // and both be either Int16Array or Float32Array.
-    encoded = shine.encode(data);
-    ...
-  }
+const shine = new Shine({
+  samplerate: 44100,
+  bitrate: 128,
+  channels: 2,
+  stereoMode: StereoMode.STEREO,
+});
 
-  // Close and get remaining data.
-  flushed = shine.close();
-
+// All the magic happens here
+while (..) {
+  // data here is an array of channels.
+  // Channels must have the same number of samples
+  // and both be either Int16Array or Float32Array.
+  const encoded = shine.encode(data);
   ...
 }
 
-exec();
+// Encode the remaining samples and flush the encoder.
+const flushed = shine.close();
 ```
+
+`stereoMode` defaults to `MONO` for one channel and `JOINT_STEREO` for two.
+
+Building
+--------
+
+The package is built from the top level of the repository, with a clang that
+can target `wasm32`, `wasm-ld` and a [wasi-libc](https://github.com/WebAssembly/wasi-libc)
+sysroot, e.g. `clang lld wasi-libc` on Debian and Ubuntu, or `llvm lld wasi-libc`
+with Homebrew:
+
+```shell
+./bootstrap
+./configure WASM_CC=/opt/homebrew/opt/llvm/bin/clang   # when clang is not the right one
+make wasm         # js/dist
+make check-wasm   # compares the output with the native shineenc
+```
+
+`configure` looks for the sysroot in the usual places; set `WASI_SYSROOT`
+otherwise. `--enable-wasm` makes a missing toolchain an error.
 
 How fast is it?
 ---------------
 
-You can run the test suite located in `test/`. Encoding rate above `1X` means that 
-the browser should be suitable for real-time encoding.
+On a macbook pro (`arm64`/M1 pro), Node.js 26, encoding 285 s of stereo music
+at 128 kbps: about 205x realtime, against about 310x for the native `shineenc`.
 
-Results, as of December 30, 2022:
-
-Chrome (`108.0.5359.124`):
-```
-Executing encoding test
-Got WAV file.
-Encoding..
-Done encoding.
-File duration: 5.57 seconds
-Encoding time: 0.08 seconds
-Encoding rate: 67.96X
-
-Executing rounds test
-Encoding 50 buffers of 4096 samples
-Done encoding
-Total duration: 4.64
-Encoding time: 0.03
-Encoding rate: 160.00X
-```
-
-Firefox (`108.0.1`):
-```
-Executing encoding test
-Got WAV file.
-Encoding..
-Done encoding.
-File duration: 5.57 seconds
-Encoding time: 0.06 seconds
-Encoding rate: 99.52X
-
-Executing rounds test
-Encoding 50 buffers of 4096 samples
-Done encoding
-Total duration: 4.64
-Encoding time: 0.03
-Encoding rate: 178.46X
-```
-
-Safari (`16.2`):
-```
-Executing encoding test
-Got WAV file.
-Encoding..
-Done encoding.
-File duration: 5.57 seconds
-Encoding time: 0.12 seconds
-Encoding rate: 46.44X
-
-Executing rounds test
-Encoding 50 buffers of 4096 samples
-Done encoding
-Total duration: 4.64
-Encoding time: 0.02
-Encoding rate: 210.91X
-```
-
-NodeJS (`v19.3.0`):
-```
-Executing encoding test
-Got WAV file.
-Encoding..
-Done encoding.
-File duration: 5.57 seconds
-Encoding time: 0.06 seconds
-Encoding rate: 94.45X
-
-Executing rounds test
-Encoding 50 buffers of 4096 samples
-Done encoding
-Total duration: 4.64
-Encoding time: 0.03
-Encoding rate: 178.46X
-```
+`test/browser` measures the encoding rate in a browser: run `make` there and
+open `http://localhost:8000/test/browser/`. A rate above `1X` means that the
+browser should be suitable for real-time encoding.

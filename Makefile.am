@@ -1,6 +1,11 @@
-.PHONY : android
+EXTRA_DIST = ChangeLog README.md README.old libshine.sym js tests/wasm.mjs
 
-EXTRA_DIST = ChangeLog src/lib/*.h src/bin/*.h README* libshine.sym js
+noinst_HEADERS = src/bin/main.h src/bin/wave.h \
+                 src/lib/bitstream.h src/lib/huffman.h src/lib/l3bitstream.h \
+                 src/lib/l3loop.h src/lib/l3mdct.h src/lib/l3subband.h \
+                 src/lib/mult_mips_gcc.h src/lib/mult_noarch_gcc.h \
+                 src/lib/mult_sarm_gcc.h src/lib/reservoir.h src/lib/tables.h \
+                 src/lib/types.h
 
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS  = -I m4
@@ -13,27 +18,77 @@ libshine_la_SOURCES  = src/lib/bitstream.c src/lib/huffman.c \
                        src/lib/l3subband.c src/lib/layer3.c src/lib/reservoir.c \
                        src/lib/tables.c
 
-libshine_la_LDFLAGS  = -lm -no-undefined -version-info 3:1:0 -export-symbols libshine.sym
+libshine_la_LDFLAGS  = -lm -no-undefined -version-info 4:0:1 -export-symbols $(srcdir)/libshine.sym
 libshine_ladir       = ${prefix}/include/shine
 libshine_la_HEADERS  = src/lib/layer3.h
 
 bin_PROGRAMS     = shineenc
 shineenc_SOURCES = src/bin/main.c src/bin/wave.c
 shineenc_LDADD   = libshine.la
-shineenc_CFLAGS  = -Isrc/lib
+shineenc_CFLAGS  = -I$(srcdir)/src/lib
+
+# One program per concern. A new test needs its program here and its
+# _SOURCES line below.
+TESTS          = tests/framing tests/flush tests/wave tests/cli
+check_PROGRAMS = $(TESTS)
+TEST_HELPERS   = tests/helpers.c tests/helpers.h
+LDADD          = libshine.la
+AM_CPPFLAGS    = -I$(srcdir)/src/lib
+
+tests_framing_SOURCES = tests/framing.c $(TEST_HELPERS)
+tests_flush_SOURCES   = tests/flush.c $(TEST_HELPERS)
+tests_wave_SOURCES    = tests/wave.c $(TEST_HELPERS)
+tests_cli_SOURCES     = tests/cli.c $(TEST_HELPERS)
+
+AM_TESTS_ENVIRONMENT = SHINEENC='$(abs_top_builddir)/shineenc'; export SHINEENC;
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = shine.pc
 
-android:
-	[ -d android/include ] || mkdir android/include
-	[ -d android/lib ] || mkdir android/lib
-	[ -d android/bin ] || mkdir android/bin
-	cp src/lib/layer3.h android/include
-	NDK_PROJECT_PATH=$(shell pwd) ndk-build APP_BUILD_SCRIPT=$(shell pwd)/android/Library.mk
-	mv libs/* android/lib
-	NDK_PROJECT_PATH=$(shell pwd) ndk-build APP_BUILD_SCRIPT=$(shell pwd)/android/Binary.mk
-	mv libs/* android/bin
+# WebAssembly build of the JavaScript package: `make wasm`, tested by
+# `make check-wasm`. Separate from all and check, and only available when
+# configure found a WebAssembly toolchain.
+JS_DIST     = js/dist
+WASM_SOURCES = $(libshine_la_SOURCES) js/src/wrapper.c
+WASM_EXPORTS = malloc free shine_check_config shine_js_init \
+               shine_samples_per_pass shine_encode_buffer shine_flush \
+               shine_close
+
+if HAVE_WASM
+wasm: $(JS_DIST)/shine.wasm $(JS_DIST)/shine_wasm.mjs $(JS_DIST)/shine.mjs
+
+$(JS_DIST)/shine.wasm: $(WASM_SOURCES) $(noinst_HEADERS) src/lib/layer3.h
+	@$(MKDIR_P) $(JS_DIST)
+	sources=; for source in $(WASM_SOURCES); do \
+	  sources="$$sources $(srcdir)/$$source"; done; \
+	exports=; for name in $(WASM_EXPORTS); do \
+	  exports="$$exports -Wl,--export=$$name"; done; \
+	$(WASM_CC) $(WASM_FLAGS) -O3 -I$(srcdir)/src/lib $$exports $$sources \
+	  -lc -o $@
+
+# The module embedded as base64, so that the package is usable as is by
+# bundlers and browsers.
+$(JS_DIST)/shine_wasm.mjs: $(JS_DIST)/shine.wasm
+	{ printf 'export default "'; base64 < $(JS_DIST)/shine.wasm | tr -d '\n'; \
+	  printf '";\n'; } > $@
+
+$(JS_DIST)/shine.mjs: js/src/shine.mjs
+	@$(MKDIR_P) $(JS_DIST)
+	cp $(srcdir)/js/src/shine.mjs $@
+
+check-wasm: wasm shineenc$(EXEEXT)
+	@test -n "$(NODE)" || { echo "check-wasm needs node: rerun configure with NODE set" >&2; exit 1; }
+	SHINEENC='$(abs_top_builddir)/shineenc' SHINE_JS='$(abs_top_builddir)/$(JS_DIST)/shine.mjs' \
+	  $(NODE) $(srcdir)/tests/wasm.mjs
+else
+wasm check-wasm:
+	@echo "No WebAssembly toolchain was found: rerun configure with WASM_CC set to a clang with wasm-ld in its PATH and WASI_SYSROOT to a wasi-libc sysroot." >&2; exit 1
+endif
+
+.PHONY: wasm check-wasm
+
+dist-hook:
+	rm -rf $(distdir)/$(JS_DIST) $(distdir)/js/node_modules
 
 clean-local:
-	-rm -rf obj libs android/lib android/bin android/include
+	-rm -rf $(JS_DIST)
