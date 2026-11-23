@@ -32,6 +32,9 @@ static void *checked_realloc(void *pointer, size_t size) {
 }
 
 static void append(stream_t *stream, const unsigned char *data, int size) {
+  /* A call may return no frame (doc/psy/reservoir.md §4). */
+  if (!size)
+    return;
   if (stream->size + size > stream->capacity) {
     stream->capacity = 2 * (stream->size + size);
     stream->data = checked_realloc(stream->data, stream->capacity);
