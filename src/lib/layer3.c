@@ -18,8 +18,8 @@ static const int granules_per_frame[4] = {
 
 /* Set default values for important vars */
 void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg) {
-  mpeg->bitr = 128;
-  mpeg->emph = NONE;
+  mpeg->bitrate = 128;
+  mpeg->emphasis = SHINE_EMPHASIS_NONE;
   mpeg->copyright = 0;
   mpeg->original = 1;
 }
@@ -28,45 +28,45 @@ int shine_mpeg_version(int samplerate_index) {
   /* Pick mpeg version according to samplerate index. */
   if (samplerate_index < 3)
     /* First 3 samplerates are for MPEG-I */
-    return MPEG_I;
+    return SHINE_MPEG_I;
   else if (samplerate_index < 6)
     /* Then it's MPEG-II */
-    return MPEG_II;
+    return SHINE_MPEG_II;
   else
     /* Finally, MPEG-2.5 */
-    return MPEG_25;
+    return SHINE_MPEG_25;
 }
 
-int shine_find_samplerate_index(int freq) {
+int shine_find_samplerate_index(int samplerate) {
   int i;
 
   for (i = 0; i < 9; i++)
-    if (freq == shine_samplerates[i])
+    if (samplerate == shine_samplerates[i])
       return i;
 
   return -1; /* error - not a valid samplerate for encoder */
 }
 
-int shine_find_bitrate_index(int bitr, int mpeg_version) {
+int shine_find_bitrate_index(int bitrate, int mpeg_version) {
   int i;
 
   for (i = 0; i < 16; i++)
-    if (bitr == shine_bitrates[i][mpeg_version])
+    if (bitrate == shine_bitrates[i][mpeg_version])
       return i;
 
   return -1; /* error - not a valid samplerate for encoder */
 }
 
-int shine_check_config(int freq, int bitr) {
+int shine_check_config(int samplerate, int bitrate) {
   int samplerate_index, bitrate_index, mpeg_version;
 
-  samplerate_index = shine_find_samplerate_index(freq);
+  samplerate_index = shine_find_samplerate_index(samplerate);
   if (samplerate_index < 0)
     return -1;
 
   mpeg_version = shine_mpeg_version(samplerate_index);
 
-  bitrate_index = shine_find_bitrate_index(bitr, mpeg_version);
+  bitrate_index = shine_find_bitrate_index(bitrate, mpeg_version);
   if (bitrate_index < 0)
     return -1;
 
@@ -78,12 +78,20 @@ int shine_samples_per_pass(shine_t s) {
 }
 
 /* Compute default encoding values. */
-shine_global_config *shine_initialise(shine_config_t *pub_config) {
+shine_global_config *shine_initialise(const shine_config_t *pub_config) {
   long slots_numerator;
   shine_global_config *config;
 
-  if (shine_check_config(pub_config->wave.samplerate, pub_config->mpeg.bitr) <
-      0)
+  if (shine_check_config(pub_config->wave.samplerate,
+                         pub_config->mpeg.bitrate) < 0)
+    return NULL;
+
+  /* The channel count sizes the per-channel state, and the mode written in
+   * the header must describe the same number of channels. */
+  if (pub_config->wave.channels < 1 || pub_config->wave.channels > 2 ||
+      pub_config->mpeg.mode < SHINE_STEREO ||
+      pub_config->mpeg.mode > SHINE_MONO ||
+      (pub_config->wave.channels == 1) != (pub_config->mpeg.mode == SHINE_MONO))
     return NULL;
 
   config = calloc(1, sizeof(shine_global_config));
@@ -94,8 +102,8 @@ shine_global_config *shine_initialise(shine_config_t *pub_config) {
   config->wave.channels = pub_config->wave.channels;
   config->wave.samplerate = pub_config->wave.samplerate;
   config->mpeg.mode = pub_config->mpeg.mode;
-  config->mpeg.bitr = pub_config->mpeg.bitr;
-  config->mpeg.emph = pub_config->mpeg.emph;
+  config->mpeg.bitrate = pub_config->mpeg.bitrate;
+  config->mpeg.emphasis = pub_config->mpeg.emphasis;
   config->mpeg.copyright = pub_config->mpeg.copyright;
   config->mpeg.original = pub_config->mpeg.original;
 
@@ -112,14 +120,14 @@ shine_global_config *shine_initialise(shine_config_t *pub_config) {
       shine_find_samplerate_index(config->wave.samplerate);
   config->mpeg.version = shine_mpeg_version(config->mpeg.samplerate_index);
   config->mpeg.bitrate_index =
-      shine_find_bitrate_index(config->mpeg.bitr, config->mpeg.version);
+      shine_find_bitrate_index(config->mpeg.bitrate, config->mpeg.version);
   config->mpeg.granules_per_frame = granules_per_frame[config->mpeg.version];
 
   /* Integer arithmetic: floating point yields 215.999... instead of 216
    * slots for e.g. 8 kHz at 24 kbps, which sets the padding bit on frames
    * that are not padded. */
   slots_numerator = (long)config->mpeg.granules_per_frame * GRANULE_SIZE *
-                    1000 * config->mpeg.bitr / config->mpeg.bits_per_slot;
+                    1000 * config->mpeg.bitrate / config->mpeg.bits_per_slot;
 
   config->mpeg.whole_slots_per_frame =
       slots_numerator / config->wave.samplerate;
@@ -179,8 +187,8 @@ static unsigned char *shine_take_data(shine_global_config *config,
   return config->bs.data;
 }
 
-unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data,
-                                   int *written) {
+unsigned char *shine_encode_buffer(shine_global_config *config,
+                                   int16_t *const *data, int *written) {
   config->buffer[0] = data[0];
   if (config->wave.channels == 2)
     config->buffer[1] = data[1];
@@ -190,7 +198,8 @@ unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data,
 }
 
 unsigned char *shine_encode_buffer_interleaved(shine_global_config *config,
-                                               int16_t *data, int *written) {
+                                               const int16_t *data,
+                                               int *written) {
   config->buffer[0] = data;
   if (config->wave.channels == 2)
     config->buffer[1] = data + 1;
@@ -206,7 +215,7 @@ int shine_encoder_delay(shine_global_config *config) {
 
 /* Encode enough silence for a decoder to output the last input sample. */
 unsigned char *shine_flush(shine_global_config *config, int *written) {
-  static int16_t silence[2 * 2 * GRANULE_SIZE];
+  static const int16_t silence[2 * 2 * GRANULE_SIZE];
   int samples_per_pass = shine_samples_per_pass(config);
   int frames =
       (SHINE_ENCODER_DELAY + MP3_DECODER_DELAY + samples_per_pass - 1) /

@@ -66,11 +66,12 @@ none now, checked in CI by `tools/check-no-float.sh`.
 
 ## API (major release)
 
-- [ ] Prefix the public enums and constants (`NONE`, `MONO`, `STEREO`,
+- [x] Prefix the public enums and constants (`NONE`, `MONO`, `STEREO`,
       `MPEG_I`, `PCM_MONO`, `LAYER_III`, ...) with `SHINE_`.
-- [ ] Take input samples as `const`.
-- [ ] Quality setting in the config. Its lowest level keeps today's
-      bit-exact fast path.
+- [x] Take input samples as `const`.
+- [ ] Quality setting in the config, added with the psychoacoustic model,
+      which is the first thing it would select. Its lowest level keeps
+      today's bit-exact fast path.
 - [ ] Bump the version: `AC_INIT` still says 3.1.1.
 
 ## Psychoacoustics

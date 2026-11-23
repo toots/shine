@@ -10,7 +10,7 @@ shine_t shine_js_init(int channels, int samplerate, int mode, int bitrate) {
   config.wave.channels = channels;
   config.wave.samplerate = samplerate;
   config.mpeg.mode = mode;
-  config.mpeg.bitr = bitrate;
+  config.mpeg.bitrate = bitrate;
 
   return shine_initialise(&config);
 }

@@ -32,7 +32,7 @@ char *infname, *outfname;
 FILE *infile, *outfile;
 int quiet = 0;
 int _verbose = 0;
-int stereo = STEREO;
+int stereo = SHINE_STEREO;
 int force_mono = 0;
 
 int verbose() { return _verbose; }
@@ -89,7 +89,7 @@ static int parse_command(int argc, char **argv, shine_config_t *config) {
     case 'b':
       if (++i == argc)
         return 0;
-      config->mpeg.bitr = atoi(argv[i]);
+      config->mpeg.bitrate = atoi(argv[i]);
       break;
 
     case 'm':
@@ -97,11 +97,11 @@ static int parse_command(int argc, char **argv, shine_config_t *config) {
       break;
 
     case 'j':
-      stereo = JOINT_STEREO;
+      stereo = SHINE_JOINT_STEREO;
       break;
 
     case 'd':
-      stereo = DUAL_CHANNEL;
+      stereo = SHINE_DUAL_CHANNEL;
       break;
 
     case 'c':
@@ -135,14 +135,14 @@ static void check_config(shine_config_t *config) {
   static char *version_names[4] = {"2.5", "reserved", "II", "I"};
   static char *mode_names[4] = {"stereo", "joint-stereo", "dual-channel",
                                 "mono"};
-  static char *demp_names[4] = {"none", "50/15us", "", "CITT"};
+  static char *demp_names[4] = {"none", "50/15us", "", "CCITT"};
 
   printf("MPEG-%s layer III, %s  Psychoacoustic Model: Shine\n",
          version_names[shine_check_config(config->wave.samplerate,
-                                          config->mpeg.bitr)],
+                                          config->mpeg.bitrate)],
          mode_names[config->mpeg.mode]);
-  printf("Bitrate: %d kbps  ", config->mpeg.bitr);
-  printf("De-emphasis: %s   %s %s\n", demp_names[config->mpeg.emph],
+  printf("Bitrate: %d kbps  ", config->mpeg.bitrate);
+  printf("De-emphasis: %s   %s %s\n", demp_names[config->mpeg.emphasis],
          ((config->mpeg.original) ? "Original" : ""),
          ((config->mpeg.copyright) ? "(C)" : ""));
   printf("Encoding \"%s\" to \"%s\"\n", infname, outfname);
@@ -183,7 +183,7 @@ int main(int argc, char **argv) {
     config.wave.channels = 1;
 
   /* See if samplerate and bitrate are valid */
-  if (shine_check_config(config.wave.samplerate, config.mpeg.bitr) < 0)
+  if (shine_check_config(config.wave.samplerate, config.mpeg.bitrate) < 0)
     error("Unsupported samplerate/bitrate configuration.");
 
   /* open the output file */
@@ -200,7 +200,7 @@ int main(int argc, char **argv) {
   if (config.wave.channels > 1)
     config.mpeg.mode = stereo;
   else
-    config.mpeg.mode = MONO;
+    config.mpeg.mode = SHINE_MONO;
 
   /* Initiate encoder */
   s = shine_initialise(&config);

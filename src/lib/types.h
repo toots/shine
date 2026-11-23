@@ -18,6 +18,9 @@
  * compensates exactly: 8 steps of 2**(1/4). */
 #define MDCT_HEADROOM_STEPS 8
 
+/* Only Layer III is implemented. */
+#define LAYER_III 1
+
 /* Largest quantizer step size: global_gain = step size + 210 +
  * MDCT_HEADROOM_STEPS has 8 bits. */
 #define MAX_STEPSIZE (45 - MDCT_HEADROOM_STEPS)
@@ -40,8 +43,8 @@ typedef struct {
   int layer;
   int granules_per_frame;
   int mode; /* + */ /* Stereo mode */
-  int bitr; /* + */ /* Must conform to known bitrate - see Main.c */
-  int emph; /* + */ /* De-emphasis */
+  int bitrate;
+  int emphasis;
   int padding;
   int bits_per_frame;
   int bits_per_slot;
@@ -115,7 +118,7 @@ typedef struct shine_global_flags {
   int sideinfo_len;
   int mean_bits;
   shine_scalefac_t scalefactor;
-  int16_t *buffer[MAX_CHANNELS];
+  const int16_t *buffer[MAX_CHANNELS];
   int l3_enc[MAX_CHANNELS][MAX_GRANULES][GRANULE_SIZE];
   int32_t l3_sb_sample[MAX_CHANNELS][MAX_GRANULES + 1][18][SBLIMIT];
   int32_t mdct_freq[MAX_CHANNELS][MAX_GRANULES][GRANULE_SIZE];

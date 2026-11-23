@@ -30,13 +30,14 @@ shineenc_LDADD   = libshine.la
 
 # One program per concern. A new test needs its program here and its
 # _SOURCES line below.
-TESTS          = tests/framing tests/flush tests/wave tests/cli tests/golden \
-                 tests/level
+TESTS          = tests/config tests/framing tests/flush tests/wave tests/cli \
+                 tests/golden tests/level
 check_PROGRAMS = $(TESTS)
 TEST_HELPERS   = tests/helpers.c tests/helpers.h
 LDADD          = libshine.la
 AM_CPPFLAGS    = -I$(srcdir)/src/lib
 
+tests_config_SOURCES  = tests/config.c $(TEST_HELPERS)
 tests_framing_SOURCES = tests/framing.c $(TEST_HELPERS)
 tests_flush_SOURCES   = tests/flush.c $(TEST_HELPERS)
 tests_wave_SOURCES    = tests/wave.c $(TEST_HELPERS)
