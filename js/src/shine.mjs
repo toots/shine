@@ -14,32 +14,28 @@ const POINTER = 4;
 
 let wasm;
 
-const decodeBase64 = (text) =>
-  Uint8Array.from(atob(text), (character) => character.charCodeAt(0));
+const decodeBase64 = text => Uint8Array.from(atob(text), character => character.charCodeAt(0));
 
-const initialized = WebAssembly.instantiate(decodeBase64(wasmBase64), {}).then(
-  ({ instance }) => {
-    wasm = instance.exports;
-  }
-);
+const initialized = WebAssembly.instantiate(decodeBase64(wasmBase64), {}).then(({ instance }) => {
+  wasm = instance.exports;
+});
 
 // malloc can grow the memory, which detaches previous views of it: create
 // views at each use.
 const memory = () => wasm.memory.buffer;
 
-const allocate = (size) => {
+const allocate = size => {
   const pointer = wasm.malloc(size);
   if (!pointer) throw new Error("Out of memory");
   return pointer;
 };
 
-const clip = (x) => (x > 1 ? 1 : x < -1 ? -1 : x);
+const clip = x => (x > 1 ? 1 : x < -1 ? -1 : x);
 
-const toInt16 = (samples) => {
+const toInt16 = samples => {
   if (samples instanceof Int16Array) return samples;
   const converted = new Int16Array(samples.length);
-  for (let i = 0; i < samples.length; i++)
-    converted[i] = Math.trunc(clip(samples[i]) * 32767);
+  for (let i = 0; i < samples.length; i++) converted[i] = Math.trunc(clip(samples[i]) * 32767);
   return converted;
 };
 
@@ -59,13 +55,10 @@ export class Shine {
 
   constructor({ samplerate, bitrate, channels, stereoMode }) {
     if (!wasm) throw new Error("Await Shine.initialized first");
-    if (channels !== 1 && channels !== 2)
-      throw new Error("Invalid number of channels");
-    if (!Shine.checkConfig(samplerate, bitrate))
-      throw new Error("Invalid configuration");
+    if (channels !== 1 && channels !== 2) throw new Error("Invalid number of channels");
+    if (!Shine.checkConfig(samplerate, bitrate)) throw new Error("Invalid configuration");
 
-    const mode =
-      stereoMode ?? (channels === 1 ? StereoMode.MONO : StereoMode.JOINT_STEREO);
+    const mode = stereoMode ?? (channels === 1 ? StereoMode.MONO : StereoMode.JOINT_STEREO);
 
     this._handle = wasm.shine_js_init(channels, samplerate, mode, bitrate);
     if (!this._handle) throw new Error("Cannot initialise the encoder");
@@ -79,11 +72,7 @@ export class Shine {
 
     for (let channel = 0; channel < channels; channel++) {
       const pcm = allocate(this._samplesPerPass * INT16);
-      new DataView(memory()).setUint32(
-        this._planes + channel * POINTER,
-        pcm,
-        true
-      );
+      new DataView(memory()).setUint32(this._planes + channel * POINTER, pcm, true);
       this._pcm.push(pcm);
       this._pending.push(new Int16Array(0));
     }
@@ -99,32 +88,21 @@ export class Shine {
       new Int16Array(memory(), this._pcm[channel], this._samplesPerPass).set(
         this._pending[channel].subarray(offset, offset + this._samplesPerPass)
       );
-    return this._take(
-      wasm.shine_encode_buffer(this._handle, this._planes, this._written)
-    );
+    return this._take(wasm.shine_encode_buffer(this._handle, this._planes, this._written));
   }
 
   /** Encodes one array of samples per channel, Int16Array or Float32Array. */
   encode(data) {
     if (!this._handle) throw new Error("Closed");
     if (data.length !== this._channels) throw new Error("Invalid data");
-    if (data.some(samples => samples.length !== data[0].length))
-      throw new Error("Channels have different lengths");
+    if (data.some(samples => samples.length !== data[0].length)) throw new Error("Channels have different lengths");
 
     for (let channel = 0; channel < this._channels; channel++)
-      this._pending[channel] = concat(
-        Int16Array,
-        this._pending[channel],
-        toInt16(data[channel])
-      );
+      this._pending[channel] = concat(Int16Array, this._pending[channel], toInt16(data[channel]));
 
     let encoded = new Uint8Array(0);
     let offset = 0;
-    for (
-      ;
-      offset + this._samplesPerPass <= this._pending[0].length;
-      offset += this._samplesPerPass
-    )
+    for (; offset + this._samplesPerPass <= this._pending[0].length; offset += this._samplesPerPass)
       encoded = concat(Uint8Array, encoded, this._encodePass(offset));
 
     for (let channel = 0; channel < this._channels; channel++)
@@ -149,11 +127,7 @@ export class Shine {
       encoded = this._encodePass(0);
     }
 
-    encoded = concat(
-      Uint8Array,
-      encoded,
-      this._take(wasm.shine_flush(this._handle, this._written))
-    );
+    encoded = concat(Uint8Array, encoded, this._take(wasm.shine_flush(this._handle, this._written)));
 
     wasm.shine_close(this._handle);
     this._handle = null;

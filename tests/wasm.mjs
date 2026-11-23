@@ -8,15 +8,13 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-const { Shine, StereoMode } = await import(
-  pathToFileURL(process.env.SHINE_JS).href
-);
+const { Shine, StereoMode } = await import(pathToFileURL(process.env.SHINE_JS).href);
 await Shine.initialized;
 
 const SAMPLES = 12345; // per channel, not a whole number of passes
 
 // Loud noise over a slow square wave, from a fixed seed.
-const generate = (channels) => {
+const generate = channels => {
   const data = [];
   let seed = 1;
   for (let channel = 0; channel < channels; channel++) {
@@ -55,8 +53,8 @@ const writeWav = (file, samplerate, data) => {
 const encodeWithShine = (config, data) => {
   const shine = new Shine(config);
   const chunks = [];
-  for (let offset = 0, size = 1; offset < SAMPLES; offset += size, size = (size * 7 + 3) % 3000 + 1)
-    chunks.push(shine.encode(data.map((samples) => samples.subarray(offset, offset + size))));
+  for (let offset = 0, size = 1; offset < SAMPLES; offset += size, size = ((size * 7 + 3) % 3000) + 1)
+    chunks.push(shine.encode(data.map(samples => samples.subarray(offset, offset + size))));
   chunks.push(shine.close());
   return Buffer.concat(chunks);
 };
@@ -85,8 +83,11 @@ for (const { options, ...config } of cases) {
 
   if (native.length > 0 && encoded.equals(native)) passed++;
   else
-    console.log(`FAIL ${name}: ${encoded.length} bytes, native shineenc ${native.length} bytes${
-      encoded.length === native.length ? ", contents differ" : ""}`);
+    console.log(
+      `FAIL ${name}: ${encoded.length} bytes, native shineenc ${native.length} bytes${
+        encoded.length === native.length ? ", contents differ" : ""
+      }`
+    );
 }
 
 // Float input goes through the same path once converted.

@@ -105,8 +105,7 @@ static int shineenc(const char *name, const char *options, const wav_t *wav,
     printf("FAIL %s: cannot write %s\n", name, input);
   else if ((status = run_shineenc(name, arguments)) != 0) {
     if (status > 0)
-      printf("FAIL %s: shineenc %s exited with %d\n", name, arguments,
-             status);
+      printf("FAIL %s: shineenc %s exited with %d\n", name, arguments, status);
   } else if (!read_file(output, stream))
     printf("FAIL %s: cannot read %s\n", name, output);
   else
@@ -122,8 +121,8 @@ static int expect_frames(const char *name, const stream_t *stream,
   shine_config_t config;
   int frames;
   /* Input frames, zero padded, plus the drain. */
-  int expected = (SAMPLES + 1151) / 1152 +
-                 (528 + MP3_DECODER_DELAY + 1151) / 1152;
+  int expected =
+      (SAMPLES + 1151) / 1152 + (528 + MP3_DECODER_DELAY + 1151) / 1152;
 
   shine_set_config_mpeg_defaults(&config.mpeg);
   config.wave.samplerate = SAMPLERATE;
@@ -192,15 +191,15 @@ static int check(const char *name, const char *options, const wav_t *wav,
 
 int main(void) {
   const wav_t plain = {.channels = 1, .samples = mono};
-  const wav_t trailing_chunk = {.channels = 1, .samples = mono,
-                                .trailing_chunk_bytes = 8000};
-  const wav_t unknown_length = {.channels = 1, .samples = mono,
-                                .data_length_unknown = 1};
+  const wav_t trailing_chunk = {
+      .channels = 1, .samples = mono, .trailing_chunk_bytes = 8000};
+  const wav_t unknown_length = {
+      .channels = 1, .samples = mono, .data_length_unknown = 1};
   const wav_t dual_mono = {.channels = 2, .samples = stereo};
-  const wav_t zero_byte_rate = {.channels = 1, .samples = mono,
-                                .zero_byte_rate = 1};
-  const wav_t zero_channels = {.channels = 1, .samples = mono,
-                               .zero_channels = 1};
+  const wav_t zero_byte_rate = {
+      .channels = 1, .samples = mono, .zero_byte_rate = 1};
+  const wav_t zero_channels = {
+      .channels = 1, .samples = mono, .zero_channels = 1};
   int passed = 0, checked = 0;
   unsigned int seed = 1;
 

@@ -28,10 +28,10 @@
 #define bswap_16(x) __builtin_bswap16(x)
 #define bswap_32(x) __builtin_bswap32(x)
 #else
-#define bswap_16(x) ((((x) >> 8) & 0xff) | (((x)&0xff) << 8))
+#define bswap_16(x) ((((x) >> 8) & 0xff) | (((x) & 0xff) << 8))
 #define bswap_32(x)                                                            \
-  ((((x)&0xFF) << 24) | (((x) >> 24) & 0xFF) | (((x)&0x0000FF00) << 8) |       \
-   (((x)&0x00FF0000) >> 8))
+  ((((x) & 0xFF) << 24) | (((x) >> 24) & 0xFF) | (((x) & 0x0000FF00) << 8) |   \
+   (((x) & 0x00FF0000) >> 8))
 #endif
 #endif
 

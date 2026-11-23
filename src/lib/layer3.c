@@ -216,8 +216,9 @@ int shine_encoder_delay(shine_global_config *config) {
 unsigned char *shine_flush(shine_global_config *config, int *written) {
   static int16_t silence[2 * 2 * GRANULE_SIZE];
   int samples_per_pass = shine_samples_per_pass(config);
-  int frames = (SHINE_ENCODER_DELAY + MP3_DECODER_DELAY + samples_per_pass - 1) /
-               samples_per_pass;
+  int frames =
+      (SHINE_ENCODER_DELAY + MP3_DECODER_DELAY + samples_per_pass - 1) /
+      samples_per_pass;
 
   for (int i = 0; i < frames; i++) {
     config->buffer[0] = silence;

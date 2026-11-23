@@ -19,9 +19,8 @@ static const int bitrates[2][15] = {
     {0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320},
 };
 
-static const int all_bitrates[] = {8,   16,  24,  32,  40,  48,  56,
-                                   64,  80,  96,  112, 128, 144, 160,
-                                   192, 224, 256, 320};
+static const int all_bitrates[] = {8,  16,  24,  32,  40,  48,  56,  64,  80,
+                                   96, 112, 128, 144, 160, 192, 224, 256, 320};
 
 static void *checked_realloc(void *pointer, size_t size) {
   pointer = realloc(pointer, size);
@@ -82,7 +81,7 @@ void encode_samples(shine_t encoder, int channels, const int16_t *samples,
 
   for (int done = 0; done < input_samples; done += samples_per_pass) {
     int pass = input_samples - done < samples_per_pass ? input_samples - done
-                                                        : samples_per_pass;
+                                                       : samples_per_pass;
     memset(buffer, 0, buffer_size);
     memcpy(buffer, samples + (size_t)done * channels,
            pass * channels * sizeof(int16_t));
@@ -150,8 +149,8 @@ int walk_frames(const stream_t *stream, const shine_config_t *config,
     padding = (header[2] >> 1) & 1;
     mode = header[3] >> 6;
 
-    if (bitrate != config->mpeg.bitr ||
-        samplerate != config->wave.samplerate || mode != config->mpeg.mode) {
+    if (bitrate != config->mpeg.bitr || samplerate != config->wave.samplerate ||
+        mode != config->mpeg.mode) {
       printf("FAIL %s: frame %d header says %d Hz %d kbps mode %d\n", name,
              frames, samplerate, bitrate, mode);
       return -1;
@@ -189,8 +188,7 @@ static int run_config(config_test_t test, int samplerate, int bitrate,
 }
 
 int run_all_configs(config_test_t test) {
-  static const enum modes modes[] = {MONO, STEREO, JOINT_STEREO,
-                                     DUAL_CHANNEL};
+  static const enum modes modes[] = {MONO, STEREO, JOINT_STEREO, DUAL_CHANNEL};
   const int mode_count = sizeof(modes) / sizeof(*modes);
   /* Valid samplerate/bitrate pairs, each in every mode. */
   const int expected = 108 * mode_count;
@@ -213,8 +211,7 @@ int run_all_configs(config_test_t test) {
   printf("%d/%d configurations passed\n", passed, checked);
 
   if (checked != expected) {
-    printf("FAIL: checked %d configurations, expected %d\n", checked,
-           expected);
+    printf("FAIL: checked %d configurations, expected %d\n", checked, expected);
     return 1;
   }
 

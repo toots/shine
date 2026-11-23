@@ -1,0 +1,14 @@
+# Formatting, also checked in CI. Install the hook with `pre-commit install`.
+repos:
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v22.1.2
+    hooks:
+      - id: clang-format
+        types_or: [c]
+  - repo: https://github.com/rbubley/mirrors-prettier
+    rev: v3.10.1
+    hooks:
+      - id: prettier
+        args: [--config, js/.prettierrc]
+        types_or: [javascript, ts]
+        files: ^(js/src/|js/test/(browser|lib)/|js/libshine\.d\.ts$|tests/.*\.mjs$)
