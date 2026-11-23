@@ -10,10 +10,6 @@
 #include "bitstream.h"
 #include "types.h"
 
-#if !defined(__APPLE__) && !defined(__FreeBSD__)
-#include <malloc.h>
-#endif
-
 /* open the device to write the bit stream into it */
 int shine_open_bit_stream(bitstream_t *bs, int size) {
   bs->data = (unsigned char *)malloc(size * sizeof(unsigned char));
@@ -32,7 +28,7 @@ int shine_open_bit_stream(bitstream_t *bs, int size) {
 static int ensure_word_space(bitstream_t *bs) {
   unsigned char *data;
 
-  if (bs->data_position + sizeof(unsigned int) < bs->data_size)
+  if (bs->data_position + (int)sizeof(unsigned int) < bs->data_size)
     return 0;
 
   data = realloc(bs->data, bs->data_size + bs->data_size / 2);
@@ -58,12 +54,6 @@ void shine_close_bit_stream(bitstream_t *bs) {
  * N = number of bits of val
  */
 void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N) {
-#ifdef DEBUG
-  if (N > 32)
-    printf("Cannot write more than 32 bits at a time.\n");
-  if (N < 32 && (val >> N) != 0)
-    printf("Upper bits (higher than %d) are not all zeros.\n", N);
-#endif
 
   if (N == 0)
     return;

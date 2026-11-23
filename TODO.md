@@ -95,16 +95,16 @@ Bit-exact; formatting commits separate from functional ones.
 
 - [x] Add `.clang-format` (LLVM, what the code already follows), normalize
       CRLF line endings (12 files), reformat, check formatting in CI.
-- [ ] Remove `register`, `__BORLANDC__` branches, RISC OS leftovers,
-      `README.old`.
-- [ ] Fix `-Wextra` warnings (unused parameters, sign comparisons, `rzero`).
+- [x] Remove `register`, `__BORLANDC__` branches, RISC OS leftovers.
+      `README.old` stays, for its history.
+- [x] Fix `-Wextra` warnings (unused parameters, sign comparisons, `rzero`).
 
 ## CI and packaging
 
 - [x] Run the tests on 32-bit and big endian hosts: armv7 and s390x under
       QEMU. The ARM and MIPS assembly is removed and byte order handled
       portably, so no code is specific to them.
-- [ ] Update `actions/checkout`.
+- [x] Update `actions/checkout`.
 
 ## Release
 
