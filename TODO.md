@@ -115,9 +115,13 @@ quality report before the next one starts.
       its 3/4 power, which moves the boundary between 1 and 2 from 1.86 to
       1.5: more bits and more error there than the textbook rounding. Try
       the exact rule at quality 1.
-- [ ] Phase 3: restore the bit reservoir (`ResvMax` is always 0), with
-      perceptual entropy driving allocation. Remove or define the
-      `shine_ResvFrameBegin` declaration.
+- [ ] The Huffman bit count is not monotonic in the step size: on a quiet
+      tone at 32 kHz, one step size counted 888 bits between neighbours at
+      580 and 544 (largest value 42). A table or region choice is far from
+      the cheapest there. Fixing it changes the quality 0 goldens.
+- [x] Phase 3: the bit reservoir, at quality 1 (`doc/psy/reservoir.md`):
+      a granule draws on it by its perceptual entropy, and a channel with no
+      band over leaves the bits it does not need.
 - [ ] Phase 4: block switching (short blocks) for transients.
 
 ## Cleanup and formatting

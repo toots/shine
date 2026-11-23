@@ -96,6 +96,7 @@ typedef struct {
 
 typedef struct {
   unsigned private_bits;
+  unsigned main_data_begin; /* bytes */
   int resvDrain;
   unsigned scfsi[MAX_CHANNELS][4];
   struct {
@@ -114,7 +115,8 @@ typedef struct shine_global_flags {
   priv_shine_wave_t wave;
   priv_shine_mpeg_t mpeg;
   int quality; /* 0 to SHINE_QUALITY_MAX */
-  bitstream_t bs;
+  bitstream_t bs;      /* the frame being written */
+  frame_stream_t stream; /* the frames written */
   shine_side_info_t side_info;
   int sideinfo_len;
   int mean_bits;

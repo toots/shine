@@ -121,13 +121,13 @@ static void encodeSideInfo(shine_global_config *config) {
   shine_putbits(&config->bs, config->mpeg.emphasis, 2);
 
   if (config->mpeg.version == SHINE_MPEG_I) {
-    shine_putbits(&config->bs, 0, 9);
+    shine_putbits(&config->bs, si.main_data_begin, 9);
     if (config->wave.channels == 2)
       shine_putbits(&config->bs, si.private_bits, 3);
     else
       shine_putbits(&config->bs, si.private_bits, 5);
   } else {
-    shine_putbits(&config->bs, 0, 8);
+    shine_putbits(&config->bs, si.main_data_begin, 8);
     if (config->wave.channels == 2)
       shine_putbits(&config->bs, si.private_bits, 2);
     else

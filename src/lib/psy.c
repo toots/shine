@@ -400,12 +400,32 @@ static int64_t mid_side(int64_t sum) {
   return (sum * PSY_INV_SQRT2 + (1LL << 30)) >> 31;
 }
 
+/* §perceptual-entropy 3: k[i], Q16. The centre tap is 1. */
+static const int32_t pe_taps[PSY_PE_HISTORY / 2] = {
+    -6812, -12400, -14171, -10218, 0, 15327, 33066, 49599, 61308};
+/* Their sum T, Q16. */
+#define PE_TAPS_SUM (65536 + 2 * 115699)
+
+/* Enters the frame's PE in use and filters the history. */
+static void smooth_pe(psy_model_t *model, int64_t pe_frame) {
+  int64_t *history = model->pe_history;
+  int64_t filtered;
+
+  memmove(history, history + 1, (PSY_PE_HISTORY - 1) * sizeof(*history));
+  history[PSY_PE_HISTORY - 1] = pe_frame;
+  filtered = history[PSY_PE_HISTORY / 2] << 16;
+  for (int i = 0; i < PSY_PE_HISTORY / 2; i++)
+    filtered += pe_taps[i] * (history[i] + history[PSY_PE_HISTORY - 1 - i]);
+  model->pe_filter = filtered;
+}
+
 void shine_psy_frame(shine_global_config *config) {
   psy_model_t *model = config->psy;
   const int granules = config->mpeg.granules_per_frame;
   const int stereo = config->wave.channels == 2;
   int32_t frame_loudness[MAX_GRANULES];
   int32_t pe_lr = 0, pe_ms = 0, weight;
+  int64_t pe_frame = 0;
 
   /* §signal-path 1 step 3: loudness and the ATH update, before the model. */
   for (int g = 0; g < granules; g++) {
@@ -461,9 +481,12 @@ void shine_psy_frame(shine_global_config *config) {
       }
 
   for (int g = 0; g < granules; g++)
-    for (int ch = 0; ch < config->wave.channels; ch++)
+    for (int ch = 0; ch < config->wave.channels; ch++) {
       allowed_distortion(model, weight, model->ms ? ch + 2 : ch,
                          model->xmin[g][ch], g);
+      pe_frame += model->pe[g][model->ms ? ch + 2 : ch];
+    }
+  smooth_pe(model, pe_frame);
 }
 
 /* §ath 4.1: eql_w ∝ 10^(-ATH(f_k)/10), normalised to 2^32. */
@@ -502,6 +525,9 @@ int shine_psy_initialise(shine_global_config *config) {
           : config->wave.channels;
   model->adapt_ath = 1;
   model->adjust_factor = PSY_ADJUST_INITIAL;
+  for (int i = 0; i < PSY_PE_HISTORY; i++)
+    model->pe_history[i] = (700LL << 8) * config->mpeg.granules_per_frame *
+                           config->wave.channels;
   model->adjust_limit = PSY_ADJUST_ONE;
 
   /* Nearest table bitrate, ties to the higher one. */
@@ -733,22 +759,68 @@ static int amplify(scalefactors_t *s, const int *over, int bands) {
 /* The largest part2_3_length, 12 bits. */
 #define PART2_3_MAX 4095
 
+/* §reservoir 3: a granule takes at most 1/2 of the reservoir. */
+#define RESV_SPEND_SHIFT 1
+
+void shine_psy_granule_bits(shine_global_config *config, int gr) {
+  psy_model_t *model = config->psy;
+  const int channels = config->wave.channels;
+  const int *pe = &model->pe[gr][model->ms ? 2 : 0];
+  const int64_t mean = config->mean_bits;
+  const int reservoir = config->ResvSize;
+  int64_t pe_granule = pe[0] + (channels == 2 ? pe[1] : 0);
+  int64_t change = 0, limit;
+
+  /* demand - mean, with demand = mean * T * mode_gr * pe / F. */
+  if (model->pe_filter > 0)
+    change = mean * PE_TAPS_SUM * config->mpeg.granules_per_frame *
+                 pe_granule / model->pe_filter -
+             mean;
+  limit = reservoir >> RESV_SPEND_SHIFT;
+  change = change < 0 ? 0 : change < limit ? change : limit;
+  model->reservoir[gr] = reservoir;
+  model->granule_bits[gr] = (int)(mean + change);
+  if (model->granule_bits[gr] > channels * PART2_3_MAX)
+    model->granule_bits[gr] = channels * PART2_3_MAX;
+}
+
 /* §3.1: the granule's bits, shared by perceptual entropy. */
 int shine_psy_channel_bits(const shine_global_config *config, int gr, int ch) {
   const psy_model_t *model = config->psy;
   const int *pe = &model->pe[gr][model->ms ? 2 : 0];
-  int granule_bits = config->mean_bits, first;
+  int granule_bits = model->granule_bits[gr], first;
 
   if (config->wave.channels == 1)
-    return granule_bits < PART2_3_MAX ? granule_bits : PART2_3_MAX;
-  if (granule_bits > 2 * PART2_3_MAX)
-    granule_bits = 2 * PART2_3_MAX;
+    return granule_bits;
   first = (int)((int64_t)granule_bits * pe[0] / ((int64_t)pe[0] + pe[1]));
   if (first > PART2_3_MAX)
     first = PART2_3_MAX;
   if (granule_bits - first > PART2_3_MAX)
     first = granule_bits - PART2_3_MAX;
   return ch ? granule_bits - first : first;
+}
+
+/* §4.1: whether the granule at step size q, with scalefactors s, has no
+ * band over and uses floor_bits to ceiling_bits Huffman bits. Leaves it
+ * quantised in ix and counted in gi. */
+static int under_at(shine_global_config *config, int *ix, gr_info *gi, int q,
+                    const scalefactors_t *s, const int32_t *xmin,
+                    const int32_t *en, int floor_bits, int ceiling_bits,
+                    int *bits) {
+  const psy_model_t *model = config->psy;
+  int32_t noise[PSY_LONG_BANDS];
+
+  if (quantize_granule(config, ix, q, s) > PSY_IX_MAX)
+    return 0;
+  *bits = shine_count_bits(ix, gi, config);
+  /* A larger step size does not always count fewer bits. */
+  if (*bits < floor_bits || *bits > ceiling_bits)
+    return 0;
+  band_noise(config, model, ix, q, s, noise);
+  for (int sb = 0; sb < model->xmin_bands; sb++)
+    if (noise[sb] > xmin[sb] && xmin[sb] < en[sb])
+      return 0;
+  return 1;
 }
 
 int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
@@ -808,6 +880,31 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
       all_amplified &= s.sf[sb] > 0;
     if (all_amplified)
       break;
+  }
+
+  /* §4.1: with no band over, a larger step size that keeps it so, as far
+   * as the reservoir has room for what it leaves. */
+  if (best_distortion == 0 && config->ResvSize < config->ResvMax) {
+    int floor_bits = best_bits - (config->ResvMax - config->ResvSize);
+    int low = best_q, high = MAX_STEPSIZE + 1, bits;
+
+    while (high - low > 1) {
+      int middle = low + (high - low) / 2;
+
+      if (under_at(config, ix, gi, middle, &best_s, xmin, en, floor_bits,
+                   best_bits, &bits))
+        low = middle;
+      else
+        high = middle;
+    }
+    if (low > best_q &&
+        under_at(config, ix, gi, low, &best_s, xmin, en, floor_bits, best_bits,
+                 &bits)) {
+      best_q = low;
+      best_bits = bits;
+      best_gi = *gi;
+      memcpy(best_ix, ix, sizeof(best_ix));
+    }
   }
 
   *gi = best_gi;

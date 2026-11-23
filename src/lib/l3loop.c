@@ -89,8 +89,8 @@ void shine_iteration_loop(shine_global_config *config) {
   int ch, gr, i;
   int *ix;
 
-  for (ch = config->wave.channels; ch--;) {
-    for (gr = 0; gr < config->mpeg.granules_per_frame; gr++) {
+  for (gr = 0; gr < config->mpeg.granules_per_frame; gr++) {
+    for (ch = 0; ch < config->wave.channels; ch++) {
       /* setup pointers */
       ix = config->l3_enc[ch][gr];
       config->l3loop.xr = config->mdct_freq[ch][gr];
@@ -106,6 +106,8 @@ void shine_iteration_loop(shine_global_config *config) {
       cod_info->sfb_lmax = SFB_LMAX - 1; /* gr_deco */
 
       /* calculation of number of available bit( per granule ) */
+      if (config->psy && ch == 0)
+        shine_psy_granule_bits(config, gr);
       max_bits = config->psy ? shine_psy_channel_bits(config, gr, ch)
                              : shine_max_reservoir_bits(config);
 
@@ -147,8 +149,8 @@ void shine_iteration_loop(shine_global_config *config) {
       cod_info->global_gain =
           cod_info->quantizerStepSize + 210 + MDCT_HEADROOM_STEPS;
 
-    } /* for gr */
-  } /* for ch */
+    }
+  }
 
   shine_ResvFrameEnd(config);
 }

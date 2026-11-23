@@ -15,6 +15,7 @@
 /* Analysis channels: left (or mono), right, mid, side. */
 #define PSY_CHANNELS 4
 #define PSY_LONG_BANDS 22
+#define PSY_PE_HISTORY 19
 
 typedef struct {
   /* History of an analysis channel (doc/psy/signal-path.md §4). */
@@ -61,6 +62,12 @@ typedef struct psy_model {
   int32_t energy[MAX_GRANULES][PSY_CHANNELS];
   int32_t loudness[MAX_GRANULES][MAX_CHANNELS];
   int ms;
+  /* doc/psy/perceptual-entropy.md §3: the PE in use of the last frames, Q8,
+   * and the filter output F, Q24. */
+  int64_t pe_history[PSY_PE_HISTORY], pe_filter;
+  /* doc/psy/reservoir.md §3: the bits of each granule of the last frame,
+   * and the reservoir they were drawn from. */
+  int granule_bits[MAX_GRANULES], reservoir[MAX_GRANULES];
   /* Allowed distortion per coded channel and band, PSY_LOG_ZERO for the
    * bands that have none (doc/psy/allowed-distortion.md §2). */
   int32_t xmin[MAX_GRANULES][MAX_CHANNELS][PSY_LONG_BANDS];

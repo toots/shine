@@ -16,6 +16,9 @@ int shine_count_bits(int ix[GRANULE_SIZE], gr_info *cod_info,
 
 /* The share of the granule's bits of channel ch (psy.c,
  * doc/psy/noise-allocation.md §3.1). */
+/* The bits of a granule, from its perceptual entropy and the reservoir
+ * (doc/psy/reservoir.md §3). Called once, before its first channel. */
+void shine_psy_granule_bits(shine_global_config *config, int gr);
 int shine_psy_channel_bits(const shine_global_config *config, int gr, int ch);
 
 /* The noise allocation of the model (psy.c, doc/psy/noise-allocation.md):

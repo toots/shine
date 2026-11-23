@@ -54,6 +54,8 @@ typedef struct {
   double thm[MAX_GRANULES][PSY_CHANNELS][PSY_LONG_BANDS];
   double pe[MAX_GRANULES][PSY_CHANNELS];
   int ms;
+  /* perceptual-entropy.md §3: the PE in use of the last 19 frames, and F. */
+  double pe_history[19], pe_filtered;
   double xmin[MAX_GRANULES][MAX_CHANNELS][PSY_LONG_BANDS];
 } oracle_t;
 
@@ -328,6 +330,23 @@ static void oracle_frame(oracle_t *o, const psy_model_t *model,
   }
   o->ms = o->channels == 4 && pe_ms <= pe_lr;
 
+  /* perceptual-entropy.md §3 */
+  {
+    static const double k[9] = {-0.0207887, -0.0378413, -0.0432472,
+                                -0.031183,  0,          0.0467745,
+                                0.10091,    0.151365,   0.187098};
+    double pe_sum = 0;
+
+    for (int g = 0; g < granules; g++)
+      for (int ch = 0; ch < (stereo ? 2 : 1); ch++)
+        pe_sum += o->pe[g][o->ms ? ch + 2 : ch];
+    memmove(o->pe_history, o->pe_history + 1, 18 * sizeof(double));
+    o->pe_history[18] = pe_sum;
+    o->pe_filtered = o->pe_history[9];
+    for (int i = 0; i < 9; i++)
+      o->pe_filtered += 5 * k[i] * (o->pe_history[i] + o->pe_history[18 - i]);
+  }
+
   /* allowed-distortion.md §2 */
   for (int g = 0; g < granules; g++)
     for (int ch = 0; ch < (stereo ? 2 : 1); ch++) {
@@ -357,6 +376,7 @@ typedef struct {
       decision_failures;
   double worst_db, worst_pe;
   long xmins, xmin_failures, granules, allocation_failures, step_only;
+  long budgets, budget_failures, surplus;
 } tally_t;
 
 static void compare(const oracle_t *o, const psy_model_t *model, int granules,
@@ -452,9 +472,43 @@ static int oracle_part2(const oracle_scalefactors_t *s, int mpeg1) {
 }
 
 /* §3-§4 on one granule. Returns 0 if no attempt could be made. */
+/* noise-allocation.md §4.1: whether step size q leaves no band over and
+ * uses floor_bits to ceiling_bits Huffman bits. */
+static int oracle_under(shine_t encoder, const double *xr, const double *en,
+                        const double *xmin, int bands,
+                        const oracle_scalefactors_t *s, int q, int floor_bits,
+                        int ceiling_bits) {
+  const int *sfb = shine_scale_fact_band_index[encoder->mpeg.samplerate_index];
+  const double k_long = exp2(PSY_LOG2_K_LONG / 65536.0);
+  int ix[GRANULE_SIZE], bits;
+  gr_info gi;
+
+  memset(&gi, 0, sizeof(gi));
+  if (q > MAX_STEPSIZE || !oracle_quantize(encoder, ix, q, s, sfb))
+    return 0;
+  bits = shine_count_bits(ix, &gi, encoder);
+  if (bits < floor_bits || bits > ceiling_bits)
+    return 0;
+  for (int sb = 0; sb < bands; sb++) {
+    double step = q - 2 * (1 + s->scale) * s->sf[sb], noise = 0;
+
+    for (int k = sfb[sb]; k < sfb[sb + 1]; k++) {
+      double e =
+          fabs(xr[k]) - pow(ix[k], 4.0 / 3) * pow(2, step / 4) * 2147483648.0;
+      noise += e * e;
+    }
+    if (noise * k_long > xmin[sb] && xmin[sb] < en[sb])
+      return 0;
+  }
+  return 1;
+}
+
+/* Returns 0 if no attempt could be made, 2 if the best attempt leaves no
+ * band over, 1 otherwise; *best_bits is its Huffman bits. */
 static int oracle_allocate(shine_t encoder, const double *xr, const double *en,
                            const double *xmin, int bands, int max_bits,
-                           oracle_scalefactors_t *best_s, int *best_q) {
+                           oracle_scalefactors_t *best_s, int *best_q,
+                           int *best_bits) {
   const int *sfb = shine_scale_fact_band_index[encoder->mpeg.samplerate_index];
   const int mpeg1 = encoder->mpeg.version == SHINE_MPEG_I;
   const double k_long = exp2(PSY_LOG2_K_LONG / 65536.0);
@@ -465,7 +519,7 @@ static int oracle_allocate(shine_t encoder, const double *xr, const double *en,
   memset(&s, 0, sizeof(s));
   for (int attempt = 0; attempt < OUTER_ATTEMPTS; attempt++) {
     int part2 = oracle_part2(&s, mpeg1), q, over[PSY_LONG_BANDS], any = 0,
-        raised = 0, all = 1;
+        raised = 0, all = 1, bits = 0;
     double d = 0;
     gr_info gi;
 
@@ -475,7 +529,7 @@ static int oracle_allocate(shine_t encoder, const double *xr, const double *en,
     for (q = STEP_MIN; q <= MAX_STEPSIZE; q++) {
       memset(&gi, 0, sizeof(gi));
       if (oracle_quantize(encoder, ix, q, &s, sfb) &&
-          shine_count_bits(ix, &gi, encoder) <= max_bits - part2)
+          (bits = shine_count_bits(ix, &gi, encoder)) <= max_bits - part2)
         break;
     }
     if (q > MAX_STEPSIZE)
@@ -499,6 +553,7 @@ static int oracle_allocate(shine_t encoder, const double *xr, const double *en,
       best_d = d;
       *best_s = s;
       *best_q = q;
+      *best_bits = bits;
     }
     if (!any)
       break;
@@ -522,7 +577,7 @@ static int oracle_allocate(shine_t encoder, const double *xr, const double *en,
     if (all)
       break;
   }
-  return best_d >= 0;
+  return best_d < 0 ? 0 : best_d == 0 ? 2 : 1;
 }
 
 /* The allowed distortion and the allocation of the frame the encoder just
@@ -533,16 +588,45 @@ static void compare_allocation(const oracle_t *o, shine_t encoder,
   const int bands = encoder->wave.samplerate <= 8000 ? 17 : 21;
 
   for (int g = 0; g < encoder->mpeg.granules_per_frame; g++)
-    for (int ch = 0; ch < encoder->wave.channels; ch++) {
+    for (int ch = 0, room = 0; ch < encoder->wave.channels; ch++) {
       const gr_info *gi = &encoder->side_info.gr[g].ch[ch].tt;
       double xr[GRANULE_SIZE], peak = 0;
+      const double *en = o->en[g][o->ms ? ch + 2 : ch];
       oracle_scalefactors_t s;
-      int q, same = 1, max_bits;
+      int q, same = 1, max_bits, outcome, fitted_bits = 0, step_agrees;
+      int encoder_q = gi->quantizerStepSize;
 
-      /* noise-allocation.md §3.1 */
+      /* reservoir.md §3, from the reservoir the encoder had. */
+      if (ch == 0) {
+        const int nch = encoder->wave.channels;
+        double mean = encoder->mean_bits;
+        double reservoir = encoder->psy->reservoir[g];
+        double pe = o->pe[g][o->ms ? 2 : 0] +
+                    (nch == 2 ? o->pe[g][o->ms ? 3 : 1] : 0);
+        double smoothed = o->pe_filtered > 0
+                              ? pe * 670 * 5 * encoder->mpeg.granules_per_frame *
+                                    nch / o->pe_filtered
+                              : 739.3719 * nch;
+        double demand = mean * smoothed / (739.3719 * nch), bits;
+
+        bits = mean + fmin(fmax(0, demand - mean), 0.5 * reservoir);
+        bits = fmin(bits, nch * 4095);
+        room = encoder->ResvMax - encoder->psy->reservoir[g];
+        tally->budgets++;
+        /* The PE of the two models agree within PE_TOLERANCE. */
+        if (fabs(bits - encoder->psy->granule_bits[g]) >
+                2 + 2 * PE_TOLERANCE * mean &&
+            tally->budget_failures++ < 3 && verbose)
+          printf("  %s: gr %d: %d bits, oracle %.1f (mean %.0f, reservoir "
+                 "%.0f)\n",
+                 name, g, encoder->psy->granule_bits[g], bits, mean,
+                 reservoir);
+      }
+
+      /* noise-allocation.md §3.1, on the granule's bits. */
       {
         int base = o->ms ? 2 : 0;
-        int total = encoder->mean_bits > 8190 ? 8190 : encoder->mean_bits;
+        int total = encoder->psy->granule_bits[g];
         int first = (int)floor(total * o->pe[g][base] /
                                (o->pe[g][base] + o->pe[g][base + 1]));
 
@@ -576,17 +660,51 @@ static void compare_allocation(const oracle_t *o, shine_t encoder,
         if (encoder->l3loop.xrabs[k] > encoder->l3loop.xrmax)
           encoder->l3loop.xrmax = encoder->l3loop.xrabs[k];
       }
-      if (peak == 0 ||
-          !oracle_allocate(encoder, xr, o->en[g][o->ms ? ch + 2 : ch],
-                           o->xmin[g][ch], bands, max_bits, &s, &q))
-        continue;
+      outcome = peak == 0 ? 0
+                          : oracle_allocate(encoder, xr, en, o->xmin[g][ch],
+                                            bands, max_bits, &s, &q,
+                                            &fitted_bits);
+      /* What the encoder's reservoir can take after this channel. */
+      {
+        int channel_room = room, used = 0;
+
+        if (peak != 0) {
+          int magnitudes[GRANULE_SIZE];
+          gr_info counted = *gi;
+
+          for (int k = 0; k < GRANULE_SIZE; k++)
+            magnitudes[k] = abs(encoder->l3_enc[ch][g][k]);
+          used = (int)gi->part2_length +
+                 shine_count_bits(magnitudes, &counted, encoder);
+        }
+        room -= encoder->mean_bits / encoder->wave.channels - used;
+        if (!outcome)
+          continue;
+        /* noise-allocation.md §4.1: with no band over and room, a step
+         * size that leaves none over and whose successor does not. */
+        int low = fitted_bits - channel_room;
+
+        if (outcome == 2 && channel_room > 0) {
+
+          tally->surplus += encoder_q > q;
+          step_agrees =
+              encoder_q >= q &&
+              (encoder_q == q ||
+               oracle_under(encoder, xr, en, o->xmin[g][ch], bands, &s,
+                            encoder_q, low, fitted_bits)) &&
+              (encoder_q == MAX_STEPSIZE ||
+               !oracle_under(encoder, xr, en, o->xmin[g][ch], bands, &s,
+                             encoder_q + 1, low, fitted_bits));
+        } else
+          step_agrees = encoder_q == q;
+      }
       tally->granules++;
       same = s.scale == (int)gi->scalefac_scale;
       for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
         same &= s.sf[sb] == encoder->scalefactor.l[g][ch][sb];
-      if (same && q != gi->quantizerStepSize)
+      if (same && !step_agrees)
         tally->step_only++;
-      if (!same || q != gi->quantizerStepSize) {
+      if (!same || !step_agrees) {
         if (tally->allocation_failures++ < 3 && verbose)
           printf("  %s: gr %d ch %d: step %d scale %u, oracle step %d scale "
                  "%d%s\n",
@@ -612,6 +730,9 @@ static void run(const shine_config_t *config, const int16_t *samples,
   }
   per_pass = shine_samples_per_pass(encoder);
   oracle_init(&oracle, encoder->psy);
+  for (int i = 0; i < 19; i++)
+    oracle.pe_history[i] =
+        700.0 * encoder->mpeg.granules_per_frame * config->wave.channels;
   for (long i = 0; i + per_pass <= count; i += per_pass) {
     encoder->buffer[0] = samples + i * channels;
     if (channels == 2)
@@ -625,9 +746,15 @@ static void run(const shine_config_t *config, const int16_t *samples,
             name);
     /* The allocation has no state: one frame in ALLOCATION_STRIDE. */
     if (frame++ % ALLOCATION_STRIDE == 0) {
-      encoder->mean_bits =
-          (8 * encoder->mpeg.whole_slots_per_frame - encoder->sideinfo_len) /
-          encoder->mpeg.granules_per_frame;
+      int frame_bits = 8 * encoder->mpeg.whole_slots_per_frame;
+      /* reservoir.md §2, with the stream's longest frame. */
+      int longest = frame_bits + 8 * (encoder->mpeg.frac_slots_per_frame != 0);
+      int limit = 8 * (encoder->mpeg.version == SHINE_MPEG_I ? 511 : 255);
+
+      limit = limit < 7680 - longest ? limit : 7680 - longest;
+      encoder->ResvMax = limit > 0 ? limit : 0;
+      encoder->mean_bits = (frame_bits - encoder->sideinfo_len) /
+                           encoder->mpeg.granules_per_frame;
       shine_iteration_loop(encoder);
       compare_allocation(&oracle, encoder, tally, name);
     }
@@ -709,7 +836,10 @@ static int report(const tally_t *t) {
          "(%ld in the step size only)\n",
          t->xmins, t->xmin_failures, THRESHOLD_TOLERANCE_DB, t->granules,
          t->allocation_failures, t->step_only);
-  ok = ok && t->granules > 0 &&
+  printf("%ld granule budgets, %ld differ; %ld channels left bits\n",
+         t->budgets, t->budget_failures, t->surplus);
+  ok = ok && t->granules > 0 && t->budgets > 0 && t->surplus > 0 &&
+       t->budget_failures <= (1 - NUMERIC_AGREEMENT) * t->budgets &&
        t->xmin_failures <= (1 - NUMERIC_AGREEMENT) * t->xmins &&
        t->allocation_failures <= (1 - DECISION_AGREEMENT) * t->granules;
   if (!t->bands)
@@ -768,6 +898,9 @@ static int synthetic(void) {
           tally.granules += one.granules;
           tally.allocation_failures += one.allocation_failures;
           tally.step_only += one.step_only;
+          tally.budgets += one.budgets;
+          tally.budget_failures += one.budget_failures;
+          tally.surplus += one.surplus;
           tally.worst_db = fmax(tally.worst_db, one.worst_db);
           tally.worst_pe = fmax(tally.worst_pe, one.worst_pe);
         }

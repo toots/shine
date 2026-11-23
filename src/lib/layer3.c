@@ -181,6 +181,19 @@ static void shine_encode_frame(shine_global_config *config, int stride) {
   config->mean_bits = (config->mpeg.bits_per_frame - config->sideinfo_len) /
                       config->mpeg.granules_per_frame;
 
+  /* doc/psy/reservoir.md §2. Quality 0 has no reservoir. */
+  if (config->psy) {
+    int field = config->mpeg.granules_per_frame == 2 ? 511 : 255;
+    int capacity = config->mpeg.bits_per_frame - config->sideinfo_len;
+    /* The next frame draws from the reservoir, and may be padded. */
+    int longest = 8 * (config->mpeg.whole_slots_per_frame +
+                       (config->mpeg.frac_slots_per_frame != 0));
+    int limit = MIN(8 * field, 7680 - longest);
+
+    limit = MIN(limit, (SLOT_QUEUE - 2) * capacity);
+    config->ResvMax = limit > 0 ? limit & ~7 : 0;
+  }
+
   /* apply mdct to the polyphase output */
   shine_mdct_sub(config, stride);
 
@@ -188,18 +201,23 @@ static void shine_encode_frame(shine_global_config *config, int stride) {
     shine_psy_frame(config);
 
   /* bit and noise allocation */
+  config->side_info.main_data_begin = config->ResvSize / 8;
   shine_iteration_loop(config);
 
-  /* write the frame to the bitstream */
+  /* write the frame, then lay it out in the stream */
   shine_format_bitstream(config);
+  shine_flush_bit_stream(&config->bs);
+  /* ponytail: out of memory drops the frame, as the bit writer drops bits. */
+  shine_stream_frame(&config->stream, config->bs.data,
+                     config->sideinfo_len / 8,
+                     config->bs.data_position - config->sideinfo_len / 8,
+                     config->mpeg.bits_per_frame / 8);
+  config->bs.data_position = 0;
 }
 
 static unsigned char *shine_take_data(shine_global_config *config,
                                       int *written) {
-  *written = config->bs.data_position;
-  config->bs.data_position = 0;
-
-  return config->bs.data;
+  return shine_stream_take(&config->stream, 0, written);
 }
 
 unsigned char *shine_encode_buffer(shine_global_config *config,
@@ -242,13 +260,13 @@ unsigned char *shine_flush(shine_global_config *config, int *written) {
       config->buffer[1] = silence + 1;
     shine_encode_frame(config, config->wave.channels);
   }
-  shine_flush_bit_stream(&config->bs);
 
-  return shine_take_data(config, written);
+  return shine_stream_take(&config->stream, 1, written);
 }
 
 void shine_close(shine_global_config *config) {
   shine_close_bit_stream(&config->bs);
+  free(config->stream.data);
   free(config->psy);
   free(config);
 }

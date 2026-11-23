@@ -34,7 +34,8 @@ shineenc_LDADD   = libshine.la
 # One program per concern. A new test needs its program here and its
 # _SOURCES line below.
 TESTS          = tests/config tests/framing tests/flush tests/wave tests/cli \
-                 tests/golden tests/level tests/psy_model tools/psy_oracle
+                 tests/golden tests/level tests/reservoir tests/psy_model \
+                 tools/psy_oracle
 check_PROGRAMS = $(TESTS)
 TEST_HELPERS   = tests/helpers.c tests/helpers.h
 LDADD          = libshine.la
@@ -47,6 +48,7 @@ tests_wave_SOURCES    = tests/wave.c $(TEST_HELPERS)
 tests_cli_SOURCES     = tests/cli.c $(TEST_HELPERS)
 tests_golden_SOURCES  = tests/golden.c $(TEST_HELPERS)
 tests_level_SOURCES   = tests/level.c $(TEST_HELPERS)
+tests_reservoir_SOURCES = tests/reservoir.c $(TEST_HELPERS)
 
 # Built from the library's sources, to reach the model's internals.
 tests_psy_model_SOURCES = tests/psy_model.c $(CORE_SOURCES)

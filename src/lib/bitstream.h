@@ -21,6 +21,33 @@ typedef struct bit_stream_struc {
 #define MIN(A, B) ((A) < (B) ? (A) : (B))
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 
+/* Slots whose capacity main data has not reached yet: the reservoir never
+ * spans more (doc/psy/reservoir.md §2). */
+#define SLOT_QUEUE 128
+
+/* The frames of a stream, laid out as slots of fixed length whose main data
+ * may begin in an earlier slot (doc/psy/reservoir.md §1, §4). */
+typedef struct {
+  unsigned char *data;
+  int size;
+  int length;   /* end of the last slot begun */
+  int main;     /* where the next byte of main data goes */
+  int slot;     /* start of the slot holding main */
+  int returned; /* bytes handed to the caller, dropped by the next frame */
+  int starts[SLOT_QUEUE]; /* slots main data has not reached, oldest first */
+  int first, count;
+} frame_stream_t;
+
+/* Appends a frame's slot and its main data. frame holds header_bytes of
+ * header and side information, then main_bytes of main data; the slot is
+ * slot_bytes long. Returns -1 when out of memory. */
+int shine_stream_frame(frame_stream_t *stream, const unsigned char *frame,
+                       int header_bytes, int main_bytes, int slot_bytes);
+
+/* The complete slots not returned yet, or every slot begun when ending the
+ * stream. */
+unsigned char *shine_stream_take(frame_stream_t *stream, int end, int *written);
+
 int shine_open_bit_stream(bitstream_t *bs, const int size);
 void shine_close_bit_stream(bitstream_t *bs);
 void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N);

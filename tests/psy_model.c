@@ -7,6 +7,7 @@
 
 #include "psy.c"
 
+#include <limits.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -50,6 +51,12 @@ enum {
   ALLOCATION_TIE,       /* noise-allocation §2 */
   NOISE_MEASURE,        /* noise-allocation §1, §2 */
   ALLOWED_DISTORTION,   /* allowed-distortion §2 */
+  GRANULE_BITS,         /* reservoir §3, KC 21 */
+  PE_SMOOTHING,         /* perceptual-entropy §3, KC 21 */
+  RESERVOIR_STEADY,     /* reservoir §3 */
+  RESERVOIR_BURST,      /* reservoir §3 */
+  STREAM_LAYOUT,        /* reservoir §1, §4 */
+  ALLOCATION_SURPLUS,   /* noise-allocation §4.1 */
   CHECK_COUNT
 };
 
@@ -77,6 +84,12 @@ static const char *check_names[CHECK_COUNT] = {
     [MS_SUM_LIMIT] = "M/S sum limit",
     [MS_DEMASKING] = "M/S demasking",
     [MS_INDEPENDENCE] = "M/S parameters",
+    [GRANULE_BITS] = "bits of a granule",
+    [PE_SMOOTHING] = "PE smoothing",
+    [RESERVOIR_STEADY] = "steady signal gets the mean",
+    [RESERVOIR_BURST] = "burst draws on the reservoir",
+    [STREAM_LAYOUT] = "stream layout",
+    [ALLOCATION_SURPLUS] = "bits a channel does not need",
     [PE_BOUNDS] = "PE bounds",
     [PE_CAP_CONTINUITY] = "PE cap continuity",
     [CLICK_ALIGNMENT] = "click alignment",
@@ -1275,13 +1288,125 @@ static int coding_bits(int mpeg1, unsigned compress, const int32_t *sf,
   return bits;
 }
 
+/* perceptual-entropy §3: k[i] / 5. */
+static const double spec_taps[9] = {-0.0207887, -0.0378413, -0.0432472,
+                                  -0.031183,  0,          0.0467745,
+                                  0.10091,    0.151365,   0.187098};
+
+/* The filter output F on the model's PE history. */
+static double pe_filter(const psy_model_t *m) {
+  double filtered = (double)m->pe_history[9];
+
+  for (int i = 0; i < 9; i++)
+    filtered +=
+        5 * spec_taps[i] * (double)(m->pe_history[i] + m->pe_history[18 - i]);
+  return filtered;
+}
+
+/* reservoir §3, in floating point, from the model's PE and the reservoir
+ * the encoder had. */
+static double granule_budget(shine_t e, int gr) {
+  const psy_model_t *m = e->psy;
+  const int channels = e->wave.channels, granules = e->mpeg.granules_per_frame;
+  double mean = e->mean_bits, reservoir = m->reservoir[gr];
+  double filtered = pe_filter(m), taps = 1, pe = 0, demand, bits;
+
+  for (int i = 0; i < 9; i++)
+    taps += 2 * 5 * spec_taps[i];
+  for (int ch = 0; ch < channels; ch++)
+    pe += m->pe[gr][(m->ms ? 2 : 0) + ch];
+  /* The smoothed PE, over PE_STEADY per channel. */
+  demand = filtered > 0 ? mean * (pe * 670 * 5 * granules * channels / filtered) /
+                              (670 * 5 / taps * channels)
+                        : mean;
+  bits = mean + fmin(fmax(0, demand - mean), reservoir / 2);
+  return fmin(bits, channels * 4095);
+}
+
+/* noise-allocation §4.1: whether step size q, with scalefactors s, leaves no
+ * band over and uses floor_bits to ceiling_bits Huffman bits. */
+static int under(shine_t e, int gr, int ch, const scalefactors_t *s, int q,
+                 int floor_bits, int ceiling_bits) {
+  int ix[GRANULE_SIZE], bits;
+  int32_t noise[PSY_LONG_BANDS];
+  gr_info counted = e->side_info.gr[gr].ch[ch].tt;
+
+  if (quantize_granule(e, ix, q, s) > PSY_IX_MAX)
+    return 0;
+  bits = shine_count_bits(ix, &counted, e);
+  if (bits < floor_bits || bits > ceiling_bits)
+    return 0;
+  band_noise(e, e->psy, ix, q, s, noise);
+  for (int sb = 0; sb < e->psy->xmin_bands; sb++)
+    if (noise[sb] > e->psy->xmin[gr][ch][sb] &&
+        e->psy->xmin[gr][ch][sb] < e->psy->en[gr][e->psy->ms ? ch + 2 : ch][sb])
+      return 0;
+  return 1;
+}
+
+static void prepare(shine_t e, int gr, int ch);
+
+/* noise-allocation §4.1: a channel leaves bits only with no band over, and
+ * then as many as the reservoir can take. `reservoir` is what it held when
+ * the channel was allocated. */
+static void check_surplus(shine_t e, int gr, int ch, int max_bits,
+                          int reservoir, const char *name) {
+  const gr_info *gi = &e->side_info.gr[gr].ch[ch].tt;
+  const int q = gi->quantizerStepSize, part2 = (int)gi->part2_length;
+  gr_info counted = *gi;
+  scalefactors_t s;
+  int ix[GRANULE_SIZE], fitted_q, fitted_bits;
+  int floor_bits;
+
+  if (!e->l3loop.xrmax)
+    return;
+  s.scale = (int)gi->scalefac_scale;
+  for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
+    s.sf[sb] = (int)e->scalefactor.l[gr][ch][sb];
+  fitted_bits = fit(e, ix, &counted, max_bits - part2, &s, &fitted_q);
+  if (fitted_bits < 0)
+    return;
+  floor_bits = fitted_bits - (e->ResvMax - reservoir);
+  if (fitted_bits <= floor_bits ||
+      !under(e, gr, ch, &s, fitted_q, INT_MIN, fitted_bits)) {
+    check(ALLOCATION_SURPLUS, q == fitted_q,
+          "%s gr %d ch %d: step %d, the smallest that fits is %d, with %s",
+          name, gr, ch, q, fitted_q,
+          fitted_bits <= floor_bits ? "no room" : "a band over");
+    return;
+  }
+  check(ALLOCATION_SURPLUS,
+        q >= fitted_q &&
+            (q == fitted_q ||
+             under(e, gr, ch, &s, q, floor_bits, fitted_bits)) &&
+            (q == MAX_STEPSIZE ||
+             !under(e, gr, ch, &s, q + 1, floor_bits, fitted_bits)),
+        "%s gr %d ch %d: step %d after %d, at least %d bits of %d", name, gr,
+        ch, q, fitted_q, floor_bits, fitted_bits);
+}
+
 static void check_granule(shine_t e) {
   const int mpeg1 = e->mpeg.version == SHINE_MPEG_I;
   char name[64];
 
   snprintf(name, sizeof(name), "%d Hz %d kbps mode %d", e->wave.samplerate,
            e->mpeg.bitrate, e->mpeg.mode);
-  for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
+  for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++) {
+    int bits = e->psy->granule_bits[gr], reservoir = e->psy->reservoir[gr];
+    double expected = granule_budget(e, gr);
+
+    check(GRANULE_BITS,
+          bits >= 0 && bits <= e->wave.channels * 4095 &&
+              bits <= e->mean_bits + reservoir && reservoir >= 0 &&
+              reservoir <= e->ResvMax + 2 * e->mean_bits &&
+              fabs(bits - expected) <= 1,
+          "%s gr %d: %d bits with a mean of %d and a reservoir of %d of %d, "
+          "expected %.1f",
+          name, gr, bits, e->mean_bits, reservoir, e->ResvMax, expected);
+  }
+  for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++) {
+    int reservoir = e->psy->reservoir[gr];
+
     for (int ch = 0; ch < e->wave.channels; ch++) {
       gr_info *gi = &e->side_info.gr[gr].ch[ch].tt;
       const int32_t *sf = e->scalefactor.l[gr][ch];
@@ -1302,7 +1427,7 @@ static void check_granule(shine_t e) {
 
       /* noise-allocation §3.1, in floating point. */
       const int32_t *pe = &e->psy->pe[gr][e->psy->ms ? 2 : 0];
-      int total = e->mean_bits > 8190 ? 8190 : e->mean_bits, max_bits;
+      int total = e->psy->granule_bits[gr], max_bits;
 
       if (e->wave.channels == 1)
         max_bits = total > 4095 ? 4095 : total;
@@ -1316,6 +1441,10 @@ static void check_granule(shine_t e) {
       check(ALLOCATION_BOUNDS, ix_max <= PSY_IX_MAX && bits <= max_bits,
             "%s gr %d ch %d: ix up to %d, %d of %d bits", name, gr, ch, ix_max,
             bits, max_bits);
+      prepare(e, gr, ch);
+      check_surplus(e, gr, ch, max_bits, reservoir, name);
+      /* What the encoder's reservoir became after this channel. */
+      reservoir += e->mean_bits / e->wave.channels - (e->l3loop.xrmax ? bits : 0);
 
       /* noise-allocation §2: never over, so never amplified. */
       for (int sb = 0; sb < xmin_bands(e); sb++)
@@ -1341,6 +1470,7 @@ static void check_granule(shine_t e) {
             "%s gr %d ch %d: scalefac_compress %u, %u bits, cheapest %d", name,
             gr, ch, gi->scalefac_compress, gi->part2_length, cheapest);
     }
+  }
 }
 
 /* noise-allocation §1, §3, §5 on every rate, mono and joint stereo. */
@@ -1608,6 +1738,179 @@ static void check_allocation_silence(void) {
   }
 }
 
+/* reservoir §3: a signal whose PE does not change demands the mean. */
+static void check_reservoir_steady(void) {
+  for (int r = 0; r < 9; r++) {
+    shine_t e = open_encoder(rates[r], 2, SHINE_STEREO, r < 3 ? 128 : 64);
+    /* Twelve periods a granule: every granule has the same spectrum. */
+    tone_t t = {12 * rates[r] / 576.0, 8000, 1, rates[r]};
+    long position = 0;
+
+    for (int frame = 0; frame < 30; frame++) {
+      encode_frame(e, tone, &t, &position, NULL);
+      if (frame >= 22)
+        for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
+          check(RESERVOIR_STEADY,
+                abs(e->psy->granule_bits[gr] - e->mean_bits) <= 1,
+                "%d Hz frame %d gr %d: %d bits, mean %d", rates[r], frame, gr,
+                e->psy->granule_bits[gr], e->mean_bits);
+    }
+    shine_close(e);
+  }
+}
+
+/* A quiet tone, then full-scale noise from sample `start`. */
+static double quiet_then_burst(long n, int ch, const void *context) {
+  const tone_t *t = context;
+
+  return n >= (long)t->right ? 30000 * noise_at(n, ch)
+                             : 300 * sin(2 * M_PI * t->frequency * n /
+                                         t->samplerate);
+}
+
+/* reservoir §3: a burst after a quiet passage gets more than the mean, from
+ * what the quiet passage left; quiet granules after it give bits up while
+ * the reservoir has room. */
+static void check_reservoir_burst(void) {
+  for (int r = 0; r < 9; r++) {
+    shine_t e = open_encoder(rates[r], 2, SHINE_STEREO, r < 3 ? 128 : 64);
+    const int per_pass = shine_samples_per_pass(e);
+    tone_t t = {1000, 0, 30.0 * per_pass, rates[r]};
+    tone_t quiet = {1000, 300, 1, rates[r]};
+    long position = 0;
+    int most = 0, least = e->mean_bits;
+
+    for (int frame = 0; frame < 32; frame++) {
+      encode_frame(e, quiet_then_burst, &t, &position, NULL);
+      if (frame >= 30)
+        for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
+          if (e->psy->granule_bits[gr] > most)
+            most = e->psy->granule_bits[gr];
+    }
+    check(RESERVOIR_BURST, most > e->mean_bits + e->mean_bits / 20,
+          "%d Hz: the burst gets at most %d bits, mean %d", rates[r], most,
+          e->mean_bits);
+    for (int frame = 0; frame < 4; frame++) {
+      encode_frame(e, tone, &quiet, &position, NULL);
+      for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
+        if (e->psy->granule_bits[gr] < least)
+          least = e->psy->granule_bits[gr];
+    }
+    check(RESERVOIR_BURST, least < e->mean_bits,
+          "%d Hz: quiet granules after the burst get at least %d bits, mean %d",
+          rates[r], least, e->mean_bits);
+    shine_close(e);
+  }
+}
+
+/* reservoir §1, §4: the stream is each frame's header and side information
+ * at its slot, and between them every frame's main data in order, then
+ * zeros. */
+static void check_stream_layout(void) {
+  enum { FRAMES = 40, LIMIT = 1 << 17 };
+  static unsigned char out[LIMIT], headers[LIMIT], main_data[LIMIT];
+  static unsigned char laid[LIMIT];
+
+  for (int r = 0; r < 9; r++)
+    for (int mode = 0; mode < 2; mode++) {
+      shine_t e = open_encoder(rates[r], mode ? 2 : 1,
+                               mode ? SHINE_JOINT_STEREO : SHINE_MONO,
+                               r < 3 ? 96 : 32);
+      const int header_bytes = e->sideinfo_len / 8;
+      int16_t samples[2 * SHINE_MAX_SAMPLES];
+      int out_size = 0, main_size = 0, laid_size = 0, frames = 0, position = 0;
+      int slot[FRAMES + 8], same;
+
+      for (int frame = 0; frame <= FRAMES + 2; frame++) {
+        unsigned char *data;
+        int written, used = 0;
+
+        if (frame == FRAMES + 2)
+          data = shine_flush(e, &written);
+        else {
+          for (int i = 0; i < shine_samples_per_pass(e) * e->wave.channels; i++)
+            samples[i] = frame % 7 >= 5 ? clip(30000 * noise_at(position++, 0))
+                                        : (int16_t)(200 * (i % 23 - 11));
+          data = shine_encode_buffer_interleaved(e, samples, &written);
+          /* The frame as it was written, before its layout. */
+          for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
+            for (int ch = 0; ch < e->wave.channels; ch++)
+              used += (int)e->side_info.gr[gr].ch[ch].tt.part2_3_length;
+          used = (used + e->side_info.resvDrain) / 8;
+          memcpy(headers + frames * header_bytes, e->bs.data, header_bytes);
+          memcpy(main_data + main_size, e->bs.data + header_bytes, used);
+          main_size += used;
+          slot[frames++] = e->mpeg.bits_per_frame / 8;
+        }
+        memcpy(out + out_size, data, written);
+        out_size += written;
+      }
+
+      /* shine_flush encodes frames of its own: the stream holds at least
+       * the frames recorded here. */
+      position = 0;
+      same = 1;
+      for (int frame = 0; frame < frames && same; frame++) {
+        same = position + slot[frame] <= out_size &&
+               !memcmp(out + position, headers + frame * header_bytes,
+                       header_bytes);
+        if (same)
+          memcpy(laid + laid_size, out + position + header_bytes,
+                 slot[frame] - header_bytes);
+        laid_size += slot[frame] - header_bytes;
+        position += slot[frame];
+      }
+      check(STREAM_LAYOUT, same, "%d Hz mode %d: a header is not at its slot",
+            rates[r], mode);
+      /* The last frames' main data may end in the slots of the flush. */
+      check(STREAM_LAYOUT,
+            same && !memcmp(laid, main_data,
+                            main_size < laid_size ? main_size : laid_size),
+            "%d Hz mode %d: the main data is not laid out in order", rates[r],
+            mode);
+      check(STREAM_LAYOUT, main_size > laid_size - 2000 && main_size > 1000,
+            "%d Hz mode %d: %d bytes of main data in %d of capacity",
+            rates[r], mode, main_size, laid_size);
+      shine_close(e);
+    }
+}
+
+/* Silence on even frames, full-scale noise on odd ones. */
+static double alternating(long n, int ch, const void *context) {
+  int per_pass = *(const int *)context;
+
+  return (n / per_pass) % 2 ? 32767 * (noise_at(n, ch) < 0 ? -1 : 1) : 0;
+}
+
+/* KC 21: full-scale noise at the lowest bitrate, silence, and the two
+ * alternating every frame keep the filter output positive; check_granule
+ * bounds every budget on the way. */
+static void check_pe_smoothing(void) {
+  for (int r = 0; r < 9; r++) {
+    static const signal_t signals[3] = {noise, silence, alternating};
+    noise_t z = {32767, 1};
+
+    for (int s = 0; s < 3; s++) {
+      shine_t e = open_encoder(rates[r], 2, SHINE_JOINT_STEREO,
+                               lowest_bitrate(rates[r]));
+      int per_pass = shine_samples_per_pass(e);
+      const void *context = s == 0 ? (const void *)&z : (const void *)&per_pass;
+      long position = 0;
+
+      for (int frame = 0; frame < 45; frame++) {
+        encode_frame(e, signals[s], context, &position, NULL);
+        check(PE_SMOOTHING,
+              e->psy->pe_filter > 0 && pe_filter(e->psy) > 0 &&
+                  fabs(e->psy->pe_filter / 65536.0 / pe_filter(e->psy) - 1) <
+                      1e-4,
+              "%d Hz signal %d frame %d: F is %.1f, expected %.1f", rates[r],
+              s, frame, e->psy->pe_filter / 65536.0, pe_filter(e->psy));
+      }
+      shine_close(e);
+    }
+  }
+}
+
 int main(void) {
   int status = 0, total = 0;
 
@@ -1643,6 +1946,10 @@ int main(void) {
   check_amplify();
   check_noise_measure();
   check_allowed_distortion();
+  check_reservoir_steady();
+  check_reservoir_burst();
+  check_pe_smoothing();
+  check_stream_layout();
 
   for (int i = 0; i < CHECK_COUNT; i++) {
     printf("%-30s %6d run, %d failed\n", check_names[i], runs[i], failures[i]);
