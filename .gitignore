@@ -86,4 +86,5 @@ tests/*
 !tests/*.h
 !tests/*.mjs
 js/dist/
+!tests/golden.txt
 test-suite.log

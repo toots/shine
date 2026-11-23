@@ -52,6 +52,14 @@ helpers in `tests/helpers.h`. A regression fix should come with a test that
 fails without the fix: add `tests/<name>.c` and list it in `TESTS` and a
 `tests_<name>_SOURCES` line in `Makefile.am`.
 
+`tests/golden` checks the hash of every encoded stream against
+`tests/golden.txt`, so any change to the encoder's output fails. Changes meant
+to alter the output regenerate the file, and say why in the commit message:
+
+```bash
+SHINE_UPDATE_GOLDEN=1 make check TESTS=tests/golden
+```
+
 CI also runs the tests under AddressSanitizer and UndefinedBehaviorSanitizer.
 To do the same locally:
 

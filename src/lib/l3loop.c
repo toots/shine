@@ -57,7 +57,8 @@ int shine_inner_loop(int ix[GRANULE_SIZE], int max_bits, gr_info *cod_info,
     subdivide(cod_info, config);                   /* bigvalues sfb division */
     bigv_tab_select(ix, cod_info);                 /* codebook selection*/
     bits += bvbits = bigv_bitcount(ix, cod_info);  /* bit count */
-  } while (bits > max_bits);
+    /* All coefficients quantize to 0 well before MAX_STEPSIZE. */
+  } while (bits > max_bits && cod_info->quantizerStepSize < MAX_STEPSIZE);
   return bits;
 }
 
@@ -353,6 +354,10 @@ void shine_loop_initialise(shine_global_config *config) {
           (int32_t)((config->l3loop.steptab[i] * 2) + 0.5);
   }
 
+  for (i = 1; i <= MAX_STEPSIZE; i++)
+    config->l3loop.steptab_fraction[i] =
+        (uint32_t)(pow(2.0, -(double)i / 4) * 4294967296.0 + 0.5);
+
   /* quantize: vector conversion, three quarter power table.
    * The 0.5 is for rounding, the .0946 comes from the spec.
    */
@@ -367,10 +372,33 @@ void shine_loop_initialise(shine_global_config *config) {
  * Function: Quantization of the vector xr ( -> ix).
  * Returns maximum value of ix.
  */
+/* Step sizes above 0 only occur for full scale coefficients at low bitrates,
+ * where steptabi would round 2**(-stepsize/4) to an integer. */
+static int quantize_coarse(int ix[GRANULE_SIZE], int stepsize,
+                           shine_global_config *config) {
+  uint64_t fraction = config->l3loop.steptab_fraction[stepsize];
+  int max = 0;
+
+  for (int i = 0; i < GRANULE_SIZE; i++) {
+    /* Rounded xrabs * 2**(-stepsize/4) / 2**31: at most 1. */
+    int ln = (int)(((uint64_t)config->l3loop.xrabs[i] * fraction +
+                    (1ULL << 62)) >>
+                   63);
+    ix[i] = config->l3loop.int2idx[ln];
+    if (max < ix[i])
+      max = ix[i];
+  }
+
+  return max;
+}
+
 int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config) {
   int i, max, ln;
   int32_t scalei;
   double scale, dbl;
+
+  if (stepsize > 0)
+    return quantize_coarse(ix, stepsize, config);
 
   scalei = config->l3loop.steptabi[stepsize + 127]; /* 2**(-stepsize/4) */
 

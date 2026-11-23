@@ -21,11 +21,18 @@ typedef int (*config_test_t)(const shine_config_t *config, const char *name);
  * configurations than expected were tested. */
 int run_all_configs(config_test_t test);
 
-/* Encodes `input_samples` samples per channel of loud white noise, followed
- * by `shine_flush`, into `stream`. The last pass is zero padded, as callers
- * do with real input. */
+/* Encodes `input_samples` interleaved samples per channel, followed by
+ * `shine_flush`, into `stream`. The last pass is zero padded, as callers do
+ * with real input. */
+void encode_samples(shine_t encoder, int channels, const int16_t *samples,
+                    int input_samples, stream_t *stream);
+
+/* `encode_samples` on loud white noise. */
 void encode_noise(shine_t encoder, int channels, int input_samples,
                   stream_t *stream);
+
+/* Next value of a deterministic white noise. */
+int16_t noise(unsigned int *seed);
 
 void stream_free(stream_t *stream);
 
