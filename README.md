@@ -99,6 +99,25 @@ the native encoder, when `configure` found a WebAssembly toolchain: see
 How fast is it?
 ---------------
 
+On an Apple M5 (`arm64`, November 2026), encoding 3 minutes of music: median
+of 7 runs (5 for LAME), in multiples of realtime.
+
+| | 44.1 kHz stereo 128 kbps (joint) | 44.1 kHz stereo 320 kbps | 22.05 kHz mono 64 kbps |
+|---|---|---|---|
+| `shineenc` | 445x | 382x | 1360x |
+| `shineenc`, before the 2026 rework | 316x | 283x | 1039x |
+| WebAssembly (Node 26) | 201x | 184x | 730x |
+| WebAssembly, before the 2026 rework (Emscripten) | 192x | 179x | 710x |
+| LAME 4.0 `-q 7` | 267x | 309x | 1014x |
+| LAME 4.0 `-q 2` | 68x | 81x | 192x |
+
+"Before the 2026 rework" is commit `ab5e352`. Both `shineenc` builds use
+`CFLAGS=-O2`. LAME runs with `-b <bitrate>` and `-m j`, `-m s` or `-m m`:
+`-q 2` is its default quality, `-q 7` its fastest setting that still uses a
+psychoacoustic model, which shine does not have.
+
+### ⚠ The following are outdated tests ⚠
+
 On a macbook pro (`arm64`/M1 pro, `FPU`, December 30, 2022):
 
 Lame, `88.7x` realtime:
@@ -126,8 +145,6 @@ Bitrate: 128 kbps  De-emphasis: none   Original
 Encoding "/tmp/bla.wav" to "/tmp/shine.mp3"
 Finished in 00:00:01 (318.0x realtime)
 ```
-
-### ⚠ The following are outdated tests ⚠
 
 On a [Raspberry Pi](http://www.raspberrypi.org/) (`ARM`, `FPU`):
 
