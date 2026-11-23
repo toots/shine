@@ -1,4 +1,4 @@
-x.y.z ()
+4.0.0 ()
 =====
 * API: public names are prefixed, and config fields spelled out:
   - `MONO`, `STEREO`, `JOINT_STEREO`, `DUAL_CHANNEL`: `SHINE_MONO`,

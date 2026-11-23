@@ -72,7 +72,7 @@ none now, checked in CI by `tools/check-no-float.sh`.
 - [ ] Quality setting in the config, added with the psychoacoustic model,
       which is the first thing it would select. Its lowest level keeps
       today's bit-exact fast path.
-- [ ] Bump the version: `AC_INIT` still says 3.1.1.
+- [x] Bump the version to 4.0.0.
 
 ## Psychoacoustics
 

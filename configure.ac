@@ -1,4 +1,4 @@
-AC_INIT([shine],[3.1.1],[toots@rastageeks.org])
+AC_INIT([shine],[4.0.0],[toots@rastageeks.org])
 AM_INIT_AUTOMAKE([subdir-objects])
 LT_INIT
 AC_CONFIG_MACRO_DIR([m4])
