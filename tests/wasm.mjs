@@ -95,7 +95,18 @@ const floatEncoded = Buffer.concat([float.encode([new Float32Array(SAMPLES).fill
 const floatOk = floatEncoded.length > 0;
 if (!floatOk) console.log("FAIL Float32Array input: no output");
 
+// Channels of different lengths are rejected.
+const uneven = new Shine({ samplerate: 44100, bitrate: 128, channels: 2 });
+let unevenOk = false;
+try {
+  uneven.encode([new Int16Array(4000), new Int16Array(3000)]);
+} catch {
+  unevenOk = true;
+}
+uneven.close();
+if (!unevenOk) console.log("FAIL channels of different lengths: accepted");
+
 fs.rmSync(directory, { recursive: true });
 
 console.log(`${passed}/${cases.length} cases passed`);
-process.exit(passed === cases.length && floatOk ? 0 : 1);
+process.exit(passed === cases.length && floatOk && unevenOk ? 0 : 1);

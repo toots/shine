@@ -108,6 +108,8 @@ export class Shine {
   encode(data) {
     if (!this._handle) throw new Error("Closed");
     if (data.length !== this._channels) throw new Error("Invalid data");
+    if (data.some(samples => samples.length !== data[0].length))
+      throw new Error("Channels have different lengths");
 
     for (let channel = 0; channel < this._channels; channel++)
       this._pending[channel] = concat(
