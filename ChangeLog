@@ -1,6 +1,8 @@
 x.y.z ()
 =====
-* Be more specific when enabling MIPS assembly routines.
+* Remove the ARM and MIPS assembly multiplies: current compilers generate
+  the same instructions from C. Output on those architectures now matches
+  every other.
 * Fix wave header reading on big endian machines (#34)
 * Fix invalid streams at 8, 16 and 32 kHz for bitrates whose frame size is
   a whole number of bytes (wrong padding bit).

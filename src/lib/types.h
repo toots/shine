@@ -9,28 +9,9 @@
 
 #include "bitstream.h"
 
-/* Include arch-specific instructions,
- * when defined. */
-#if defined(__mips__) && (__mips == 32)
-#include "mult_mips_gcc.h"
-#elif defined(__arm__) && !defined(__thumb__)
-#include "mult_sarm_gcc.h"
-#endif
-
-/* Include and define generic instructions,
- * when not already defined above. */
+/* Fixed-point multiplies. Current compilers turn them into single
+ * instructions, e.g. smmul and smmulr on ARMv7, mult and mfhi on MIPS. */
 #include "mult_noarch_gcc.h"
-
-#ifndef SWAB32
-#if defined(__GNUC__) &&                                                       \
-    (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 2))
-#define SWAB32(x) __builtin_bswap32(x)
-#else
-#define SWAB32(x)                                                              \
-  (((unsigned int)(x) >> 24) | (((unsigned int)(x) >> 8) & 0xff00) |           \
-   (((unsigned int)(x) & 0xff00) << 8) | ((unsigned int)(x) << 24))
-#endif
-#endif
 
 /* #define DEBUG if you want the library to dump info to stdout */
 

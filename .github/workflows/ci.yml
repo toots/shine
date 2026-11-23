@@ -56,6 +56,24 @@ jobs:
     - name: make check
       run: make check || (cat tests/*.log; exit 1)
 
+  cross-arch:
+    # 32-bit and big endian hosts, emulated: the golden hashes must match.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux/arm/v7, linux/s390x]
+    steps:
+    - uses: actions/checkout@v3
+    - uses: docker/setup-qemu-action@v3
+    - name: make check
+      run: >
+        docker run --rm --platform ${{ matrix.platform }} -v "$PWD:/src" -w /src
+        debian:stable-slim sh -c
+        "apt-get update -qq &&
+        apt-get install -y -qq --no-install-recommends gcc make autoconf automake libtool > /dev/null &&
+        ./bootstrap && ./configure && make check || (cat tests/*.log; exit 1)"
+
   fixed-point:
     # arm64: -mgeneral-regs-only turns floating point into soft-float calls.
     runs-on: macos-latest

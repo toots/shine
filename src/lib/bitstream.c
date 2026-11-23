@@ -77,11 +77,17 @@ void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N) {
 
     N -= bs->cache_bits;
     bs->cache |= val >> N;
-#ifdef SHINE_BIG_ENDIAN
-    *(unsigned int *)(bs->data + bs->data_position) = bs->cache;
-#else
-    *(unsigned int *)(bs->data + bs->data_position) = SWAB32(bs->cache);
-#endif
+    {
+      /* Most significant byte first, on any host. Locals, since stores through
+       * unsigned char may alias bs: compilers merge these into one store. */
+      unsigned char *out = bs->data + bs->data_position;
+      unsigned int word = bs->cache;
+
+      out[0] = (unsigned char)(word >> 24);
+      out[1] = (unsigned char)(word >> 16);
+      out[2] = (unsigned char)(word >> 8);
+      out[3] = (unsigned char)word;
+    }
     bs->data_position += sizeof(unsigned int);
     bs->cache_bits = 32 - N;
     if (N != 0)
