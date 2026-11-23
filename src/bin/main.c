@@ -135,7 +135,7 @@ static void check_config(shine_config_t *config) {
   static char *version_names[4] = {"2.5", "reserved", "II", "I"};
   static char *mode_names[4] = {"stereo", "joint-stereo", "dual-channel",
                                 "mono"};
-  static char *demp_names[4] = {"none", "50/15us", "", "SHINE_EMPHASIS_CCITT"};
+  static char *demp_names[4] = {"none", "50/15us", "", "CCITT"};
 
   printf("MPEG-%s layer III, %s  Psychoacoustic Model: Shine\n",
          version_names[shine_check_config(config->wave.samplerate,
