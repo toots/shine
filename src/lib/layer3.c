@@ -194,6 +194,9 @@ static void shine_encode_frame(shine_global_config *config, int stride) {
     config->ResvMax = limit > 0 ? limit & ~7 : 0;
   }
 
+  if (config->psy)
+    shine_psy_block_types(config);
+
   /* apply mdct to the polyphase output */
   shine_mdct_sub(config, stride);
 

@@ -419,6 +419,32 @@ static void smooth_pe(psy_model_t *model, int64_t pe_frame) {
   model->pe_filter = filtered;
 }
 
+static int forced_short(const psy_model_t *model, long granule) {
+  return model->forced_short_period && granule > 0 &&
+         granule % model->forced_short_period == 0;
+}
+
+void shine_psy_block_types(shine_global_config *config) {
+  psy_model_t *model = config->psy;
+
+  for (int g = 0; g < config->mpeg.granules_per_frame; g++) {
+    long n = model->granule_index + g;
+    /* §3: the type a granule ends with, knowing whether the next is short. */
+    int before = forced_short(model, n - 1), after = forced_short(model, n + 1);
+    /* A granule between two short ones is short: a stop window cannot
+     * precede a short one. */
+    unsigned type = forced_short(model, n) || (before && after) ? BLOCK_SHORT
+                    : after                                     ? BLOCK_START
+                    : before                                    ? BLOCK_STOP
+                                                                : BLOCK_NORM;
+
+    /* §2: both channels have the same type. */
+    for (int ch = 0; ch < config->wave.channels; ch++)
+      config->side_info.gr[g].ch[ch].tt.block_type = type;
+  }
+  model->granule_index += config->mpeg.granules_per_frame;
+}
+
 void shine_psy_frame(shine_global_config *config) {
   psy_model_t *model = config->psy;
   const int granules = config->mpeg.granules_per_frame;
@@ -672,7 +698,10 @@ static int quantize_granule(shine_global_config *config, int *ix, int q,
  * largest step size. */
 static int fit(shine_global_config *config, int *ix, gr_info *gi, int budget,
                const scalefactors_t *s, int *q) {
-  int low = STEP_MIN - 1, high = MAX_STEPSIZE, bits;
+  /* A short block's global_gain is SHORT_HEADROOM_STEPS above its step. */
+  int low = STEP_MIN - 1, bits;
+  int high = MAX_STEPSIZE -
+             (gi->block_type == BLOCK_SHORT ? SHORT_HEADROOM_STEPS : 0);
 
   if (quantize_granule(config, ix, high, s) > PSY_IX_MAX ||
       shine_count_bits(ix, gi, config) > budget)
@@ -842,6 +871,24 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
   /* Kept only if no attempt can be made: silence at the largest step. */
   memset(best_ix, 0, sizeof(best_ix));
   best_q = MAX_STEPSIZE;
+  /* ponytail: a short block gets a plain step size search until the short
+   * thresholds exist (doc/psy/masking.md §4). */
+  if (gi->block_type == BLOCK_SHORT) {
+    int bits = fit(config, ix, gi, max_bits, &s, &best_q);
+
+    memset(config->scalefactor.s[gr][ch], 0,
+           sizeof(config->scalefactor.s[gr][ch]));
+    for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
+      config->scalefactor.l[gr][ch][sb] = 0;
+    if (bits < 0) {
+      memset(ix, 0, GRANULE_SIZE * sizeof(*ix));
+      best_q = MAX_STEPSIZE - SHORT_HEADROOM_STEPS;
+      bits = 0;
+    }
+    gi->quantizerStepSize = best_q;
+    gi->scalefac_scale = gi->scalefac_compress = gi->part2_length = 0;
+    return bits;
+  }
   for (int attempt = 0; attempt < OUTER_ATTEMPTS; attempt++) {
     int32_t noise[PSY_LONG_BANDS];
     int over[PSY_LONG_BANDS], any_over = 0, all_amplified = 1, q, bits;

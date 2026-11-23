@@ -62,6 +62,24 @@ static void encodeScalefactorsLSF(shine_global_config *config, gr_info *gi,
       shine_putbits(&config->bs, scalefactors[sfb], slen[group]);
 }
 
+/* Short block scalefactors, by band then window: MPEG-1 codes bands 0..5
+ * on slen1 bits and 6..11 on slen2 (ISO 11172-3 2.4.2.7), MPEG-2 and 2.5
+ * four groups of three bands (13818-3 2.4.3.2). */
+static void encodeScalefactorsShort(shine_global_config *config, gr_info *gi,
+                                    int32_t (*scalefactors)[3]) {
+  unsigned compress = gi->scalefac_compress;
+  unsigned slen[4] = {(compress >> 4) / 5, (compress >> 4) % 5,
+                      (compress & 15) >> 2, compress & 3};
+
+  if (config->mpeg.version == SHINE_MPEG_I) {
+    slen[0] = slen[1] = shine_slen1_tab[compress];
+    slen[2] = slen[3] = shine_slen2_tab[compress];
+  }
+  for (int sfb = 0; sfb < 12; sfb++)
+    for (int window = 0; window < 3; window++)
+      shine_putbits(&config->bs, scalefactors[sfb][window], slen[sfb / 3]);
+}
+
 static void encodeMainData(shine_global_config *config) {
   int gr, ch, sfb;
   shine_side_info_t si = config->side_info;
@@ -72,6 +90,11 @@ static void encodeMainData(shine_global_config *config) {
       int *ix = &config->l3_enc[ch][gr][0];
       unsigned slen1, slen2;
 
+      if (gi->block_type == BLOCK_SHORT) {
+        encodeScalefactorsShort(config, gi, config->scalefactor.s[gr][ch]);
+        Huffmancodebits(config, ix, gi);
+        continue;
+      }
       if (config->mpeg.version != SHINE_MPEG_I) {
         encodeScalefactorsLSF(config, gi, config->scalefactor.l[gr][ch]);
         Huffmancodebits(config, ix, gi);
@@ -151,13 +174,25 @@ static void encodeSideInfo(shine_global_config *config) {
         shine_putbits(&config->bs, gi->scalefac_compress, 4);
       else
         shine_putbits(&config->bs, gi->scalefac_compress, 9);
-      shine_putbits(&config->bs, 0, 1);
+      if (gi->block_type) {
+        /* window_switching_flag, block_type, no mixed block. The region
+         * counts are implied. */
+        shine_putbits(&config->bs, 1, 1);
+        shine_putbits(&config->bs, gi->block_type, 2);
+        shine_putbits(&config->bs, 0, 1);
+        for (region = 0; region < 2; region++)
+          shine_putbits(&config->bs, gi->table_select[region], 5);
+        for (int window = 0; window < 3; window++)
+          shine_putbits(&config->bs, gi->subblock_gain[window], 3);
+      } else {
+        shine_putbits(&config->bs, 0, 1);
 
-      for (region = 0; region < 3; region++)
-        shine_putbits(&config->bs, gi->table_select[region], 5);
+        for (region = 0; region < 3; region++)
+          shine_putbits(&config->bs, gi->table_select[region], 5);
 
-      shine_putbits(&config->bs, gi->region0_count, 4);
-      shine_putbits(&config->bs, gi->region1_count, 3);
+        shine_putbits(&config->bs, gi->region0_count, 4);
+        shine_putbits(&config->bs, gi->region1_count, 3);
+      }
 
       if (config->mpeg.version == SHINE_MPEG_I)
         shine_putbits(&config->bs, gi->preflag, 1);
@@ -183,10 +218,17 @@ static void Huffmancodebits(shine_global_config *config, int *ix, gr_info *gi) {
   /* 1: Write the bigvalues */
   bigvalues = gi->big_values << 1;
 
-  scalefac_index = gi->region0_count + 1;
-  region1Start = scalefac[scalefac_index];
-  scalefac_index += gi->region1_count + 1;
-  region2Start = scalefac[scalefac_index];
+  if (gi->block_type) {
+    /* ISO 11172-3 2.4.2.7: region 0 ends after 3 short bands or 8 long
+     * ones, and there is no region 2. */
+    region1Start = gi->block_type == BLOCK_SHORT ? 36 : scalefac[8];
+    region2Start = GRANULE_SIZE;
+  } else {
+    scalefac_index = gi->region0_count + 1;
+    region1Start = scalefac[scalefac_index];
+    scalefac_index += gi->region1_count + 1;
+    region2Start = scalefac[scalefac_index];
+  }
 
   for (i = 0; i < bigvalues; i += 2) {
     /* get table pointer */

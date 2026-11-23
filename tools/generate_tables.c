@@ -55,6 +55,56 @@ static void mdct_cosine(void) {
   printf("};\n\n");
 }
 
+/* Window of block type `type` (ISO 11172-3 2.4.3.4.10.3), sample i of 36. */
+static double block_window(int type, int i) {
+  if (type == 1)
+    return i < 18 ? sin(PI36 * (i + 0.5))
+                  : i < 24 ? 1 : i < 30 ? sin(PI / 12 * (i - 18 + 0.5)) : 0;
+  if (type == 3)
+    return i < 6 ? 0
+                 : i < 12 ? sin(PI / 12 * (i - 6 + 0.5))
+                          : i < 18 ? 1 : sin(PI36 * (i + 0.5));
+  return sin(PI36 * (i + 0.5));
+}
+
+static void mdct_cosine_switching(void) {
+  static const char *names[2] = {"start", "stop"};
+
+  printf("/* As shine_mdct_cosine, with the windows of block types 1 (start)\n"
+         " * and 3 (stop). */\n");
+  for (int type = 1; type <= 3; type += 2) {
+    printf("const int32_t shine_mdct_cosine_%s[18][36] = {\n",
+           names[type / 2]);
+    for (int m = 0; m < 18; m++) {
+      printf("    {");
+      for (int k = 0; k < 36; k++)
+        printf("%s%d", k ? ", " : "",
+               (int32_t)(block_window(type, k) *
+                         cos((PI / 72) * (2 * k + 19) * (2 * m + 1)) *
+                         (2.0 / 9.0) * 0x7fffffff));
+      printf("},\n");
+    }
+    printf("};\n\n");
+  }
+  printf("/* The 12-point MDCT of a short window (block type 2), with its\n"
+         " * window. The decoder's short IMDCT has a gain of 3 where the long\n"
+         " * one has 9, which would make the scale 3 times that of\n"
+         " * shine_mdct_cosine, 2/3. The sum of the absolute values of a row\n"
+         " * is then up to 3.34: scaled by a further 1/4, see\n"
+         " * SHORT_HEADROOM_STEPS. */\n");
+  printf("const int32_t shine_mdct_cosine_short[6][12] = {\n");
+  for (int m = 0; m < 6; m++) {
+    printf("    {");
+    for (int k = 0; k < 12; k++)
+      printf("%s%d", k ? ", " : "",
+             (int32_t)(sin(PI / 12 * (k + 0.5)) *
+                       cos((PI / 24) * (2 * k + 7) * (2 * m + 1)) *
+                       (1.0 / 6.0) * 0x7fffffff));
+    printf("},\n");
+  }
+  printf("};\n\n");
+}
+
 static void mdct_aliasing(void) {
   static const double coefficients[8] = {-0.6,   -0.535, -0.33,   -0.185,
                                          -0.095, -0.041, -0.0142, -0.0037};
@@ -106,6 +156,7 @@ int main(void) {
   printf("#include \"tables.h\"\n\n");
   subband_filter();
   mdct_cosine();
+  mdct_cosine_switching();
   mdct_aliasing();
   quantizer_steps();
   return 0;

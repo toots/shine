@@ -25,6 +25,12 @@
  * MDCT_HEADROOM_STEPS has 8 bits. */
 #define MAX_STEPSIZE (45 - MDCT_HEADROOM_STEPS)
 
+/* Short blocks carry a further headroom of 4 (shine_mdct_cosine_short):
+ * their global_gain is 8 steps higher again. */
+#define SHORT_HEADROOM_STEPS 8
+
+enum { BLOCK_NORM = 0, BLOCK_START = 1, BLOCK_SHORT = 2, BLOCK_STOP = 3 };
+
 #ifndef MAX_CHANNELS
 #define MAX_CHANNELS 2
 #endif
@@ -75,6 +81,8 @@ typedef struct {
 /* Side information */
 typedef struct {
   unsigned part2_3_length;
+  unsigned block_type; /* BLOCK_NORM at quality 0 */
+  unsigned subblock_gain[3];
   unsigned big_values;
   unsigned count1;
   unsigned global_gain;

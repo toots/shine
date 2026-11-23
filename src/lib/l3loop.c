@@ -147,7 +147,8 @@ void shine_iteration_loop(shine_global_config *config) {
 
       shine_ResvAdjust(cod_info, config);
       cod_info->global_gain =
-          cod_info->quantizerStepSize + 210 + MDCT_HEADROOM_STEPS;
+          cod_info->quantizerStepSize + 210 + MDCT_HEADROOM_STEPS +
+          (cod_info->block_type == BLOCK_SHORT ? SHORT_HEADROOM_STEPS : 0);
 
     }
   }
@@ -394,6 +395,19 @@ void subdivide(gr_info *cod_info, shine_global_config *config) {
   if (!cod_info->big_values) { /* no big_values region */
     cod_info->region0_count = 0;
     cod_info->region1_count = 0;
+  } else if (cod_info->block_type) {
+    /* Two regions at a fixed boundary (ISO 11172-3 2.4.2.7): after 3 short
+     * bands, or 8 long ones. */
+    unsigned boundary =
+        cod_info->block_type == BLOCK_SHORT
+            ? 36
+            : (unsigned)shine_scale_fact_band_index[config->mpeg
+                                                        .samplerate_index][8];
+    unsigned bigvalues_region = 2 * cod_info->big_values;
+
+    cod_info->address1 =
+        boundary < bigvalues_region ? boundary : bigvalues_region;
+    cod_info->address2 = cod_info->address3 = bigvalues_region;
   } else {
     const int *scalefac_band_long =
         &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];

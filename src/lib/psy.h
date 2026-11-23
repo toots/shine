@@ -62,6 +62,11 @@ typedef struct psy_model {
   int32_t energy[MAX_GRANULES][PSY_CHANNELS];
   int32_t loudness[MAX_GRANULES][MAX_CHANNELS];
   int ms;
+  /* ponytail: until the attack detector (doc/psy/block-switching.md §1),
+   * every granule whose index divides by this is short. 0: none. Tests set
+   * it. */
+  int forced_short_period;
+  long granule_index; /* of the frame's first granule */
   /* doc/psy/perceptual-entropy.md §3: the PE in use of the last frames, Q8,
    * and the filter output F, Q24. */
   int64_t pe_history[PSY_PE_HISTORY], pe_filter;
@@ -76,6 +81,10 @@ typedef struct psy_model {
 /* Allocates the model of an encoder, or leaves config->psy NULL at the
  * lowest quality. Returns -1 when out of memory. */
 int shine_psy_initialise(shine_global_config *config);
+
+/* Sets the block type of every granule of the frame, before its MDCT
+ * (doc/psy/block-switching.md §2, §3). */
+void shine_psy_block_types(shine_global_config *config);
 
 /* Runs the model on the frame's MDCT, and codes it as mid/side when the
  * model chooses so (doc/psy/signal-path.md §1). */

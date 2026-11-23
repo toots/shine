@@ -10,11 +10,15 @@ extern const int shine_samplerates[9];
 extern const int shine_bitrates[16][4];
 
 extern const int shine_scale_fact_band_index[9][23];
+extern const int shine_scale_fact_band_index_short[9][14];
 extern const int32_t shine_enwindow[];
 
 /* precomputed_tables.c */
 extern const int32_t shine_subband_filter[SBLIMIT][64];
 extern const int32_t shine_mdct_cosine[18][36];
+extern const int32_t shine_mdct_cosine_start[18][36];
+extern const int32_t shine_mdct_cosine_stop[18][36];
+extern const int32_t shine_mdct_cosine_short[6][12];
 extern const int32_t shine_mdct_alias_cs[8];
 extern const int32_t shine_mdct_alias_ca[8];
 extern const int32_t shine_steptabi[128];

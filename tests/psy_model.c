@@ -57,6 +57,7 @@ enum {
   RESERVOIR_BURST,      /* reservoir §3 */
   STREAM_LAYOUT,        /* reservoir §1, §4 */
   ALLOCATION_SURPLUS,   /* noise-allocation §4.1 */
+  BLOCK_SEQUENCE,       /* block-switching §2, §3 */
   CHECK_COUNT
 };
 
@@ -90,6 +91,7 @@ static const char *check_names[CHECK_COUNT] = {
     [RESERVOIR_BURST] = "burst draws on the reservoir",
     [STREAM_LAYOUT] = "stream layout",
     [ALLOCATION_SURPLUS] = "bits a channel does not need",
+    [BLOCK_SEQUENCE] = "block type sequence",
     [PE_BOUNDS] = "PE bounds",
     [PE_CAP_CONTINUITY] = "PE cap continuity",
     [CLICK_ALIGNMENT] = "click alignment",
@@ -1875,6 +1877,46 @@ static void check_stream_layout(void) {
     }
 }
 
+/* block-switching §2, §3: a short granule is announced by a start window
+ * and followed by a stop window or another short one, on both channels. */
+static void check_block_sequence(void) {
+  static const int periods[5] = {1, 2, 3, 5, 8};
+
+  for (int r = 0; r < 9; r++)
+    for (int p = 0; p < 5; p++) {
+      shine_t e = open_encoder(rates[r], 2, SHINE_JOINT_STEREO,
+                               r < 3 ? 128 : 32);
+      unsigned previous = BLOCK_NORM;
+      double gain = 1;
+      long position = 0;
+      int shorts = 0;
+
+      e->psy->forced_short_period = periods[p];
+      for (int frame = 0; frame < 12; frame++) {
+        encode_frame(e, music, &gain, &position, NULL);
+        for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++) {
+          const gr_info *gi = &e->side_info.gr[gr].ch[0].tt;
+          unsigned type = gi->block_type;
+          int after_long = previous == BLOCK_NORM || previous == BLOCK_STOP;
+          int long_now = type == BLOCK_NORM || type == BLOCK_START;
+
+          check(BLOCK_SEQUENCE,
+                after_long == long_now &&
+                    type == e->side_info.gr[gr].ch[1].tt.block_type &&
+                    gi->global_gain <= 255,
+                "%d Hz period %d frame %d gr %d: type %u after %u, gain %u",
+                rates[r], periods[p], frame, gr, type, previous,
+                gi->global_gain);
+          shorts += type == BLOCK_SHORT;
+          previous = type;
+        }
+      }
+      check(BLOCK_SEQUENCE, shorts > 0, "%d Hz period %d: no short granule",
+            rates[r], periods[p]);
+      shine_close(e);
+    }
+}
+
 /* Silence on even frames, full-scale noise on odd ones. */
 static double alternating(long n, int ch, const void *context) {
   int per_pass = *(const int *)context;
@@ -1950,6 +1992,7 @@ int main(void) {
   check_reservoir_burst();
   check_pe_smoothing();
   check_stream_layout();
+  check_block_sequence();
 
   for (int i = 0; i < CHECK_COUNT; i++) {
     printf("%-30s %6d run, %d failed\n", check_names[i], runs[i], failures[i]);
