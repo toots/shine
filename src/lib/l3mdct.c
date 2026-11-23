@@ -2,6 +2,7 @@
 
 #include "l3mdct.h"
 #include "l3subband.h"
+#include "psy.h"
 #include "tables.h"
 #include "types.h"
 
@@ -55,6 +56,11 @@ void shine_mdct_sub(shine_global_config *config, int stride) {
           block_type == BLOCK_START  ? shine_mdct_cosine_start
           : block_type == BLOCK_STOP ? shine_mdct_cosine_stop
                                      : shine_mdct_cosine;
+      /* A short granule also gets a long MDCT, for the model. */
+      int32_t (*long_enc)[18] =
+          block_type == BLOCK_SHORT
+              ? (int32_t (*)[18])config->psy->analysis_long[ch][gr]
+              : mdct_enc;
       int32_t short_lines[3][192];
 
       /* polyphase filtering */
@@ -86,15 +92,14 @@ void shine_mdct_sub(shine_global_config *config, int stride) {
           for (int window = 0; window < 3; window++)
             for (int k = 0; k < 6; k++)
               short_lines[window][6 * band + k] = out[window][k];
-          continue;
         }
-        mdct_long(mdct_in, table, mdct_enc[band]);
+        mdct_long(mdct_in, table, long_enc[band]);
 
         /* Perform aliasing reduction butterfly */
         if (band != 0) {
           for (int k = 0; k < 8; k++)
-            cmuls(mdct_enc[band][k], mdct_enc[band - 1][17 - k],
-                  mdct_enc[band][k], mdct_enc[band - 1][17 - k],
+            cmuls(long_enc[band][k], long_enc[band - 1][17 - k],
+                  long_enc[band][k], long_enc[band - 1][17 - k],
                   shine_mdct_alias_cs[k], shine_mdct_alias_ca[k]);
         }
       }

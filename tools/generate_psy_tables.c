@@ -345,6 +345,8 @@ static void bitrate_rows(void) {
          "  int32_t ath_curve;       /* ATH_CURVE, Q16 */\n"
          "  int32_t log2_ath_floor;  /* ath_floor, with ATH_OFFSET */\n"
          "  int32_t minval_depth;    /* MINVAL_DEPTH in dB, Q16 */\n"
+         "  int32_t attack_ratio;    /* ATTACK_RATIO, Q16 */\n"
+         "  int32_t attack_ratio_side; /* ATTACK_RATIO_SIDE, Q16 */\n"
          "} psy_bitrate_row_t;\n");
   printf("#define PSY_BITRATE_ROWS %d\n", count);
   printf("static const psy_bitrate_row_t psy_bitrate_rows[PSY_BITRATE_ROWS] = "
@@ -356,13 +358,45 @@ static void bitrate_rows(void) {
     for (double f = 1000; f < 8000; f += 0.01)
       if (ath_curve(f, c) < ath_min)
         ath_min = ath_curve(f, c);
-    printf("{%d, %ld, %ld, %ld, %ld, %ld, %ld},\n", rows[i].kbps,
+    /* ATTACK_RATIO and ATTACK_RATIO_SIDE of the row. */
+    int k = rows[i].kbps;
+    double attack = k <= 112   ? 6.60
+                    : k == 128 ? 6.40
+                    : k == 160 ? 6.00
+                    : k == 192 ? 5.60
+                               : 5.20;
+    double side = k <= 112 ? 145 : k == 128 ? 140 : k == 160 ? 135 : 125;
+
+    printf("{%d, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld},\n", rows[i].kbps,
            log_q16(2 * rows[i].msfix), db_q16(rows[i].mask_adjust),
            db_q16(-rows[i].ath_lower), fixed(c, LOG_ONE),
            db_q16(ath_min - ATH_FS_SPL - rows[i].ath_lower),
-           fixed(5.0 * rows[i].kbps / 320, LOG_ONE));
+           fixed(5.0 * rows[i].kbps / 320, LOG_ONE), fixed(attack, LOG_ONE),
+           fixed(side, LOG_ONE));
   }
   printf("};\n\n");
+}
+
+/* Attack detection (doc/psy/block-switching.md §1). Filtered samples and
+ * peaks are in Q16 of a 16-bit sample: full scale is 2^31. */
+static void attack_tables(void) {
+  static const double taps[5] = {-0.0170317, 0.0418072, -0.0876324, 0.186348,
+                                 -0.627638};
+  const double full_scale = 32768.0 * 65536;
+
+  printf("/* Attack filter taps c[1], c[3], .. c[9], Q16. */\n"
+         "static const int32_t psy_attack_taps[5] = {");
+  for (int i = 0; i < 5; i++)
+    printf("%s%ld", i ? ", " : "", fixed(taps[i], LOG_ONE));
+  printf("};\n");
+  printf("#define PSY_PEAK_FLOOR %ld\n",
+         fixed(full_scale * pow(10, -90.3 / 20), 1));
+  printf("#define PSY_ATTACK_DECAY 10\n");
+  printf("#define PSY_PERIODIC_RATIO %ld /* Q16 */\n", fixed(1.7, LOG_ONE));
+  printf("/* 3 * PERIODIC_CEILING, for a sum of three peaks. */\n"
+         "#define PSY_PERIODIC_CEILING_SUM %ldLL\n",
+         fixed(3 * full_scale * pow(10, -7.8 / 20), 1));
+  printf("#define PSY_PULSE_DIVISOR 6 /* 1 / PULSE_FRACTION */\n\n");
 }
 
 static void masking_tables(void) {
@@ -500,6 +534,7 @@ int main(void) {
   spreading();
   ath_lines();
   bitrate_rows();
+  attack_tables();
   masking_tables();
   ath_constants();
   pe_constants();

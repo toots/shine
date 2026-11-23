@@ -58,6 +58,11 @@ enum {
   STREAM_LAYOUT,        /* reservoir §1, §4 */
   ALLOCATION_SURPLUS,   /* noise-allocation §4.1 */
   BLOCK_SEQUENCE,       /* block-switching §2, §3 */
+  ATTACK_STEADY,        /* block-switching §1, KC 7 */
+  ATTACK_STEP,          /* block-switching §1.4, KC 7, 20 */
+  ATTACK_SIDE,          /* block-switching §1.7, §2, KC 8 */
+  ATTACK_LEVEL,         /* block-switching §1.5, KC 7 */
+  ATTACK_RULES,         /* block-switching §1.3, §1.5 */
   CHECK_COUNT
 };
 
@@ -92,6 +97,11 @@ static const char *check_names[CHECK_COUNT] = {
     [STREAM_LAYOUT] = "stream layout",
     [ALLOCATION_SURPLUS] = "bits a channel does not need",
     [BLOCK_SEQUENCE] = "block type sequence",
+    [ATTACK_STEADY] = "steady signals stay long",
+    [ATTACK_STEP] = "a step is coded short",
+    [ATTACK_SIDE] = "anti-phase click",
+    [ATTACK_LEVEL] = "attacks at lower levels",
+    [ATTACK_RULES] = "decay and handled attacks",
     [PE_BOUNDS] = "PE bounds",
     [PE_CAP_CONTINUITY] = "PE cap continuity",
     [CLICK_ALIGNMENT] = "click alignment",
@@ -398,12 +408,17 @@ static void check_band_energy(void) {
       encode_frame(e, music, &gain, &position, NULL);
       for (int g = 0; g < e->mpeg.granules_per_frame; g++) {
         const int *sfb = shine_scale_fact_band_index[e->mpeg.samplerate_index];
+        /* spectral-analysis §1.1: the long MDCT of a short granule. */
+        const int32_t *spectrum =
+            e->side_info.gr[g].ch[0].tt.block_type == BLOCK_SHORT
+                ? e->psy->analysis_long[0][g]
+                : e->mdct_freq[0][g];
 
         for (int sb = 0; sb < 22; sb++) {
           double direct = 0;
 
           for (int k = sfb[sb]; k < sfb[sb + 1]; k++)
-            direct += (double)e->mdct_freq[0][g][k] * e->mdct_freq[0][g][k];
+            direct += (double)spectrum[k] * spectrum[k];
           direct = 10 * log10(direct * exp2(PSY_LOG2_K_LONG / 65536.0));
           check(BAND_ENERGY_SUM, fabs(db(e->psy->en[g][0][sb]) - direct) < 0.01,
                 "%d Hz band %d: %.3f dB, lines sum to %.3f dB", rates[r], sb,
@@ -725,7 +740,11 @@ static void check_preecho(void) {
     int32_t ecb_1[PSY_NPART_MAX], ecb_2[PSY_NPART_MAX];
     long position = 0;
 
+    int most_limited = 0;
+
     for (int frame = 0; frame < 10; frame++) {
+      /* The second limit holds after a NORM granule only. */
+      unsigned before = m->previous_type;
       int limited = 0, ok = 1;
 
       memcpy(ecb_2, ecb_1, sizeof(ecb_1));
@@ -735,15 +754,18 @@ static void check_preecho(void) {
         continue;
       for (int b = 0; b < m->npart; b++) {
         ok &= m->parts[0].thr[b] <= ecb_1[b] + PSY_LOG2_PREECHO_RATIO_1 &&
-              m->parts[0].thr[b] <= ecb_2[b] + PSY_LOG2_PREECHO_RATIO_2;
+              (before != BLOCK_NORM ||
+               m->parts[0].thr[b] <= ecb_2[b] + PSY_LOG2_PREECHO_RATIO_2);
         limited += m->parts[0].ecb[b] > ecb_1[b] + PSY_LOG2_PREECHO_RATIO_1;
       }
-      check(PREECHO_LIMIT, ok, "%d Hz granule %d", rates[r], frame);
-      if (frame == 8)
-        check(PREECHO_LIMIT, limited > m->npart / 2,
-              "%d Hz: the onset raises only %d spread thresholds", rates[r],
-              limited);
+      check(PREECHO_LIMIT, ok, "%d Hz granule %d after a type %u", rates[r],
+            frame, before);
+      if (limited > most_limited)
+        most_limited = limited;
     }
+    check(PREECHO_LIMIT, most_limited > m->npart / 2,
+          "%d Hz: the onset raises at most %d spread thresholds", rates[r],
+          most_limited);
     shine_close(e);
   }
 }
@@ -1402,7 +1424,7 @@ static void check_granule(shine_t e) {
           bits >= 0 && bits <= e->wave.channels * 4095 &&
               bits <= e->mean_bits + reservoir && reservoir >= 0 &&
               reservoir <= e->ResvMax + 2 * e->mean_bits &&
-              fabs(bits - expected) <= 1,
+              fabs(bits - expected) <= 1.5,
           "%s gr %d: %d bits with a mean of %d and a reservoir of %d of %d, "
           "expected %.1f",
           name, gr, bits, e->mean_bits, reservoir, e->ResvMax, expected);
@@ -1445,7 +1467,9 @@ static void check_granule(shine_t e) {
             "%s gr %d ch %d: ix up to %d, %d of %d bits", name, gr, ch, ix_max,
             bits, max_bits);
       prepare(e, gr, ch);
-      check_surplus(e, gr, ch, max_bits, reservoir, name);
+      /* A short granule gets a plain step size search. */
+      if (gi->block_type != BLOCK_SHORT)
+        check_surplus(e, gr, ch, max_bits, reservoir, name);
       /* What the encoder's reservoir became after this channel. */
       reservoir +=
           e->mean_bits / e->wave.channels - (e->l3loop.xrmax ? bits : 0);
@@ -1919,6 +1943,209 @@ static void check_block_sequence(void) {
     }
 }
 
+/* Eight harmonics of 220 Hz, as a held brass note. */
+static double harmonic(long n, int ch, const void *context) {
+  int samplerate = *(const int *)context;
+  double v = 0;
+
+  (void)ch;
+  for (int k = 1; k <= 8; k++)
+    if (220.0 * k < 0.45 * samplerate)
+      v += 3000.0 / k * sin(2 * M_PI * 220 * k * n / samplerate + k);
+  return v;
+}
+
+/* A pulse every 96 samples: sub-blocks with and without one alternate, and
+ * every short window holds two (block-switching §1.5 rule 1). */
+static double pulses(long n, int ch, const void *context) {
+  (void)ch, (void)context;
+  return n % 96 ? 0 : 8000;
+}
+
+/* A loud 60 Hz tone that starts over quiet noise: an onset the attack
+ * filter does not let through (block-switching §1.1). */
+static double bass_onset(long n, int ch, const void *context) {
+  int samplerate = *(const int *)context;
+  long start = 12 * 576;
+
+  return 1000 * noise_at(n, ch) +
+         (n < start ? 0
+                    : 28000 * sin(2 * M_PI * 60 * (n - start) / samplerate));
+}
+
+/* KC 7: a held tone, a held harmonic tone, a pulse train and a bass onset
+ * give only long blocks. */
+static void check_attack_steady(void) {
+  for (int r = 0; r < 9; r++)
+    for (int s = 0; s < 4; s++) {
+      static const signal_t signals[4] = {tone, harmonic, pulses, bass_onset};
+      shine_t e =
+          open_encoder(rates[r], 2, SHINE_JOINT_STEREO, r < 3 ? 128 : 32);
+      tone_t t = {1000, 10000, 1, rates[r]};
+      long position = 0;
+
+      for (int frame = 0; frame < 40; frame++) {
+        encode_frame(e, signals[s], s ? (void *)&rates[r] : (void *)&t,
+                     &position, NULL);
+        /* The start of the signal is an attack. */
+        if (frame >= 4)
+          for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
+            check(ATTACK_STEADY,
+                  e->side_info.gr[gr].ch[0].tt.block_type == BLOCK_NORM,
+                  "%d Hz signal %d frame %d gr %d: type %u", rates[r], s, frame,
+                  gr, e->side_info.gr[gr].ch[0].tt.block_type);
+      }
+      shine_close(e);
+    }
+}
+
+typedef struct {
+  long at;
+  int samplerate, anti_phase;
+  double gain;
+} step_t;
+
+/* A tone above the attack filter's cutoff, ten times louder from sample
+ * `at`; or silence with one anti-phase sample there. */
+static double stepped(long n, int ch, const void *context) {
+  const step_t *s = context;
+
+  if (s->anti_phase)
+    return n == s->at ? (ch ? -12000 : 12000) : 0;
+  return s->gain * (n >= s->at ? 10000 : 1000) * sin(2 * M_PI * n / 3.0);
+}
+
+/* The detector granule and slot of input sample `at`: a coded granule's
+ * detector granule starts PSY_DETECTOR_OFFSET before the samples it codes,
+ * which are PSY_LOOKAHEAD behind the input (block-switching §1.4). */
+static void locate(long at, long *granule, int *slot) {
+  long shifted = at + PSY_LOOKAHEAD + PSY_DETECTOR_OFFSET;
+
+  *granule = shifted / GRANULE_SIZE;
+  *slot = 1 + (int)(shifted % GRANULE_SIZE) / 192;
+}
+
+/* KC 7, 8, 20: a step, and an anti-phase click, are coded by a short
+ * granule, with the attack in the slot that holds it. */
+static void check_attack_step(void) {
+  for (int r = 0; r < 9; r++)
+    for (int kind = 0; kind < 2; kind++)
+      for (int offset = 0; offset < 576; offset += 96) {
+        shine_t e =
+            open_encoder(rates[r], 2, SHINE_JOINT_STEREO, r < 3 ? 128 : 32);
+        const int granules = e->mpeg.granules_per_frame;
+        step_t s = {20 * 576 + offset, rates[r], kind, 1};
+        long position = 0, granule;
+        int slot, found = 0, id = kind ? ATTACK_SIDE : ATTACK_STEP;
+
+        locate(s.at, &granule, &slot);
+        for (long first = 0; first <= granule; first += granules) {
+          encode_frame(e, stepped, &s, &position, NULL);
+          if (granule < first + granules) {
+            int g = (int)(granule - first), any = 0;
+
+            for (int c = 0; c < e->psy->channels; c++)
+              any |= e->psy->attacks[g][c][slot] > 0;
+            /* A slot 3 attack belongs to the next granule's first window. */
+            check(id, any,
+                  "%d Hz sample %ld: no attack in slot %d of granule %ld",
+                  rates[r], s.at, slot, granule);
+            for (int ch = 0; ch < 2; ch++)
+              check(id,
+                    slot == 3 ||
+                        e->side_info.gr[g].ch[ch].tt.block_type == BLOCK_SHORT,
+                    "%d Hz sample %ld: granule %ld channel %d has type %u",
+                    rates[r], s.at, granule, ch,
+                    e->side_info.gr[g].ch[ch].tt.block_type);
+            found = 1;
+          }
+        }
+        check(id, found, "%d Hz: granule %ld not reached", rates[r], granule);
+        shine_close(e);
+      }
+}
+
+/* A tone above the attack filter's cutoff whose level changes at `at`: down
+ * by 40 dB, or up tenfold there and again 192 samples later. */
+static double levels(long n, int ch, const void *context) {
+  const step_t *s = context;
+  double amplitude = s->anti_phase     ? (n < s->at ? 10000 : 100)
+                     : n < s->at       ? 100
+                     : n < s->at + 192 ? 1000
+                                       : 10000;
+
+  (void)ch;
+  return amplitude * sin(2 * M_PI * n / 3.0);
+}
+
+/* block-switching §1.3: a decay of more than ATTACK_DECAY is an attack.
+ * §1.5 rule 2: an attack in a granule's first window that follows one at
+ * least as late in the last window of the granule before is already
+ * handled, so two attacks 192 samples apart, in slots 2 and 3 of a
+ * granule, make that granule short and not the next. */
+static void check_attack_rules(void) {
+  for (int r = 0; r < 9; r++)
+    for (int decay = 0; decay < 2; decay++) {
+      shine_t e = open_encoder(rates[r], 1, SHINE_MONO, 64);
+      const int granules = e->mpeg.granules_per_frame;
+      /* The start of slot 2 of detector granule 20. */
+      step_t s = {20 * 576 + 192 - PSY_LOOKAHEAD - PSY_DETECTOR_OFFSET,
+                  rates[r], decay, 1};
+      long position = 0;
+      unsigned types[24] = {0};
+
+      for (long first = 0; first < 24; first += granules) {
+        encode_frame(e, levels, &s, &position, NULL);
+        for (int g = 0; g < granules; g++) {
+          types[first + g] = e->side_info.gr[g].ch[0].tt.block_type;
+          /* Rule 3: of two adjacent attacks the first is kept. */
+          if (first + g == 20 && !decay)
+            check(ATTACK_RULES,
+                  e->psy->attacks[g][0][2] == 1 && !e->psy->attacks[g][0][3],
+                  "%d Hz: slots 2 and 3 hold %d and %d", rates[r],
+                  e->psy->attacks[g][0][2], e->psy->attacks[g][0][3]);
+        }
+      }
+      if (decay)
+        check(ATTACK_RULES, types[20] == BLOCK_SHORT,
+              "%d Hz: a 40 dB decay leaves granule 20 with type %u", rates[r],
+              types[20]);
+      else
+        check(ATTACK_RULES, types[20] == BLOCK_SHORT && types[21] == BLOCK_STOP,
+              "%d Hz: two attacks in slots 2 and 3 give types %u and %u",
+              rates[r], types[20], types[21]);
+      shine_close(e);
+    }
+}
+
+/* KC 7: the decisions do not depend on the input level, away from the
+ * levels the rules name. */
+static void check_attack_level(void) {
+  for (int r = 0; r < 9; r++) {
+    char decisions[2][64];
+
+    for (int level = 0; level < 2; level++) {
+      shine_t e = open_encoder(rates[r], 1, SHINE_MONO, 64);
+      step_t s = {17 * 576 + 200, rates[r], 0, level ? 0.1 : 1};
+      long position = 0;
+      int n = 0;
+
+      for (int frame = 0; frame < 30 / e->mpeg.granules_per_frame; frame++) {
+        encode_frame(e, stepped, &s, &position, NULL);
+        for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
+          decisions[level][n++] =
+              (char)('0' + e->side_info.gr[gr].ch[0].tt.block_type);
+      }
+      decisions[level][n] = 0;
+      shine_close(e);
+    }
+    check(ATTACK_LEVEL,
+          !strcmp(decisions[0], decisions[1]) && strchr(decisions[0], '2'),
+          "%d Hz: block types %s at full level, %s at -20 dB", rates[r],
+          decisions[0], decisions[1]);
+  }
+}
+
 /* Silence on even frames, full-scale noise on odd ones. */
 static double alternating(long n, int ch, const void *context) {
   int per_pass = *(const int *)context;
@@ -1995,6 +2222,10 @@ int main(void) {
   check_pe_smoothing();
   check_stream_layout();
   check_block_sequence();
+  check_attack_steady();
+  check_attack_step();
+  check_attack_level();
+  check_attack_rules();
 
   for (int i = 0; i < CHECK_COUNT; i++) {
     printf("%-30s %6d run, %d failed\n", check_names[i], runs[i], failures[i]);

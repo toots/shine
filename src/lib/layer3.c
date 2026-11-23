@@ -195,7 +195,7 @@ static void shine_encode_frame(shine_global_config *config, int stride) {
   }
 
   if (config->psy)
-    shine_psy_block_types(config);
+    stride = shine_psy_block_types(config, stride);
 
   /* apply mdct to the polyphase output */
   shine_mdct_sub(config, stride);
@@ -244,8 +244,7 @@ unsigned char *shine_encode_buffer_interleaved(shine_global_config *config,
 }
 
 int shine_encoder_delay(shine_global_config *config) {
-  (void)config;
-  return SHINE_ENCODER_DELAY;
+  return SHINE_ENCODER_DELAY + (config->psy ? PSY_LOOKAHEAD : 0);
 }
 
 /* Encode enough silence for a decoder to output the last input sample. */
@@ -253,7 +252,7 @@ unsigned char *shine_flush(shine_global_config *config, int *written) {
   static const int16_t silence[2 * 2 * GRANULE_SIZE];
   int samples_per_pass = shine_samples_per_pass(config);
   int frames =
-      (SHINE_ENCODER_DELAY + MP3_DECODER_DELAY + samples_per_pass - 1) /
+      (shine_encoder_delay(config) + MP3_DECODER_DELAY + samples_per_pass - 1) /
       samples_per_pass;
 
   for (int i = 0; i < frames; i++) {

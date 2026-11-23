@@ -17,6 +17,16 @@
 #define PSY_LONG_BANDS 22
 #define PSY_PE_HISTORY 19
 
+/* The detector granule of a coded granule starts 336 samples before the
+ * granule's own input: its slots 1 to 3 then cover the samples its three
+ * short windows code with most weight, and slot 3 the first window of the
+ * next granule (doc/psy/block-switching.md §1.4). The type of a granule
+ * depends on whether the next one is short, which takes its input up to 250
+ * samples past the end of the granule being coded. */
+#define PSY_DETECTOR_OFFSET 336
+#define PSY_LOOKAHEAD 256
+#define PSY_INPUT_HISTORY 608
+
 typedef struct {
   /* History of an analysis channel (doc/psy/signal-path.md §4). */
   int granules_seen;                  /* saturates at 2 */
@@ -62,11 +72,29 @@ typedef struct psy_model {
   int32_t energy[MAX_GRANULES][PSY_CHANNELS];
   int32_t loudness[MAX_GRANULES][MAX_CHANNELS];
   int ms;
-  /* ponytail: until the attack detector (doc/psy/block-switching.md §1),
-   * every granule whose index divides by this is short. 0: none. Tests set
-   * it. */
+  /* Tests: every granule whose index divides by this is short, whatever
+   * the detector says. 0: the detector decides. */
   int forced_short_period;
   long granule_index; /* of the frame's first granule */
+
+  /* doc/psy/signal-path.md §2: the input, PSY_LOOKAHEAD samples ahead of
+   * the samples being coded, after PSY_INPUT_HISTORY earlier ones. */
+  int16_t input[MAX_CHANNELS][PSY_INPUT_HISTORY + MAX_GRANULES * GRANULE_SIZE];
+  /* doc/psy/block-switching.md §1, per analysis channel: the last two
+   * sub-block peaks and the last short window sum of the previous detector
+   * granule, its slot 3 before the suppression rules, and its slot 2
+   * after them. */
+  int64_t last_peaks[PSY_CHANNELS][2], last_window_sum[PSY_CHANNELS];
+  int next_slot0[PSY_CHANNELS], last_attacks[PSY_CHANNELS];
+  /* Whether each granule of the frame is short, and the one after them. */
+  int is_short[MAX_GRANULES + 1];
+  /* doc/psy/spectral-analysis.md §1.1: the long MDCT of the frame's short
+   * granules, with the normal window. */
+  int32_t analysis_long[MAX_CHANNELS][MAX_GRANULES][GRANULE_SIZE];
+  unsigned previous_type; /* final block type of the granule before */
+  int was_short;          /* the granule before the frame's first */
+  /* The attack slots 0..3 of each granule of the frame, after the rules. */
+  int attacks[MAX_GRANULES + 1][PSY_CHANNELS][4];
   /* doc/psy/perceptual-entropy.md §3: the PE in use of the last frames, Q8,
    * and the filter output F, Q24. */
   int64_t pe_history[PSY_PE_HISTORY], pe_filter;
@@ -82,9 +110,11 @@ typedef struct psy_model {
  * lowest quality. Returns -1 when out of memory. */
 int shine_psy_initialise(shine_global_config *config);
 
-/* Sets the block type of every granule of the frame, before its MDCT
- * (doc/psy/block-switching.md §2, §3). */
-void shine_psy_block_types(shine_global_config *config);
+/* Takes the frame's input, sets the block type of every granule from the
+ * attacks in it (doc/psy/block-switching.md §1 to §3), and points
+ * config->buffer at the samples to code, PSY_LOOKAHEAD behind. Returns the
+ * stride of those samples. */
+int shine_psy_block_types(shine_global_config *config, int stride);
 
 /* Runs the model on the frame's MDCT, and codes it as mid/side when the
  * model chooses so (doc/psy/signal-path.md §1). */

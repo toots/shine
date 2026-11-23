@@ -10,7 +10,8 @@
 #include <string.h>
 
 #define SKIP 77
-#define DECODED_DELAY (528 + MP3_DECODER_DELAY)
+/* The largest encoder delay of a quality level, for buffer sizes. */
+#define MAX_DECODED_DELAY (2048 + MP3_DECODER_DELAY)
 #define TOLERANCE 0.01
 
 typedef struct {
@@ -35,11 +36,11 @@ static void tone(int16_t *samples, long count, int channels, int64_t step) {
 /* Least squares gain of decoded against input, on the first channel, away
  * from both ends. */
 static double fit_gain(const int16_t *input, long count, int channels,
-                       const int16_t *decoded, long decoded_count) {
+                       const int16_t *decoded, long decoded_count, int delay) {
   double cross = 0, energy = 0;
 
   for (long i = count / 8; i < count - count / 8; i++) {
-    long j = i + DECODED_DELAY;
+    long j = i + delay;
     if (j >= decoded_count)
       break;
     cross += (double)input[i * channels] * decoded[j * channels];
@@ -54,6 +55,7 @@ static int check_level(const level_case_t *test) {
   stream_t stream = {NULL, 0, 0};
   int channels = test->mode == SHINE_MONO ? 1 : 2;
   long count = 2L * test->samplerate, decoded_count = 0, capacity;
+  int delay = 0;
   int16_t *samples = malloc(count * channels * sizeof(int16_t));
   int16_t *decoded = NULL;
   char name[96], command[256];
@@ -73,6 +75,8 @@ static int check_level(const level_case_t *test) {
   config.mpeg.quality = test->quality;
 
   encoder = shine_initialise(&config);
+  if (encoder)
+    delay = shine_encoder_delay(encoder) + MP3_DECODER_DELAY;
   if (!samples || !encoder) {
     printf("FAIL %s: cannot initialise\n", name);
     goto end;
@@ -96,7 +100,7 @@ static int check_level(const level_case_t *test) {
     printf("FAIL %s: cannot run ffmpeg\n", name);
     goto end;
   }
-  capacity = count + 4 * DECODED_DELAY;
+  capacity = count + 4 * MAX_DECODED_DELAY;
   decoded = malloc(capacity * channels * sizeof(int16_t));
   if (decoded)
     decoded_count = fread(decoded, channels * sizeof(int16_t), capacity, file);
@@ -105,7 +109,7 @@ static int check_level(const level_case_t *test) {
     goto end;
   }
 
-  gain = fit_gain(samples, count, channels, decoded, decoded_count);
+  gain = fit_gain(samples, count, channels, decoded, decoded_count, delay);
   if (gain < 1 - TOLERANCE || gain > 1 + TOLERANCE) {
     printf("FAIL %s: decoded level is %.4f times the input\n", name, gain);
     goto end;

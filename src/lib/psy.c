@@ -207,7 +207,9 @@ static void threshold(psy_model_t *model, psy_channel_t *channel,
     thr = ecb;
     if (channel->granules_seen >= 1 && channel->nb_1[b] != ZERO)
       thr = min32(thr, channel->nb_1[b] + PSY_LOG2_PREECHO_RATIO_1);
-    if (channel->granules_seen >= 2 && channel->nb_2[b] != ZERO)
+    /* §3.1: the second limit is dropped after a granule that is not NORM. */
+    if (model->previous_type == BLOCK_NORM && channel->granules_seen >= 2 &&
+        channel->nb_2[b] != ZERO)
       thr = min32(thr, channel->nb_2[b] + PSY_LOG2_PREECHO_RATIO_2);
     channel->nb_2[b] = channel->nb_1[b];
     channel->nb_1[b] = ecb;
@@ -424,25 +426,161 @@ static int forced_short(const psy_model_t *model, long granule) {
          granule % model->forced_short_period == 0;
 }
 
-void shine_psy_block_types(shine_global_config *config) {
-  psy_model_t *model = config->psy;
+/* §1.1: the attack filter at input[n], Q16 of a sample. */
+static int64_t attack_filter(const int16_t *input, int n) {
+  int64_t sum = (int64_t)input[n] << 16;
 
-  for (int g = 0; g < config->mpeg.granules_per_frame; g++) {
-    long n = model->granule_index + g;
-    /* §3: the type a granule ends with, knowing whether the next is short. */
-    int before = forced_short(model, n - 1), after = forced_short(model, n + 1);
-    /* A granule between two short ones is short: a stop window cannot
+  for (int j = 0; j < 5; j++)
+    sum += (int64_t)psy_attack_taps[j] *
+           (input[n - 9 + 2 * j] + input[n + 9 - 2 * j]);
+  return sum;
+}
+
+/* §1.2: the nine sub-block peaks of the detector granule that starts at
+ * input[start], for each analysis channel. */
+static void sub_block_peaks(const psy_model_t *model, int channels, int start,
+                            int64_t peaks[PSY_CHANNELS][9]) {
+  for (int i = 0; i < 9; i++) {
+    for (int c = 0; c < model->channels; c++)
+      peaks[c][i] = PSY_PEAK_FLOOR;
+    for (int n = start + 64 * i; n < start + 64 * (i + 1); n++) {
+      int64_t h[PSY_CHANNELS];
+
+      h[0] = attack_filter(model->input[0], n);
+      h[1] = channels == 2 ? attack_filter(model->input[1], n) : 0;
+      if (model->channels == 4) {
+        /* (L ± R)/√2, of sums below 2^35. */
+        h[2] = (((h[0] + h[1]) >> 4) * PSY_INV_SQRT2) >> 27;
+        h[3] = (((h[0] - h[1]) >> 4) * PSY_INV_SQRT2) >> 27;
+      }
+      for (int c = 0; c < model->channels; c++) {
+        int64_t magnitude = h[c] < 0 ? -h[c] : h[c];
+
+        if (magnitude > peaks[c][i])
+          peaks[c][i] = magnitude;
+      }
+    }
+  }
+}
+
+/* §1.3 to §1.5 for analysis channel c: the slots of the granule, and whether
+ * it needs short blocks. */
+static int detect_attacks(psy_model_t *model, int c, const int64_t peaks[9],
+                          int slots[4]) {
+  const int64_t threshold =
+      c == 3 ? model->row->attack_ratio_side : model->row->attack_ratio;
+  int64_t sums[4];
+  int needs_short;
+
+  slots[0] = model->next_slot0[c];
+  sums[0] = model->last_window_sum[c];
+  for (int s = 1; s <= 3; s++) {
+    sums[s] = 0;
+    slots[s] = 0;
+    for (int t = 0; t < 3; t++) {
+      int i = 3 * (s - 1) + t;
+      int64_t p = peaks[i];
+      int64_t q = i >= 2 ? peaks[i - 2] : model->last_peaks[c][i];
+
+      sums[s] += p;
+      /* A rise, or a decay of more than ATTACK_DECAY, by more than the
+       * threshold. Peaks are below 2^35 and the threshold below 2^24. */
+      if (!slots[s] && ((p << 16) > threshold * q ||
+                        (q << 16) > threshold * PSY_ATTACK_DECAY * p))
+        slots[s] = t + 1;
+    }
+  }
+  model->last_peaks[c][0] = peaks[7];
+  model->last_peaks[c][1] = peaks[8];
+  model->last_window_sum[c] = sums[3];
+  model->next_slot0[c] = slots[3];
+
+  /* §1.5 rule 1: periodic signals. */
+  for (int s = 1; s <= 3; s++) {
+    int64_t u = sums[s - 1], v = sums[s];
+
+    if ((u > v ? u : v) < PSY_PERIODIC_CEILING_SUM &&
+        (u << 16) < PSY_PERIODIC_RATIO * v &&
+        (v << 16) < PSY_PERIODIC_RATIO * u) {
+      if (s == 1 && slots[0] <= slots[1])
+        slots[0] = 0;
+      slots[s] = 0;
+    }
+  }
+  /* Rule 2: already handled. */
+  if (slots[0] <= model->last_attacks[c])
+    slots[0] = 0;
+  /* Rule 3: the decision, then adjacent attacks thinned. */
+  needs_short = model->last_attacks[c] == 3 || slots[0] || slots[1] ||
+                slots[2] || slots[3];
+  if (needs_short)
+    for (int s = 1; s <= 3; s++)
+      if (slots[s] && slots[s - 1])
+        slots[s] = 0;
+  model->last_attacks[c] = slots[2];
+  return needs_short;
+}
+
+/* §1.7, §2: whether the detector granule at input[start] makes its coded
+ * granule short, on any analysis channel. Its slots go to attacks. */
+static int detect_granule(psy_model_t *model, int channels, int start,
+                          int attacks[PSY_CHANNELS][4]) {
+  int64_t peaks[PSY_CHANNELS][9];
+  int needs_short = 0;
+
+  sub_block_peaks(model, channels, start, peaks);
+  for (int c = 0; c < model->channels; c++)
+    needs_short |= detect_attacks(model, c, peaks[c], attacks[c]);
+  return needs_short;
+}
+
+int shine_psy_block_types(shine_global_config *config, int stride) {
+  psy_model_t *model = config->psy;
+  const int granules = config->mpeg.granules_per_frame;
+  const int channels = config->wave.channels;
+  const int samples = granules * GRANULE_SIZE;
+  const int first = model->granule_index == 0 ? 0 : 1;
+
+  for (int ch = 0; ch < channels; ch++) {
+    int16_t *input = model->input[ch];
+
+    memmove(input, input + samples, PSY_INPUT_HISTORY * sizeof(*input));
+    for (int i = 0; i < samples; i++)
+      input[PSY_INPUT_HISTORY + i] = config->buffer[ch][i * stride];
+    config->buffer[ch] = input + PSY_INPUT_HISTORY - PSY_LOOKAHEAD;
+  }
+
+  /* The granule after the previous frame's last is this frame's first. */
+  model->is_short[0] = model->is_short[granules];
+  memcpy(model->attacks[0], model->attacks[granules],
+         sizeof(model->attacks[0]));
+  for (int g = first; g <= granules; g++)
+    model->is_short[g] =
+        detect_granule(model, channels,
+                       PSY_INPUT_HISTORY - PSY_LOOKAHEAD - PSY_DETECTOR_OFFSET +
+                           g * GRANULE_SIZE,
+                       model->attacks[g]);
+  if (model->forced_short_period)
+    for (int g = 0; g <= granules; g++)
+      model->is_short[g] = forced_short(model, model->granule_index + g);
+
+  for (int g = 0; g < granules; g++) {
+    /* §3: the type a granule ends with, knowing whether the next is short.
+     * A granule between two short ones is short: a stop window cannot
      * precede a short one. */
-    unsigned type = forced_short(model, n) || (before && after) ? BLOCK_SHORT
-                    : after                                     ? BLOCK_START
-                    : before                                    ? BLOCK_STOP
-                                                                : BLOCK_NORM;
+    int before = model->was_short, after = model->is_short[g + 1];
+    unsigned type = model->is_short[g] || (before && after) ? BLOCK_SHORT
+                    : after                                 ? BLOCK_START
+                    : before                                ? BLOCK_STOP
+                                                            : BLOCK_NORM;
 
     /* §2: both channels have the same type. */
-    for (int ch = 0; ch < config->wave.channels; ch++)
+    for (int ch = 0; ch < channels; ch++)
       config->side_info.gr[g].ch[ch].tt.block_type = type;
+    model->was_short = model->is_short[g];
   }
-  model->granule_index += config->mpeg.granules_per_frame;
+  model->granule_index += granules;
+  return 1;
 }
 
 void shine_psy_frame(shine_global_config *config) {
@@ -469,10 +607,16 @@ void shine_psy_frame(shine_global_config *config) {
     int64_t (*x)[GRANULE_SIZE] = model->coefficients;
     psy_partitions_t *parts = model->parts;
 
+    const unsigned type = config->side_info.gr[g].ch[0].tt.block_type;
+    /* §spectral-analysis 1.1: the coded MDCT, or the long MDCT of a short
+     * granule. */
+    const int32_t (*spectrum)[MAX_GRANULES][GRANULE_SIZE] =
+        type == BLOCK_SHORT ? model->analysis_long : config->mdct_freq;
+
     for (int k = 0; k < GRANULE_SIZE; k++) {
-      x[0][k] = config->mdct_freq[0][g][k];
+      x[0][k] = spectrum[0][g][k];
       if (stereo)
-        x[1][k] = config->mdct_freq[1][g][k];
+        x[1][k] = spectrum[1][g][k];
       if (model->channels == 4) {
         x[2][k] = mid_side(x[0][k] + x[1][k]);
         x[3][k] = mid_side(x[0][k] - x[1][k]);
@@ -492,6 +636,7 @@ void shine_psy_frame(shine_global_config *config) {
       pe_lr += model->pe[g][0] + model->pe[g][1];
       pe_ms += model->pe[g][2] + model->pe[g][3];
     }
+    model->previous_type = type;
   }
 
   /* §stereo 3: ties go to M/S. */
@@ -551,6 +696,10 @@ int shine_psy_initialise(shine_global_config *config) {
           : config->wave.channels;
   model->adapt_ath = 1;
   model->adjust_factor = PSY_ADJUST_INITIAL;
+  for (int c = 0; c < PSY_CHANNELS; c++) {
+    model->last_peaks[c][0] = model->last_peaks[c][1] = PSY_PEAK_FLOOR;
+    model->last_window_sum[c] = 3 * PSY_PEAK_FLOOR;
+  }
   for (int i = 0; i < PSY_PE_HISTORY; i++)
     model->pe_history[i] =
         (700LL << 8) * config->mpeg.granules_per_frame * config->wave.channels;
