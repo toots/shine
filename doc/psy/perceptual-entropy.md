@@ -2,7 +2,7 @@
 
 PE estimates how many bits a granule needs. The formula is phase 1, since
 the M/S decision uses it ([stereo.md](stereo.md) §3). The smoothing (§3) is
-phase 3, with the reservoir it feeds.
+phase 3, with the reservoir it feeds ([reservoir.md](reservoir.md) §3).
 
 ## 1. Which formula
 
@@ -64,6 +64,11 @@ every pe in use *= factor
 The allocator receives PE relative to a weighted average of the last 19
 frames, centred 9 frames back. The filter has negative taps, so `F ≤ 0` is
 possible on bursty input: PE high at both ends of the window and low in its
-middle. The factor is then 1. Bits derived from a smoothed PE MUST be clamped
-to the allocator's granule and reservoir limits (phase 3) before any integer
-conversion.
+middle. The factor is then 1, and every granule of the frame demands the
+mean ([reservoir.md](reservoir.md) §3). Bits derived from a smoothed PE MUST
+be clamped to the granule and reservoir limits ([reservoir.md](reservoir.md)
+§2, §3) before any integer conversion.
+
+The smoothing scales every PE of a frame alike, so it does not change how a
+granule's bits are shared between its channels
+([noise-allocation.md](noise-allocation.md) §3.1).

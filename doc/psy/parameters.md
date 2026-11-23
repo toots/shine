@@ -87,6 +87,10 @@ be retuned together with the allocator of phase 2.
 | `IX_MAX` | 8192 | essential | [noise-allocation.md](noise-allocation.md) §1 |
 | `PART2_3_MAX` | 4095 | essential | [noise-allocation.md](noise-allocation.md) §3.1 |
 | `OUTER_ATTEMPTS` | 8 per granule, per quality level | tuning | [noise-allocation.md](noise-allocation.md) §4 |
+| `BUFFER_BITS` | 7680 | essential | [reservoir.md](reservoir.md) §2 |
+| `MAIN_DATA_BEGIN_MAX` | 511 (MPEG-1), 255 (MPEG-2, 2.5) | essential | [reservoir.md](reservoir.md) §2 |
+| `PE_STEADY` | 670 · 5 / (1 + 2 · Σ k) ≈ 739.4 | essential | [reservoir.md](reservoir.md) §3 |
+| `RESV_SPEND` | 1/2 | tuning | [reservoir.md](reservoir.md) §3 |
 | `DECISION_AGREEMENT` | 99% | conformance | [tests.md](tests.md) §3 |
 | `THRESHOLD_TOLERANCE` | 0.5 dB | conformance | [tests.md](tests.md) §3 |
 | `NUMERIC_AGREEMENT` | 99.9% | conformance | [tests.md](tests.md) §3 |

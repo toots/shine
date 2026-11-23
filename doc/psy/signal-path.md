@@ -26,7 +26,8 @@ Per frame, in this order:
    ([perceptual-entropy.md](perceptual-entropy.md)).
 5. **M/S decision** for the frame ([stereo.md](stereo.md) §3).
 6. **PE smoothing** (phase 3, [perceptual-entropy.md](perceptual-entropy.md) §3),
-   then **noise allocation** (phase 2, [allowed-distortion.md](allowed-distortion.md),
+   then per granule its **bits** (phase 3, [reservoir.md](reservoir.md) §3)
+   and the **noise allocation** (phase 2, [allowed-distortion.md](allowed-distortion.md),
    [noise-allocation.md](noise-allocation.md)).
 
 Thresholds describe the granule whose MDCT they were computed from, so they

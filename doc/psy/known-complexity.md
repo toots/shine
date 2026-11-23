@@ -421,8 +421,9 @@ links the rule that handles it now. Every entry is a conformance check
   within the granule limits and a finite, positive factor. Silence and noise
   alternating every frame give no non-positive normaliser.
 - **Answered by.** A continuous PE cap
-  ([perceptual-entropy.md](perceptual-entropy.md) §2), the `F ≤ 0` rule and
-  the clamp before conversion (§3).
+  ([perceptual-entropy.md](perceptual-entropy.md) §2), the `F ≤ 0` rule
+  (§3), and budgets bounded by the mean, the reservoir and `PART2_3_MAX`
+  before conversion ([reservoir.md](reservoir.md) §3).
 
 ## 22. The model's output scale is coupled to its consumer
 

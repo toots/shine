@@ -8,8 +8,8 @@ allowed distortion `xmin` ([allowed-distortion.md](allowed-distortion.md)
 it does not.
 
 Long blocks only. Short blocks (phase 4) add their own scalefactor layout.
-The bits of a granule are fixed by the encoder until the reservoir
-(phase 3); §3 shares them between its channels.
+The bits of a granule come from the reservoir ([reservoir.md](reservoir.md)
+§3; the frame's mean before phase 3); §3 shares them between its channels.
 
 ## 1. Quantisation
 
@@ -86,8 +86,8 @@ max_bits[1] = granule_bits − max_bits[0]
 ```
 
 `pe` is that of the coded channels: `pe_MS` in an M/S frame
-([stereo.md](stereo.md) §3). `granule_bits` is what the encoder gives the
-granule for both channels. Neither share may exceed `PART2_3_MAX` = 4095,
+([stereo.md](stereo.md) §3). `granule_bits` is what the reservoir gives the
+granule for both channels ([reservoir.md](reservoir.md) §3). Neither share may exceed `PART2_3_MAX` = 4095,
 the largest `part2_3_length`: the excess goes to the other channel. A mono
 granule keeps all its bits.
 
@@ -161,6 +161,32 @@ every attempt raises a scalefactor and scalefactors are bounded.
 
 A granule whose coefficients are all 0 skips the allocation: its step size
 and scalefactors are 0.
+
+### 4.1 Bits a channel does not need (phase 3)
+
+When the best attempt leaves no band over, its noise is under the allowed
+distortion everywhere, and the bits that would push it further under are
+worth more to a later granule. With `room = RESV_MAX − R`, `R` the
+reservoir when the channel is allocated ([reservoir.md](reservoir.md) §2,
+§3), and `used` the bits of the best attempt, the channel keeps the
+scalefactors of that attempt and, when `room > 0`, raises its step size to
+a `q` at which
+
+- no band is over, and
+- it uses at least `used − room` bits, and no more than `used`: a larger
+  step size does not always cost fewer bits,
+
+and at which `q + 1` fails one of the two, or is past the largest step
+size. This is what a bisection from the attempt's step size guarantees.
+Neither condition is monotonic in `q`, so it is not always the largest such
+step size.
+
+A channel leaves at most what the reservoir lacked before the granule drew
+on it. Counting from the channel's mean instead, so that a channel given
+more than its mean gives all of it back, scored worse
+([tests.md](tests.md) §4): the bound is the measured one. A channel with a
+band over leaves nothing: the reservoir is filled only with bits whose
+absence the model cannot tell.
 
 ## 5. Scalefactor coding
 
