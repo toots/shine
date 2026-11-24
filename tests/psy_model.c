@@ -28,7 +28,7 @@ enum {
   BAND_ENERGY_SUM,          /* spectral-analysis §5, KC 1 */
   SFB_EDGE_SWEEP,           /* KC 1 */
   THRESHOLD_BOUNDS,         /* masking, KC 4 */
-  MASK_ADD,                 /* masking §2, KC 13 */
+  SPREAD_SUM,               /* masking §2, KC 13 */
   TONALITY,                 /* masking §1, KC 15 */
   TONE_THRESHOLD,           /* masking, KC 15, 16 */
   LIMIT_ORDER,              /* masking §3.4, KC 17 */
@@ -89,7 +89,7 @@ static const char *check_names[CHECK_COUNT] = {
     [BAND_ENERGY_SUM] = "band energy is the line sum",
     [SFB_EDGE_SWEEP] = "tone across an sfb edge",
     [THRESHOLD_BOUNDS] = "threshold bounds",
-    [MASK_ADD] = "mask_add law",
+    [SPREAD_SUM] = "spreading is a sum",
     [TONALITY] = "tonality index",
     [TONE_THRESHOLD] = "tone threshold",
     [LIMIT_ORDER] = "order of the limits",
@@ -380,12 +380,13 @@ static void check_tables(void) {
         double bj =
             (bark((sj + 0.5) * delta) + bark((sj + wj - 0.5) * delta)) / 2;
         double width = bark((s + w) * delta) - bark(s * delta);
-        double expected = log2(spreading(bval - bj) * width);
-        double actual =
-            psy_spread[r][psy_spread_offset[r][b] + j - lo] / 65536.0;
+        double expected = spreading(bval - bj) * width * (1 << 29);
+        double actual = psy_spread[r][psy_spread_offset[r][b] + j - lo];
 
-        check(TABLES_RECOMPUTED, fabs(actual - expected) < 1e-4,
-              "%d Hz: S[%d][%d] is 2^%f, expected 2^%f", rates[r], b, j, actual,
+        /* Q29, rounded. */
+        check(TABLES_RECOMPUTED,
+              fabs(actual - expected) <= 0.5 + 1e-6 * expected,
+              "%d Hz: S[%d][%d] is %.0f, expected %.1f", rates[r], b, j, actual,
               expected);
       }
     }
@@ -588,39 +589,63 @@ static void check_failure_modes(void) {
       }
 }
 
-/* KC 13 */
-static void check_mask_add(void) {
-  for (int32_t x = -40 * ONE; x <= 0; x += 3 * ONE + 777) {
-    check(MASK_ADD,
-          mask_add(x, ZERO, 0, 2) == x && mask_add(ZERO, x, 5, 0) == x,
-          "mask_add(%d, 0) is not %d", x, x);
-    for (int distance = -3; distance <= 3; distance++)
-      for (int d = -1; d <= 2; d++)
-        for (int32_t y = x - 30 * ONE; y <= x + 30 * ONE; y += ONE / 4 + 1) {
-          double m1 = linear(x), m2 = linear(y),
-                 r = fmax(m1, m2) / fmin(m1, m2);
-          double result = linear(mask_add(x, y, distance, d)), expected;
-          int near = abs(distance) <= d;
+/* KC 13: the spread energy of a partition is the sum of its row's
+ * attenuated, spread contributions, wherever they sit, and a zero masker
+ * adds nothing. */
+static void check_spreading_sum(void) {
+  uint32_t seed = 13;
 
-          check(MASK_ADD,
-                result >= fmax(m1, m2) * 0.9999 &&
-                    result <= (m1 + m2) * 1.40548 * 1.40548 * 1.0001,
-                "mask_add(%g, %g) = %g", m1, m2, result);
-          /* The law, away from its steps. */
-          if (fabs(16 * log10(r) - lrint(16 * log10(r))) < 0.01)
-            continue;
-          if (near)
-            expected =
-                r >= pow(10, 9.0 / 16)
-                    ? m1 + m2
-                    : (m1 + m2) *
-                          pow(linear(psy_add_boost[(int)(16 * log10(r))]), 1);
-          else
-            expected = r < pow(10, 24.0 / 16) ? m1 + m2 : fmax(m1, m2);
-          check(MASK_ADD, fabs(10 * log10(result / expected)) < 0.002,
-                "mask_add(%g, %g, %d, %d) = %g, law gives %g", m1, m2, distance,
-                d, result, expected);
+  for (int r = 0; r < 9; r++) {
+    shine_t e = open_encoder(rates[r], 1, SHINE_MONO, 64);
+
+    for (int l = 0; l < 2; l++) {
+      const psy_layout_t *layout = &e->psy->layout[l];
+
+      for (int trial = 0; trial < 30; trial++) {
+        psy_partitions_t parts;
+        int32_t ecb[PSY_NPART_MAX];
+        int idx_sum[PSY_NPART_MAX], ok = 1;
+        double loudest = 0;
+
+        memset(&parts, 0, sizeof(parts));
+        for (int p = 0; p < layout->npart; p++) {
+          seed = seed * 1103515245u + 12345u;
+          /* Sparse maskers in one trial out of three, levels over 140 dB. */
+          parts.eb[p] = trial % 3 == 0 && (seed >> 8) % 4
+                            ? ZERO
+                            : (int32_t)((seed >> 12) % (140 * 218)) * 100 -
+                                  100 * 218 * 100;
+          parts.idx[p] = (int)((seed >> 4) % 9);
         }
+        spread_energy(layout, &parts, ecb, idx_sum);
+        for (int p = 0; p < layout->npart; p++)
+          loudest = fmax(loudest,
+                         linear(parts.eb[p]) * linear(psy_tab[parts.idx[p]]));
+        for (int b = 0; b < layout->npart; b++) {
+          const int lo = layout->spread_lo[b], hi = layout->spread_hi[b];
+          double expected = 0;
+          int indices = 0;
+
+          for (int p = lo; p <= hi; p++) {
+            expected += linear(parts.eb[p]) * linear(psy_tab[parts.idx[p]]) *
+                        layout->spread[layout->spread_offset[b] + p - lo] /
+                        (1 << 29);
+            indices += parts.idx[p];
+          }
+          /* fixed-point.md: exact down to SPREAD_EXACT_RANGE below the
+           * loudest, never above the sum below it. */
+          ok &= idx_sum[b] == indices &&
+                (expected == 0 ? ecb[b] == ZERO
+                 : expected < loudest * 1e-12
+                     ? linear(ecb[b]) <= expected * 1.0001
+                     : ecb[b] != ZERO &&
+                           fabs(10 * log10(linear(ecb[b]) / expected)) < 0.001);
+        }
+        check(SPREAD_SUM, ok, "%d Hz %s layout, trial %d", rates[r],
+              l ? "short" : "long", trial);
+      }
+    }
+    shine_close(e);
   }
 }
 
@@ -2789,7 +2814,7 @@ int main(void) {
   check_band_energy();
   check_sfb_edge();
   check_failure_modes();
-  check_mask_add();
+  check_spreading_sum();
   check_tonality();
   check_tone_threshold();
   check_limit_order();

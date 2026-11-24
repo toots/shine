@@ -57,7 +57,7 @@ typedef struct {
   const int32_t *mld, *masking_lower;
   const uint8_t *spread_lo, *spread_hi;
   const int16_t *spread_offset;
-  const int32_t *spread;
+  const uint32_t *spread;
   const int *band_part; /* first partition of each band, then npart */
   const int32_t *minval, *ath_part;
 } psy_layout_t;

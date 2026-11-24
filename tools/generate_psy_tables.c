@@ -24,6 +24,8 @@
 #include <stdio.h>
 
 #define LOG_ONE 65536.0
+/* The spreading matrix, Q29: its entries reach 1.01. */
+#define SPREAD_ONE 536870912.0
 #define LONG_LINES 576
 #define NPART_CAPACITY 128
 
@@ -275,15 +277,17 @@ static void spreading(const layout_t *layouts, int is_short, const char *tag,
       /* The positive range is contiguous: s3 is unimodal. */
       for (int j = lo[r][i]; j <= hi[r][i]; j++)
         values[r][size++] =
-            log_q16(s3(layout->bval[i] - layout->bval[j]) * layout->width[i] *
-                    (is_short ? short_norm(layout->bval[i]) : 1));
+            fixed(s3(layout->bval[i] - layout->bval[j]) * layout->width[i] *
+                      (is_short ? short_norm(layout->bval[i]) : 1),
+                  SPREAD_ONE);
     }
     if (size > size_max)
       size_max = size;
   }
 
   printf("/* %s spreading rows (doc/psy/spectral-analysis.md §4): row i "
-         "holds\n * log2 S[i][j] for j = lo..hi at psy_spread%s[offset]. */\n",
+         "holds\n * S[i][j] in Q29 for j = lo..hi at psy_spread%s[offset]. "
+         "*/\n",
          is_short ? "Short" : "Long", tag);
   printf("#define %s %d\n", size_macro, size_max);
   printf("static const uint8_t psy_spread_lo%s[9][%s] = {\n", tag, macro);
@@ -310,7 +314,7 @@ static void spreading(const layout_t *layouts, int is_short, const char *tag,
     printf("},\n");
   }
   printf("};\n");
-  printf("static const int32_t psy_spread%s[9][%s] = {\n", tag, size_macro);
+  printf("static const uint32_t psy_spread%s[9][%s] = {\n", tag, size_macro);
   for (int r = 0; r < 9; r++) {
     int size = offset[r][layouts[r].npart - 1] + hi[r][layouts[r].npart - 1] -
                lo[r][layouts[r].npart - 1] + 1;
@@ -374,8 +378,8 @@ static const struct {
   double msfix, mask_adjust, ath_lower, ath_curve;
 } rows[] = {
     {8, 3.5, 0, -30, 11},    {16, 3.5, 0, -25, 11},  {24, 3.5, 0, -20, 11},
-    {32, 3.5, 0, -15, 11},   {40, 3.5, 0, -10, 11},  {48, 3.5, 0, -10, 11},
-    {56, 3.5, 0, -6, 11},    {64, 3.5, 4, -2, 11},   {80, 3.5, 2, 0, 8},
+    {32, 3.5, 3, -15, 11},   {40, 3.5, 6, -10, 11},  {48, 3.5, 5, -10, 11},
+    {56, 3.5, 6, -6, 11},    {64, 3.5, 5, -2, 11},   {80, 3.5, 2, 0, 8},
     {96, 2.50, 0, 1, 5.5},   {112, 1.80, 0, 2, 4.5}, {128, 1.41, 0, 3, 4},
     {160, 1.13, -2, 5, 3.5}, {192, 1.49, -4, 7, 3},  {224, 1.25, -6, 9, 2},
     {256, 0.97, -8, 10, 1},  {320, 0.90, -10, 12, 0}};
@@ -476,23 +480,12 @@ static void short_minval(void) {
 static void masking_tables(void) {
   static const double tab[9] = {1.0,     0.79433, 0.63096, 0.63096, 0.63096,
                                 0.63096, 0.63096, 0.25119, 0.11749};
-  static const long delta[9] = {2, 2, 2, 1, 1, 1, 0, 0, -1};
-  static const double boost[9] = {1.33352, 1.35879, 1.38454, 1.39497, 1.40548,
-                                  1.3537,  1.30382, 1.22321, 1.14758};
   long values[9];
 
-  printf("/* Masking tables (doc/psy/conventions.md, masking.md §2). */\n");
+  printf("/* Masking table (doc/psy/conventions.md, masking.md §2). */\n");
   for (int k = 0; k < 9; k++)
     values[k] = log_q16(tab[k]);
   print_array("int32_t", "psy_tab", values, 9);
-  print_array("int8_t", "psy_delta", delta, 9);
-  for (int k = 0; k < 9; k++)
-    values[k] = log_q16(boost[k] * boost[k]);
-  print_array("int32_t", "psy_add_boost", values, 9);
-  printf("#define PSY_LOG2_ADD_NEAR_LIMIT %ld\n", log_q16(pow(10, 9.0 / 16)));
-  printf("#define PSY_LOG2_ADD_FAR_LIMIT %ld\n", log_q16(pow(10, 24.0 / 16)));
-  printf("/* 16 * log10(2), Q16: the boost index of a log2 ratio. */\n");
-  printf("#define PSY_ADD_INDEX_SCALE %ld\n", fixed(16 * log10(2), LOG_ONE));
   printf("#define PSY_LOG2_AVG_MASK_FACTOR %ld\n", log_q16(AVG_MASK_FACTOR));
   printf("#define PSY_LOG2_PREECHO_RATIO_1 %ld\n", log_q16(2));
   printf("#define PSY_LOG2_PREECHO_RATIO_2 %ld\n", log_q16(16));

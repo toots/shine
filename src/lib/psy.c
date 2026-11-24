@@ -85,30 +85,6 @@ static int32_t scale(int32_t a, int32_t b) { return a == ZERO ? ZERO : a + b; }
 static int32_t min32(int32_t a, int32_t b) { return a < b ? a : b; }
 static int32_t max32(int32_t a, int32_t b) { return a > b ? a : b; }
 
-/* §masking 2: the non-linear addition law. */
-static inline int32_t mask_add(int32_t m1, int32_t m2, int distance,
-                               int delta) {
-  int32_t ratio;
-
-  if (m1 == ZERO)
-    return m2;
-  if (m2 == ZERO)
-    return m1;
-  ratio = m1 > m2 ? m1 - m2 : m2 - m1;
-  if ((distance < 0 ? -distance : distance) <= delta) {
-    /* int(16 log10(r)), 0..8 below the near limit. */
-    int32_t boost =
-        ratio >= PSY_LOG2_ADD_NEAR_LIMIT
-            ? 0
-            : psy_add_boost[((int64_t)ratio * PSY_ADD_INDEX_SCALE) >> 32];
-
-    return log_add(m1, m2) + boost;
-  }
-  if (ratio >= PSY_LOG2_ADD_FAR_LIMIT)
-    return max32(m1, m2);
-  return log_add(m1, m2);
-}
-
 /* §masking 1, from the tonality spectrum: n·m - a and a·L stay below 2^63,
  * as partitions are under 256 lines and line energies under 2^53. */
 static void tonality(const psy_layout_t *layout, const uint64_t *max_t,
@@ -194,45 +170,54 @@ static int32_t analyse(psy_model_t *model, psy_channel_t *channel,
   return analyse_in(&model->layout[0], channel, x, parts);
 }
 
-/* Partitions spread side by side: each one's sum is a chain of additions
- * waiting on one another, and separate chains overlap in the processor. */
-#define SPREAD_LANES 4
+/* §masking 2: the spreading sum is linear. Energies are 64-bit integers,
+ * 2^SPREAD_RANGE at the loudest attenuated partition of the granule: one
+ * SPREAD_RANGE octaves below it counts as 0. With the matrix in Q29 below
+ * 2^30 and rows of at most 20 partitions, a row sums below 2^63. */
+#define SPREAD_RANGE 57
+#define SPREAD_SHIFT 29
+
+/* 2^(x / ONE) for 0 <= x <= SPREAD_RANGE * ONE. */
+static uint64_t linear_energy(int32_t x) {
+  const int shift = (x >> 16) + 1 - 30;
+  /* 2^(fraction - 1) in Q30. */
+  const uint64_t value = exp2_q30((x & 0xffff) - ONE);
+
+  return shift >= 0 ? value << shift : value >> -shift;
+}
 
 /* §masking 2: the spread energy of each partition, before the average
  * masking index, and the sum of the indices it spans. */
 static void spread_energy(const psy_layout_t *layout,
                           const psy_partitions_t *parts, int32_t *ecb,
                           int *idx_sum) {
-  for (int first = 0; first < layout->npart; first += SPREAD_LANES) {
-    const int lanes = layout->npart - first < SPREAD_LANES
-                          ? layout->npart - first
-                          : SPREAD_LANES;
-    const int32_t *spread[SPREAD_LANES];
-    int lo[SPREAD_LANES], width[SPREAD_LANES], delta[SPREAD_LANES], widest = 0;
+  uint64_t energy[PSY_NPART_MAX];
+  int32_t attenuated[PSY_NPART_MAX], loudest = ZERO;
 
-    for (int lane = 0; lane < lanes; lane++) {
-      const int b = first + lane;
+  for (int p = 0; p < layout->npart; p++) {
+    attenuated[p] = scale(parts->eb[p], psy_tab[parts->idx[p]]);
+    loudest = max32(loudest, attenuated[p]);
+  }
+  for (int p = 0; p < layout->npart; p++)
+    energy[p] =
+        attenuated[p] == ZERO || attenuated[p] - loudest < -SPREAD_RANGE * ONE
+            ? 0
+            : linear_energy(attenuated[p] - loudest + SPREAD_RANGE * ONE);
+  for (int b = 0; b < layout->npart; b++) {
+    const int lo = layout->spread_lo[b], hi = layout->spread_hi[b];
+    const uint32_t *row = &layout->spread[layout->spread_offset[b]];
+    uint64_t sum = 0;
+    int indices = 0;
 
-      lo[lane] = layout->spread_lo[b];
-      width[lane] = layout->spread_hi[b] - lo[lane] + 1;
-      spread[lane] = &layout->spread[layout->spread_offset[b]];
-      delta[lane] = psy_delta[parts->idx[b]];
-      ecb[b] = ZERO;
-      idx_sum[b] = 0;
-      if (width[lane] > widest)
-        widest = width[lane];
+    for (int p = lo; p <= hi; p++) {
+      /* energy · row in two halves: the product exceeds 64 bits. */
+      sum += (energy[p] >> SPREAD_SHIFT) * row[p - lo] +
+             (((energy[p] & ((1u << SPREAD_SHIFT) - 1)) * row[p - lo]) >>
+              SPREAD_SHIFT);
+      indices += parts->idx[p];
     }
-    for (int step = 0; step < widest; step++)
-      for (int lane = 0; lane < lanes; lane++) {
-        const int b = first + lane, p = lo[lane] + step;
-        int32_t term;
-
-        if (step >= width[lane])
-          continue;
-        term = scale(parts->eb[p], spread[lane][step] + psy_tab[parts->idx[p]]);
-        ecb[b] = step ? mask_add(ecb[b], term, p - b, delta[lane]) : term;
-        idx_sum[b] += parts->idx[p];
-      }
+    ecb[b] = sum ? log2_q16(sum) + loudest - SPREAD_RANGE * ONE : ZERO;
+    idx_sum[b] = indices;
   }
 }
 
