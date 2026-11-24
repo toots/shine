@@ -1380,7 +1380,7 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
     if (!any_over || !amplify(map, &s, over, bands))
       break;
     for (int sb = 0; sb < bands; sb++)
-      all_amplified &= s.sf[sb] > 0;
+      all_amplified &= s.sf[sb] > 0 || xmin[sb] >= en[sb];
     if (all_amplified)
       break;
   }

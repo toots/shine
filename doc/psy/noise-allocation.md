@@ -133,7 +133,7 @@ for attempt = 0, 1, ...:
     for each band that is over and can be amplified (below):
         sf[sb] += 1
     if no band was amplified: stop
-    if every band with an xmin now has sf > 0: stop
+    if every band that can be over now has sf > 0: stop
 use best
 ```
 
@@ -143,7 +143,10 @@ use best
   loop keeps the best one, not the last.
 - **All bands amplified** is a uniform gain the global step size already
   expresses. The loop stops rather than walking the step size down by
-  scalefactors.
+  scalefactors. Only the bands that can be over count: those whose `xmin`
+  is below their energy (§2). A band allowed its whole energy, or with no
+  energy, is never amplified, and would otherwise keep the loop going to
+  `OUTER_ATTEMPTS`.
 - **A band can be amplified** while its scalefactor stays within the largest
   value its format codes (§5) and its step within the range of §1. When a
   band reaches its largest scalefactor at `scalefac_scale = 0`, the granule
