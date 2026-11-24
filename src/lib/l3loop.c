@@ -194,17 +194,15 @@ int part2_length(int gr, int ch, shine_global_config *config) {
  */
 /* Step sizes above 0 only occur for full scale coefficients at low bitrates,
  * where steptabi would round 2**(-stepsize/4) to an integer. */
-/* nint(x^(3/4) - 0.0946) of a coefficient x given in Q8, from the estimate
- * n made on x rounded to an integer: that rounding moves the boundaries of
- * small values, the boundary between 1 and 2 from 1.86 to 1.5. */
-static int exact_index(int n, int64_t x_q8) {
-  if (n > QUANT_EXACT_MAX)
-    return n;
-  while (n > 0 && x_q8 < shine_quant_threshold[n])
-    n--;
-  while (n <= QUANT_EXACT_MAX && x_q8 >= shine_quant_threshold[n + 1])
-    n++;
-  return n;
+static int pow34(uint32_t x);
+
+/* nint(x^(3/4) - 0.0946) of a coefficient x given in Q8, and ln, x
+ * rounded to an integer: rounding first would move the boundaries of small
+ * values, the one between 1 and 2 from 1.86 to 1.5. */
+static int exact_index(int ln, int64_t x_q8) {
+  if (ln >= QUANT_SPLIT_LINES)
+    return ln < 10000 ? shine_int2idx[ln] : pow34((uint32_t)ln);
+  return shine_quant_base[ln] + (x_q8 >= shine_quant_split[ln]);
 }
 
 static int quantize_coarse(int ix[GRANULE_SIZE], int begin, int end,
@@ -217,11 +215,10 @@ static int quantize_coarse(int ix[GRANULE_SIZE], int begin, int end,
     int ln =
         (int)(((uint64_t)config->l3loop.xrabs[i] * fraction + (1ULL << 62)) >>
               63);
-    ix[i] =
-        exact_index(shine_int2idx[ln],
-                    (int64_t)(((uint64_t)config->l3loop.xrabs[i] * fraction +
-                               (1ULL << 54)) >>
-                              55));
+    ix[i] = exact_index(
+        ln, (int64_t)(((uint64_t)config->l3loop.xrabs[i] * fraction +
+                       (1ULL << 54)) >>
+                      55));
     if (max < ix[i])
       max = ix[i];
   }
@@ -274,7 +271,7 @@ static int quantize_range(int ix[GRANULE_SIZE], int begin, int end,
 
     /* The table covers about all values; the quick check above bounds the
      * rest by 165140. */
-    ix[i] = exact_index(ln < 10000 ? shine_int2idx[ln] : pow34(ln), x_q8);
+    ix[i] = exact_index(ln, x_q8);
 
     /* calculate ixmax while we're here */
     /* note. ix cannot be negative */

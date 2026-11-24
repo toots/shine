@@ -71,6 +71,11 @@ static double block_window(int type, int i) {
   return sin(PI36 * (i + 0.5));
 }
 
+/* (n - 0.4054)**(4/3) in Q8, rounded up. */
+static int shine_quant_threshold_value(int n) {
+  return n ? (int)ceil(pow(n - 0.4054, 4.0 / 3) * 256) : 0;
+}
+
 static void mdct_cosine_switching(void) {
   static const char *names[2] = {"start", "stop"};
 
@@ -159,7 +164,37 @@ static void quantizer_steps(void) {
   printf("const int32_t shine_quant_threshold[QUANT_EXACT_MAX + 2] = {\n    0");
   for (int n = 1; n <= QUANT_EXACT_MAX + 1; n++)
     printf(", %d", (int32_t)ceil(pow(n - 0.4054, 4.0 / 3) * 256));
-  printf("};\n");
+  printf("};\n\n");
+
+  /* The scaled coefficient rounded to an integer, ln, covers x in Q8 from
+   * 256 ln - 128 to 256 ln + 127, where nint(x**(3/4) - 0.0946) takes at
+   * most two values: base, and base + 1 from split on. */
+  printf(
+      "/* For ln = 0..QUANT_SPLIT_LINES - 1, the scaled coefficient rounded "
+      "to\n"
+      " * an integer: ix is shine_quant_base[ln], plus 1 when the coefficient\n"
+      " * in Q8 is at least shine_quant_split[ln]. */\n");
+  {
+    int base[QUANT_SPLIT_LINES], split[QUANT_SPLIT_LINES];
+
+    for (int ln = 0; ln < QUANT_SPLIT_LINES; ln++) {
+      int low = ln ? 256 * ln - 128 : 0, n = 0;
+
+      while (n <= QUANT_EXACT_MAX && low >= shine_quant_threshold_value(n + 1))
+        n++;
+      base[ln] = n;
+      split[ln] = shine_quant_threshold_value(n + 1) <= 256 * ln + 127
+                      ? shine_quant_threshold_value(n + 1)
+                      : 0x7fffffff;
+    }
+    printf("const uint8_t shine_quant_base[QUANT_SPLIT_LINES] = {\n");
+    for (int ln = 0; ln < QUANT_SPLIT_LINES; ln++)
+      printf("%s%d", ln ? ", " : "    ", base[ln]);
+    printf("};\n\nconst int32_t shine_quant_split[QUANT_SPLIT_LINES] = {\n");
+    for (int ln = 0; ln < QUANT_SPLIT_LINES; ln++)
+      printf("%s%d", ln ? ", " : "    ", split[ln]);
+    printf("};\n");
+  }
 }
 
 int main(void) {
