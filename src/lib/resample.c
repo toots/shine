@@ -36,7 +36,8 @@ int shine_resample_rate(int samplerate, int bitrate, int cutoff) {
   for (int i = 0; i < 9; i++) {
     int rate = shine_samplerates[i];
 
-    if (rate < best && 5 * rate <= 4 * samplerate &&
+    /* RESAMPLE_MIN_RATE: MPEG-2.5 rates only when the input is one. */
+    if (rate < best && rate >= 16000 && 5 * rate <= 4 * samplerate &&
         50LL * cutoff <= 23LL * rate && shine_check_config(rate, bitrate) >= 0)
       best = rate;
   }

@@ -286,15 +286,26 @@ end:
 
 int main(void) {
   static const rate_case_t cases[] = {
-      {44100, 2, 64, 0, 44100},  {44100, 2, 64, 1, 24000},
-      {44100, 2, 80, 1, 32000},  {44100, 2, 96, 1, 32000},
-      {44100, 2, 112, 1, 44100}, {44100, 2, 128, 1, 44100},
-      {44100, 1, 32, 1, 24000},  {44100, 1, 48, 1, 32000},
-      {44100, 1, 64, 1, 44100},  {48000, 2, 64, 1, 24000},
-      {48000, 2, 96, 1, 32000},  {48000, 2, 128, 1, 48000},
-      {32000, 2, 64, 1, 24000},  {32000, 2, 96, 1, 32000},
-      {22050, 2, 64, 1, 22050},  {24000, 1, 16, 1, 12000},
-      {16000, 1, 8, 1, 8000},    {8000, 1, 8, 1, 8000},
+      {44100, 2, 64, 0, 44100},
+      {44100, 2, 64, 1, 24000},
+      {44100, 2, 80, 1, 32000},
+      {44100, 2, 96, 1, 32000},
+      {44100, 2, 112, 1, 44100},
+      {44100, 2, 128, 1, 44100},
+      {44100, 1, 32, 1, 24000},
+      {44100, 1, 48, 1, 32000},
+      {44100, 1, 64, 1, 44100},
+      {48000, 2, 64, 1, 24000},
+      {48000, 2, 96, 1, 32000},
+      {48000, 2, 128, 1, 48000},
+      {32000, 2, 64, 1, 24000},
+      {32000, 2, 96, 1, 32000},
+      /* RESAMPLE_MIN_RATE: never an MPEG-2.5 rate below the input's. */
+      {22050, 2, 64, 1, 22050},
+      {24000, 1, 16, 1, 16000},
+      {16000, 1, 8, 1, 16000},
+      {8000, 1, 8, 1, 8000},
+      {44100, 2, 32, 1, 16000},
   };
   const int count = sizeof(cases) / sizeof(*cases);
   int checked = 0, passed = 0;
@@ -314,6 +325,27 @@ int main(void) {
     passed += check_rate(&cases[i]);
   }
 
+  /* shine_initialise_at keeps the rate a caller has promised. */
+  {
+    shine_config_t config;
+    shine_t s;
+
+    shine_set_config_mpeg_defaults(&config.mpeg);
+    config.wave.samplerate = 44100;
+    config.wave.channels = 2;
+    config.mpeg.mode = SHINE_JOINT_STEREO;
+    config.mpeg.bitrate = 64;
+    config.mpeg.quality = 1;
+    checked++;
+    s = shine_initialise_at(&config, 44100);
+    if (s && shine_samplerate(s) == 44100 && shine_samples_per_pass(s) == 1152)
+      passed++;
+    else
+      printf("FAIL shine_initialise_at(44100) at quality 1 and 64 kbps\n");
+    if (s)
+      shine_close(s);
+  }
+
   printf("%d/%d checks passed\n", passed, checked);
-  return checked >= 3 * 20 + count && passed == checked ? 0 : 1;
+  return checked >= 3 * 20 + count + 1 && passed == checked ? 0 : 1;
 }

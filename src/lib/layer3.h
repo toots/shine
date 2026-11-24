@@ -175,6 +175,14 @@ int shine_encoder_delay(shine_t s);
  * The returned pointer follows the same rules as `shine_encode_buffer`. */
 unsigned char *shine_flush(shine_t s, int *written);
 
+/* As `shine_initialise`, but encodes at `samplerate`, at most the input's
+ * (`config->wave.samplerate`), converting the input when lower. Above
+ * quality 0 `shine_initialise` lowers the rate at low bitrates per channel
+ * (doc/psy/resampling.md §1): pass the input's rate to keep it, for a
+ * stream whose rate is fixed. Returns NULL when either rate and the bitrate
+ * are not a valid pair, or the rate is above the input's. */
+shine_t shine_initialise_at(const shine_config_t *config, int samplerate);
+
 /* Close an encoder, freeing all associated memory. Encoder handler is not
  * valid after this call. */
 void shine_close(shine_t s);

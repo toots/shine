@@ -16,10 +16,6 @@
 
 typedef struct shine_resampler shine_resampler_t;
 
-/* `shine_initialise` with the encoding rate given, at most the input's,
- * rather than chosen by §1. */
-shine_t shine_initialise_at(const shine_config_t *config, int samplerate);
-
 /* §1: the rate to encode an input at, `samplerate` itself for no
  * conversion. `cutoff` is the lowpass cutoff of the bitrate in Hz, 0 for
  * none (doc/psy/bandwidth.md §1). */

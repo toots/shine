@@ -102,10 +102,9 @@ static int resampling_initialise(shine_global_config *config, int input_rate) {
     return 0;
 
   /* A pass is a frame at the input rate, as without conversion. */
-  config->input_samples =
-      granules_per_frame[shine_mpeg_version(
-          shine_find_samplerate_index(input_rate))] *
-      GRANULE_SIZE;
+  config->input_samples = granules_per_frame[shine_mpeg_version(
+                              shine_find_samplerate_index(input_rate))] *
+                          GRANULE_SIZE;
   config->resampler = shine_resampler_open(input_rate, config->wave.samplerate,
                                            config->wave.channels);
   if (!config->resampler)
