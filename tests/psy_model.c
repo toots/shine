@@ -52,6 +52,7 @@ enum {
   SILENCE_STATE,            /* signal-path §4, KC 5 */
   INDEPENDENT_ENCODERS,     /* signal-path §5, KC 8, 20 */
   ALLOCATION_BOUNDS,        /* noise-allocation §1, §3 */
+  STEP_SEARCH,              /* noise-allocation §3.2 */
   SCALEFACTOR_CODING,       /* noise-allocation §5 */
   ALLOCATION_BEST,          /* noise-allocation §4 */
   ALLOCATION_SILENCE,       /* noise-allocation §4 */
@@ -131,6 +132,7 @@ static const char *check_names[CHECK_COUNT] = {
     [SILENCE_STATE] = "silence state",
     [INDEPENDENT_ENCODERS] = "independent encoders",
     [ALLOCATION_BOUNDS] = "ix and bits within bounds",
+    [STEP_SEARCH] = "the step size fits, the next smaller one does not",
     [SCALEFACTOR_CODING] = "scalefactor coding",
     [ALLOCATION_BEST] = "best attempt",
     [ALLOCATION_SILENCE] = "silent granule",
@@ -1589,6 +1591,9 @@ static void chosen_scalefactors(shine_t e, int gr, int ch, scalefactors_t *s) {
 
 static void prepare(shine_t e, int gr, int ch);
 
+static int bits_if_fits(shine_t e, gr_info *gi, int budget,
+                        const scalefactors_t *s, int q);
+
 /* noise-allocation §4.1: a channel leaves bits only with no band over, and
  * then as many as the reservoir can take. `reservoir` is what it held when
  * the channel was allocated. */
@@ -1604,13 +1609,22 @@ static void check_surplus(shine_t e, int gr, int ch, int max_bits,
   if (!e->l3loop.xrmax)
     return;
   chosen_scalefactors(e, gr, ch, &s);
-  fitted_bits = fit(e, ix, &counted, max_bits - part2, &s, &fitted_q);
+  fitted_bits =
+      fit(e, ix, &counted, max_bits - part2, &s, largest_step(gi), &fitted_q);
   if (fitted_bits < 0)
     return;
   floor_bits = fitted_bits - (e->ResvMax - reservoir);
   if (fitted_bits <= floor_bits ||
       !under(e, gr, ch, &s, fitted_q, INT_MIN, fitted_bits)) {
-    check(ALLOCATION_SURPLUS, q == fitted_q,
+    gr_info recounted = *gi;
+    /* §3.2: with several steps that fit while the next smaller one does
+     * not, any is valid. */
+    const int fits =
+        bits_if_fits(e, &recounted, max_bits - part2, &s, q) >= 0 &&
+        (q == STEP_MIN ||
+         bits_if_fits(e, &recounted, max_bits - part2, &s, q - 1) < 0);
+
+    check(ALLOCATION_SURPLUS, q == fitted_q || fits,
           "%s gr %d ch %d: step %d, the smallest that fits is %d, with %s",
           name, gr, ch, q, fitted_q,
           fitted_bits <= floor_bits ? "no room" : "a band over");
@@ -1624,6 +1638,83 @@ static void check_surplus(shine_t e, int gr, int ch, int max_bits,
            !under(e, gr, ch, &s, q + 1, floor_bits, fitted_bits)),
       "%s gr %d ch %d: step %d after %d, at least %d bits of %d", name, gr, ch,
       q, fitted_q, floor_bits, fitted_bits);
+}
+
+/* noise-allocation §3.2: from any start, the search ends on a step size
+ * that fits while the next smaller one does not, with ix and the code
+ * tables of that step; it finds none only if the largest does not fit. */
+static int bits_if_fits(shine_t e, gr_info *gi, int budget,
+                        const scalefactors_t *s, int q) {
+  int ix[GRANULE_SIZE], bits;
+
+  if (quantize_granule(e, ix, q, s) > PSY_IX_MAX)
+    return -1;
+  bits = shine_count_bits(ix, gi, e);
+  return bits <= budget ? bits : -1;
+}
+
+static void check_step_search(void) {
+  for (int r = 0; r < 9; r += 2)
+    for (int b = 0; b < 4; b++) {
+      int bitrate =
+          b & 1 ? highest_bitrate(rates[r]) : lowest_bitrate(rates[r]);
+      shine_t e = open_encoder(rates[r], 2, SHINE_JOINT_STEREO, bitrate);
+      double gain = 1;
+      long position = 0;
+
+      e->psy->forced_short_period = b & 2 ? 2 : 0;
+      for (int frame = 0; frame < 4; frame++) {
+        encode_frame(e, music, &gain, &position, NULL);
+        for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
+          for (int ch = 0; ch < 2; ch++) {
+            const gr_info chosen = e->side_info.gr[gr].ch[ch].tt;
+            const int largest = largest_step(&chosen);
+            const int starts[] = {STEP_MIN, -40,     0,
+                                  40,       largest, chosen.quantizerStepSize};
+            scalefactors_t sf;
+
+            prepare(e, gr, ch);
+            chosen_scalefactors(e, gr, ch, &sf);
+            for (int budget_half = 0; budget_half < 2; budget_half++) {
+              const int budget =
+                  shine_psy_channel_bits(e, gr, ch) >> budget_half;
+
+              for (unsigned i = 0; i < sizeof(starts) / sizeof(*starts); i++) {
+                gr_info gi = chosen, recounted;
+                int ix[GRANULE_SIZE], q = INT_MIN, bits, ok;
+
+                if (starts[i] < STEP_MIN || starts[i] > largest)
+                  continue;
+                bits = fit(e, ix, &gi, budget, &sf, starts[i], &q);
+                if (bits < 0) {
+                  recounted = chosen;
+                  check(STEP_SEARCH,
+                        bits_if_fits(e, &recounted, budget, &sf, largest) < 0,
+                        "%d Hz %d kbps: none from %d, but %d fits", rates[r],
+                        bitrate, starts[i], largest);
+                  continue;
+                }
+                recounted = gi;
+                ok = q >= STEP_MIN && q <= largest &&
+                     shine_count_bits(ix, &recounted, e) == bits &&
+                     bits <= budget &&
+                     !memcmp(recounted.table_select, gi.table_select,
+                             sizeof(gi.table_select)) &&
+                     recounted.big_values == gi.big_values &&
+                     recounted.count1 == gi.count1;
+                recounted = chosen;
+                ok &= q == STEP_MIN ||
+                      bits_if_fits(e, &recounted, budget, &sf, q - 1) < 0;
+                check(STEP_SEARCH, ok,
+                      "%d Hz %d kbps gr %d ch %d: step %d from %d, %d bits "
+                      "of %d",
+                      rates[r], bitrate, gr, ch, q, starts[i], bits, budget);
+              }
+            }
+          }
+      }
+      shine_close(e);
+    }
 }
 
 static void check_granule(shine_t e) {
@@ -1782,7 +1873,8 @@ static void check_allocation_best(void) {
             prepare(e, gr, ch);
             memset(&zero, 0, sizeof(zero));
             max_bits = shine_psy_channel_bits(e, gr, ch);
-            if (fit(e, e->l3_enc[ch][gr], gi, max_bits, &zero, &q0) < 0)
+            if (fit(e, e->l3_enc[ch][gr], gi, max_bits, &zero, largest_step(gi),
+                    &q0) < 0)
               continue;
             d0 = distortion(e, gr, ch, &zero, q0);
 
@@ -2720,6 +2812,7 @@ int main(void) {
   check_independent_encoders();
   check_allocation_bounds();
   check_allocation_best();
+  check_step_search();
   check_allocation_silence();
   check_amplify();
   check_noise_measure();

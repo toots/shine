@@ -162,6 +162,9 @@ typedef struct psy_model {
   /* Allowed distortion per coded channel and band, PSY_LOG_ZERO for the
    * bands that have none (doc/psy/allowed-distortion.md §2). */
   int32_t xmin[MAX_GRANULES][MAX_CHANNELS][PSY_LONG_BANDS];
+  /* The step size of each channel's last granule, where the next one's
+   * search starts. */
+  int last_step[MAX_CHANNELS];
 } psy_model_t;
 
 /* Allocates the model of an encoder, or leaves config->psy NULL at the

@@ -1296,29 +1296,74 @@ static int quantize_granule(shine_global_config *config, int *ix, int q,
   return max;
 }
 
-/* §3: the smallest step size, found by bisection, whose granule fits the
- * budget. Returns the Huffman bits, or -1 if it does not fit even at the
- * largest step size. */
-static int fit(shine_global_config *config, int *ix, gr_info *gi, int budget,
-               const scalefactors_t *s, int *q) {
-  int low = STEP_MIN - 1, high = largest_step(gi), bits;
+/* The Huffman bits of the granule at step size q, or -1 if it does not
+ * fit the budget. */
+static int bits_at(shine_global_config *config, int *ix, gr_info *gi,
+                   int budget, const scalefactors_t *s, int q) {
+  int bits;
 
-  if (quantize_granule(config, ix, high, s) > PSY_IX_MAX ||
-      shine_count_bits(ix, gi, config) > budget)
+  if (quantize_granule(config, ix, q, s) > PSY_IX_MAX)
     return -1;
+  bits = shine_count_bits(ix, gi, config);
+  return bits <= budget ? bits : -1;
+}
+
+/* §3: a step size whose granule fits the budget while the next smaller one
+ * does not. The search widens from `start`, the step size of the attempt
+ * before, which an amplification moves by a few steps, then bisects.
+ * Returns the Huffman bits, or -1 if it does not fit even at the largest
+ * step size. */
+static int fit(shine_global_config *config, int *ix, gr_info *gi, int budget,
+               const scalefactors_t *s, int start, int *q) {
+  const int largest = largest_step(gi);
+  /* low never fits (STEP_MIN - 1 stands for "none"), high fits. */
+  int low, high, high_bits, last = start,
+                            bits = bits_at(config, ix, gi, budget, s, start);
+
+  if (bits >= 0) {
+    high = start;
+    high_bits = bits;
+    low = start - 1;
+    for (int width = 1; low >= STEP_MIN; width *= 2) {
+      last = low;
+      if ((bits = bits_at(config, ix, gi, budget, s, low)) < 0)
+        break;
+      high = low;
+      high_bits = bits;
+      low = high - 2 * width < STEP_MIN - 1 ? STEP_MIN - 1 : high - 2 * width;
+    }
+  } else {
+    low = start;
+    high = start + 1;
+    for (int width = 1;; width *= 2) {
+      if (high > largest)
+        high = largest;
+      last = high;
+      if ((high_bits = bits_at(config, ix, gi, budget, s, high)) >= 0)
+        break;
+      if (high == largest)
+        return -1;
+      low = high;
+      high = low + 2 * width;
+    }
+  }
   while (high - low > 1) {
     int middle = low + (high - low) / 2;
 
-    if (quantize_granule(config, ix, middle, s) <= PSY_IX_MAX &&
-        shine_count_bits(ix, gi, config) <= budget)
+    last = middle;
+    if ((bits = bits_at(config, ix, gi, budget, s, middle)) >= 0) {
       high = middle;
-    else
+      high_bits = bits;
+    } else
       low = middle;
   }
-  quantize_granule(config, ix, high, s);
-  bits = shine_count_bits(ix, gi, config);
+  /* Counting the bits also chooses the code tables of gi. */
+  if (last != high) {
+    quantize_granule(config, ix, high, s);
+    shine_count_bits(ix, gi, config);
+  }
   *q = high;
-  return bits;
+  return high_bits;
 }
 
 /* x̂ = ix^(4/3) · 2^(step/4) in the coefficient scale of quantize: the
@@ -1462,7 +1507,7 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
   gr_info *gi = &config->side_info.gr[gr].ch[ch].tt;
   scalefactors_t s, best_s;
   gr_info best_gi;
-  int best_ix[GRANULE_SIZE], best_q, best_bits = 0, best_part2 = 0;
+  int best_ix[GRANULE_SIZE], best_q, q, best_bits = 0, best_part2 = 0;
   unsigned best_compress = 0;
   int64_t best_distortion = -1;
 
@@ -1472,9 +1517,10 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
   /* Kept only if no attempt can be made: silence at the largest step. */
   memset(best_ix, 0, sizeof(best_ix));
   best_q = largest_step(gi);
+  q = model->last_step[ch] < best_q ? model->last_step[ch] : best_q;
   for (int attempt = 0; attempt < OUTER_ATTEMPTS; attempt++) {
     int32_t noise[PSY_ALLOCATION_BANDS];
-    int over[PSY_ALLOCATION_BANDS], any_over = 0, all_amplified = 1, q, bits;
+    int over[PSY_ALLOCATION_BANDS], any_over = 0, all_amplified = 1, bits;
     unsigned compress;
     int part2 = scalefactor_coding(
         map, &s, config->mpeg.version == SHINE_MPEG_I, &compress);
@@ -1482,7 +1528,7 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
 
     if (part2 > max_bits)
       break;
-    bits = fit(config, ix, gi, max_bits - part2, &s, &q);
+    bits = fit(config, ix, gi, max_bits - part2, &s, q, &q);
     if (bits < 0)
       break;
     band_noise(config, model, ix, q, &s, noise);
@@ -1537,6 +1583,7 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
   }
 
   *gi = best_gi;
+  model->last_step[ch] = best_q;
   memcpy(ix, best_ix, sizeof(best_ix));
   gi->quantizerStepSize = best_q;
   gi->scalefac_scale = (unsigned)best_s.scale;

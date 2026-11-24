@@ -2678,7 +2678,7 @@ quality 1, 11025 Hz 32 kbps mode 0, full-scale: ef8c26dcaaa765df
 quality 1, 11025 Hz 32 kbps mode 1, silence: 34cdfb85c8800056
 quality 1, 11025 Hz 32 kbps mode 1, noise: 4cca439ede99634f
 quality 1, 11025 Hz 32 kbps mode 1, tones: 573c33f05510a0e3
-quality 1, 11025 Hz 32 kbps mode 1, sweep: 3507b0b28d803e78
+quality 1, 11025 Hz 32 kbps mode 1, sweep: ff93c56c3fa6a984
 quality 1, 11025 Hz 32 kbps mode 1, transients: 67acd084388c3aff
 quality 1, 11025 Hz 32 kbps mode 1, full-scale: 42509c4389b50cdb
 quality 1, 11025 Hz 32 kbps mode 2, silence: 3195cdf4fb100236
@@ -2768,7 +2768,7 @@ quality 1, 11025 Hz 64 kbps mode 3, full-scale: 780df8ad01fd2e08
 quality 1, 11025 Hz 64 kbps mode 0, silence: af899c83d811dd5f
 quality 1, 11025 Hz 64 kbps mode 0, noise: 8e7454044d0c91b9
 quality 1, 11025 Hz 64 kbps mode 0, tones: 8e068c9df239da02
-quality 1, 11025 Hz 64 kbps mode 0, sweep: 2ca90fc7afec52c5
+quality 1, 11025 Hz 64 kbps mode 0, sweep: b872fefed3275ea5
 quality 1, 11025 Hz 64 kbps mode 0, transients: ed0f634a3ca0dc6d
 quality 1, 11025 Hz 64 kbps mode 0, full-scale: 741cc15d071f2ada
 quality 1, 11025 Hz 64 kbps mode 1, silence: d4b28f73c864127f
@@ -2780,7 +2780,7 @@ quality 1, 11025 Hz 64 kbps mode 1, full-scale: be340674a6d0bd5d
 quality 1, 11025 Hz 64 kbps mode 2, silence: 02f079cee7e7f7df
 quality 1, 11025 Hz 64 kbps mode 2, noise: d3dcb5d29f3a9239
 quality 1, 11025 Hz 64 kbps mode 2, tones: 350333d13e7ef682
-quality 1, 11025 Hz 64 kbps mode 2, sweep: 09a5bf92af349545
+quality 1, 11025 Hz 64 kbps mode 2, sweep: 8ec4c3dc9e9a2f25
 quality 1, 11025 Hz 64 kbps mode 2, transients: 453495a9342918ed
 quality 1, 11025 Hz 64 kbps mode 2, full-scale: 40b0b12980b1fd5a
 quality 1, 12000 Hz 8 kbps mode 3, silence: 6d9ea52f91811e11
@@ -2858,7 +2858,7 @@ quality 1, 12000 Hz 24 kbps mode 2, full-scale: 85d91b85524fd87a
 quality 1, 12000 Hz 32 kbps mode 3, silence: e568555eb8b14bae
 quality 1, 12000 Hz 32 kbps mode 3, noise: 7ed981e613901786
 quality 1, 12000 Hz 32 kbps mode 3, tones: eb91cf79dead1ad4
-quality 1, 12000 Hz 32 kbps mode 3, sweep: 10700beb11f5a7c9
+quality 1, 12000 Hz 32 kbps mode 3, sweep: 61e2a70b3290835f
 quality 1, 12000 Hz 32 kbps mode 3, transients: a026ec10d644bcb0
 quality 1, 12000 Hz 32 kbps mode 3, full-scale: 9d8b49307ded5d6f
 quality 1, 12000 Hz 32 kbps mode 0, silence: a7fb1ba9bbdf808d
@@ -3302,7 +3302,7 @@ quality 1, 22050 Hz 48 kbps mode 0, full-scale: 24f1ae07341cc0f6
 quality 1, 22050 Hz 48 kbps mode 1, silence: 802eb2f857c290d8
 quality 1, 22050 Hz 48 kbps mode 1, noise: 952c11538683a733
 quality 1, 22050 Hz 48 kbps mode 1, tones: a48c7749c64b727c
-quality 1, 22050 Hz 48 kbps mode 1, sweep: d5bf9dea4ede263a
+quality 1, 22050 Hz 48 kbps mode 1, sweep: a08aacdf2fc626f3
 quality 1, 22050 Hz 48 kbps mode 1, transients: 0fc87045818b04bd
 quality 1, 22050 Hz 48 kbps mode 1, full-scale: a45aa9e8a21a0094
 quality 1, 22050 Hz 48 kbps mode 2, silence: 22e41182dda519b8
@@ -3440,7 +3440,7 @@ quality 1, 22050 Hz 128 kbps mode 3, full-scale: 7705ed84850b0fca
 quality 1, 22050 Hz 128 kbps mode 0, silence: df64d1fa0d1a9d0f
 quality 1, 22050 Hz 128 kbps mode 0, noise: 538a7c04b16b26bf
 quality 1, 22050 Hz 128 kbps mode 0, tones: 78b70aaed7f4cd70
-quality 1, 22050 Hz 128 kbps mode 0, sweep: 79e483061512c878
+quality 1, 22050 Hz 128 kbps mode 0, sweep: 766ec74d09d6f504
 quality 1, 22050 Hz 128 kbps mode 0, transients: 293dd5c2d1c855e2
 quality 1, 22050 Hz 128 kbps mode 0, full-scale: eaa2cf62aed80179
 quality 1, 22050 Hz 128 kbps mode 1, silence: d3ad94cab55628af
@@ -3452,7 +3452,7 @@ quality 1, 22050 Hz 128 kbps mode 1, full-scale: 91812836c2a1ba19
 quality 1, 22050 Hz 128 kbps mode 2, silence: df998830264c818f
 quality 1, 22050 Hz 128 kbps mode 2, noise: 090523e74328123f
 quality 1, 22050 Hz 128 kbps mode 2, tones: 728cfcc9db6a6ff0
-quality 1, 22050 Hz 128 kbps mode 2, sweep: cc16bb15feb38ef8
+quality 1, 22050 Hz 128 kbps mode 2, sweep: b6a67d10655e2b84
 quality 1, 22050 Hz 128 kbps mode 2, transients: 6cc430dcff6d9962
 quality 1, 22050 Hz 128 kbps mode 2, full-scale: 66983e15ade95df9
 quality 1, 22050 Hz 144 kbps mode 3, silence: 26dfb38581ee161a
@@ -3847,19 +3847,19 @@ quality 1, 16000 Hz 8 kbps mode 3, transients: 904eeeabbe055a99
 quality 1, 16000 Hz 8 kbps mode 3, full-scale: a1bdc7eece73bb96
 quality 1, 16000 Hz 8 kbps mode 0, silence: b7d95e54ddf32111
 quality 1, 16000 Hz 8 kbps mode 0, noise: 2fb41673840e339e
-quality 1, 16000 Hz 8 kbps mode 0, tones: 07605d22e55bc02c
+quality 1, 16000 Hz 8 kbps mode 0, tones: 46f2f64521c72f09
 quality 1, 16000 Hz 8 kbps mode 0, sweep: aff176f3113e1863
 quality 1, 16000 Hz 8 kbps mode 0, transients: 6166fe2a3b0d7ca0
 quality 1, 16000 Hz 8 kbps mode 0, full-scale: 8eab75a022e457f7
 quality 1, 16000 Hz 8 kbps mode 1, silence: 72a4751806fdabb1
 quality 1, 16000 Hz 8 kbps mode 1, noise: 238c38b8569c676d
-quality 1, 16000 Hz 8 kbps mode 1, tones: 6081266802e18b1d
+quality 1, 16000 Hz 8 kbps mode 1, tones: eff38142eb524af0
 quality 1, 16000 Hz 8 kbps mode 1, sweep: 31f910cc81a6b9d1
 quality 1, 16000 Hz 8 kbps mode 1, transients: 4c3c59e4d8eef827
 quality 1, 16000 Hz 8 kbps mode 1, full-scale: 5b90f7ee6a00073b
 quality 1, 16000 Hz 8 kbps mode 2, silence: 469e8d358afc2891
 quality 1, 16000 Hz 8 kbps mode 2, noise: a39b57c38009561e
-quality 1, 16000 Hz 8 kbps mode 2, tones: 84bfdbdf506739ac
+quality 1, 16000 Hz 8 kbps mode 2, tones: b3cef7638a2c1789
 quality 1, 16000 Hz 8 kbps mode 2, sweep: 741947d3356926e3
 quality 1, 16000 Hz 8 kbps mode 2, transients: a4df77e5b5018e20
 quality 1, 16000 Hz 8 kbps mode 2, full-scale: b866b8d861942577
@@ -4586,7 +4586,7 @@ quality 1, 48000 Hz 48 kbps mode 2, full-scale: cd0466faa259e647
 quality 1, 48000 Hz 56 kbps mode 3, silence: 27b6c8f5686d4797
 quality 1, 48000 Hz 56 kbps mode 3, noise: 93cc259193f471f8
 quality 1, 48000 Hz 56 kbps mode 3, tones: e48ecfa2722efb36
-quality 1, 48000 Hz 56 kbps mode 3, sweep: b5cea565eae80346
+quality 1, 48000 Hz 56 kbps mode 3, sweep: f20d6e30fbde2fae
 quality 1, 48000 Hz 56 kbps mode 3, transients: bf316a4e43fea5ab
 quality 1, 48000 Hz 56 kbps mode 3, full-scale: 302d9bb03e3ae4d8
 quality 1, 48000 Hz 56 kbps mode 0, silence: 0d13ea8b27f7fa85
