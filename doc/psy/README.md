@@ -30,6 +30,7 @@ metric report before the next one starts.
 | 2. Noise allocation | allowed distortion per band, band offsets, band ATH, the outer loop and scalefactor coding |
 | 3. Reservoir | PE smoothing, the bit reservoir, the bits of a granule from its PE |
 | 4. Short blocks | attack detection, block types, short analysis and thresholds, short pre-echo control, temporal masking between short windows |
+| 5. Bandwidth | the lowpass cutoff by bitrate per channel, applied to the MDCT before the model |
 
 Every file and section names its phase.
 
@@ -57,15 +58,16 @@ Read in this order:
    noise allocation, temporal masking between short windows.
 10. [noise-allocation.md](noise-allocation.md): quantisation, noise, the
     inner and outer loops, scalefactor coding.
-11. [reservoir.md](reservoir.md): the reservoir in the bitstream, its limit,
+11. [bandwidth.md](bandwidth.md): the lowpass cutoff and filter.
+12. [reservoir.md](reservoir.md): the reservoir in the bitstream, its limit,
     the bits of a granule, delayed output.
-12. [parameters.md](parameters.md): every constant, essential or tuning, and
+13. [parameters.md](parameters.md): every constant, essential or tuning, and
     the per-bitrate set.
-13. [fixed-point.md](fixed-point.md): integer arithmetic, representations,
+14. [fixed-point.md](fixed-point.md): integer arithmetic, representations,
     generated tables.
-14. [tests.md](tests.md): invariants, the development oracle, the metric
+15. [tests.md](tests.md): invariants, the development oracle, the metric
     gate.
-15. [known-complexity.md](known-complexity.md): known pitfalls, each linked
+16. [known-complexity.md](known-complexity.md): known pitfalls, each linked
     to the rule that answers it, and each a conformance check.
 
 ## Analysis domain

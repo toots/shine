@@ -53,6 +53,7 @@ enum {
   ALLOCATION_TIE,           /* noise-allocation §2 */
   NOISE_MEASURE,            /* noise-allocation §1, §2 */
   QUANTISER,                /* noise-allocation §1 */
+  LOWPASS,                  /* bandwidth §1, §2 */
   STUFFING,                 /* reservoir §2 */
   ALLOWED_DISTORTION,       /* allowed-distortion §2 */
   SHORT_ALLOWED_DISTORTION, /* allowed-distortion §2, §3 */
@@ -115,6 +116,7 @@ static const char *check_names[CHECK_COUNT] = {
     [SHORT_PREECHO] = "short pre-echo control",
     [HUFFMAN_TABLE] = "cheapest Huffman table",
     [QUANTISER] = "quantiser rounding",
+    [LOWPASS] = "lowpass",
     [STUFFING] = "no stuffing in a granule",
     [PE_BOUNDS] = "PE bounds",
     [SHORT_THRESHOLD_BOUNDS] = "short threshold bounds",
@@ -440,7 +442,10 @@ static void check_band_energy(void) {
           for (int k = sfb[sb]; k < sfb[sb + 1]; k++)
             direct += (double)spectrum[k] * spectrum[k];
           direct = 10 * log10(direct * exp2(PSY_LOG2_K_LONG / 65536.0));
-          check(BAND_ENERGY_SUM, fabs(db(e->psy->en[g][0][sb]) - direct) < 0.01,
+          /* Bands above the lowpass are zero both ways. */
+          check(BAND_ENERGY_SUM,
+                fabs(db(e->psy->en[g][0][sb]) - direct) < 0.01 ||
+                    (isinf(direct) && e->psy->en[g][0][sb] == PSY_LOG_ZERO),
                 "%d Hz band %d: %.3f dB, lines sum to %.3f dB", rates[r], sb,
                 db(e->psy->en[g][0][sb]), direct);
         }
@@ -1062,8 +1067,11 @@ static void check_side_zero(void) {
         for (int sb = 0; sb < 22; sb++)
           check(MS_SIDE_ZERO,
                 e->psy->en[g][3][sb] == PSY_LOG_ZERO &&
-                    fabs(db(e->psy->en[g][2][sb]) - db(e->psy->en[g][0][sb]) -
-                         10 * log10(2)) < 0.01 &&
+                    (fabs(db(e->psy->en[g][2][sb]) - db(e->psy->en[g][0][sb]) -
+                          10 * log10(2)) < 0.01 ||
+                     /* Above the lowpass, mid is zero like left. */
+                     (e->psy->en[g][2][sb] == PSY_LOG_ZERO &&
+                      e->psy->en[g][0][sb] == PSY_LOG_ZERO)) &&
                     e->psy->thm[g][3][sb] == PSY_LOG_ZERO &&
                     e->psy->thm[g][2][sb] <= e->psy->en[g][2][sb],
                 "%d Hz sfb %d: side energy %.1f dB, threshold %.1f dB",
@@ -1863,6 +1871,89 @@ static void check_quantiser(void) {
   shine_close(e);
 }
 
+/* bandwidth §1: the cutoff in Hz, 0 for none, in floating point. */
+static double expected_cutoff(int samplerate, int channels, int bitrate) {
+  static const double kbps[11] = {8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112};
+  static const double hz[11] = {3000,  5500,  8000,  11000, 13000, 14500,
+                                15500, 16500, 18000, 19000, 19500};
+  double per_channel = (double)bitrate / channels, cutoff = hz[10];
+
+  if (per_channel >= 128)
+    return 0;
+  if (per_channel <= kbps[0])
+    cutoff = hz[0];
+  else
+    for (int i = 1; i < 11; i++)
+      if (per_channel <= kbps[i]) {
+        cutoff = hz[i - 1] + (hz[i] - hz[i - 1]) * (per_channel - kbps[i - 1]) /
+                                 (kbps[i] - kbps[i - 1]);
+        break;
+      }
+  return cutoff >= 0.95 * samplerate / 2 ? 0 : cutoff;
+}
+
+/* bandwidth §1, §2: the gains follow the taper at every configuration, and
+ * an encode codes nothing at or above the cutoff. */
+static void check_lowpass(void) {
+  static const int bitrates[6] = {8, 32, 64, 96, 128, 320};
+  int filtered = 0;
+
+  for (int r = 0; r < 9; r++)
+    for (int channels = 1; channels <= 2; channels++)
+      for (int b = 0; b < 6; b++) {
+        shine_config_t config;
+        shine_t e;
+        double fc;
+        int ok = 1;
+
+        shine_set_config_mpeg_defaults(&config.mpeg);
+        config.wave.samplerate = rates[r];
+        config.wave.channels = channels;
+        config.mpeg.mode = channels == 1 ? SHINE_MONO : SHINE_JOINT_STEREO;
+        config.mpeg.bitrate = bitrates[b];
+        config.mpeg.quality = 1;
+        if (shine_check_config(rates[r], bitrates[b]) < 0 ||
+            !(e = shine_initialise(&config)))
+          continue;
+        fc = expected_cutoff(rates[r], channels, bitrates[b]);
+        filtered += fc > 0;
+        ok &= e->psy->lowpass == (fc > 0);
+        for (int layout = 0; layout < 2; layout++) {
+          int lines = layout ? 192 : GRANULE_SIZE;
+          const int32_t *gain =
+              layout ? e->psy->lowpass_short : e->psy->lowpass_long;
+
+          for (int k = 0; k < lines; k++) {
+            double f = (k + 0.5) * rates[r] / (2.0 * lines), g;
+
+            g = fc <= 0 || f <= 0.9 * fc ? 1
+                : f >= fc                ? 0
+                                         : (fc - f) / (0.1 * fc);
+            ok &= fabs(gain[k] / 32768.0 - g) < 1.0 / 16384;
+          }
+        }
+        if (fc > 0) {
+          noise_t z = {20000, 0};
+          long position = 0;
+
+          for (int frame = 0; frame < 4; frame++) {
+            encode_frame(e, noise, &z, &position, NULL);
+            for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
+              for (int ch = 0; ch < channels; ch++)
+                if (e->side_info.gr[gr].ch[ch].tt.block_type != BLOCK_SHORT)
+                  for (int k = 0; k < GRANULE_SIZE; k++)
+                    if (e->psy->lowpass_long[k] == 0)
+                      ok &= e->mdct_freq[ch][gr][k] == 0 &&
+                            e->l3_enc[ch][gr][k] == 0;
+          }
+        }
+        check(LOWPASS, ok, "%d Hz %d ch %d kbps: cutoff %.0f Hz", rates[r],
+              channels, bitrates[b], fc);
+        shine_close(e);
+      }
+  check(LOWPASS, filtered > 20, "only %d configurations filtered", filtered);
+}
+
 static void check_noise_measure(void) {
   for (int r = 0; r < 18; r += 4) {
     const int is_short = r >= 9;
@@ -2622,6 +2713,7 @@ int main(void) {
   check_allowed_distortion();
   check_short_preecho();
   check_quantiser();
+  check_lowpass();
   check_reservoir_steady();
   check_reservoir_burst();
   check_pe_smoothing();

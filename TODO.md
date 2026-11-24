@@ -129,6 +129,10 @@ quality report before the next one starts.
 - [x] The float oracle served phases 1 to 3 and is deleted, as
       `doc/psy/tests.md` §3 asks once a phase has its goldens and metric
       report; formula checks in `tests/psy_model.c` cover phase 4.
+- [ ] Phase 5 lowpass (`doc/psy/bandwidth.md`): +0.02 to +0.06 ODG at 64
+      to 128 kbps, none above. Confirm the cutoffs by listening (too low is
+      heard as dullness, which the score grades mildly); drop or retune if
+      they do not hold.
 - [ ] `subblock_gain` is always 0 (`doc/psy/noise-allocation.md` §6).
 - [ ] A listening round on transients with the reservoir and short blocks,
       and on the items the metric gate flagged.

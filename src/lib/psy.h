@@ -81,7 +81,11 @@ typedef struct psy_model {
   int channels; /* analysis channels: 1, 2, or 4 with M/S */
   int adapt_ath;
   const psy_bitrate_row_t *row;
-  psy_layout_t layout[2];            /* long, short */
+  psy_layout_t layout[2]; /* long, short */
+  /* doc/psy/bandwidth.md: the lowpass gains of long and short lines, Q15,
+   * and whether there is a cutoff. */
+  int lowpass;
+  int32_t lowpass_long[GRANULE_SIZE], lowpass_short[192];
   int band_part[PSY_LONG_BANDS + 1]; /* first partition of each band */
   int32_t minval[PSY_NPART_MAX];
   int32_t ath_part[PSY_NPART_MAX];
@@ -168,6 +172,11 @@ int shine_psy_initialise(shine_global_config *config);
  * config->buffer at the samples to code, PSY_LOOKAHEAD behind. Returns the
  * stride of those samples. */
 int shine_psy_block_types(shine_global_config *config, int stride);
+
+/* doc/psy/bandwidth.md §2: the lowpass on a granule's long lines and its
+ * three short windows, in frequency order. */
+void shine_psy_lowpass(const psy_model_t *model, int32_t *long_lines,
+                       int32_t (*short_lines)[192]);
 
 /* Runs the model on the frame's MDCT, and codes it as mid/side when the
  * model chooses so (doc/psy/signal-path.md §1). */

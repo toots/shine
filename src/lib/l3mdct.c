@@ -107,6 +107,8 @@ void shine_mdct_sub(shine_global_config *config, int stride) {
                   shine_mdct_alias_cs[k], shine_mdct_alias_ca[k]);
         }
       }
+      if (config->psy)
+        shine_psy_lowpass(config->psy, (int32_t *)long_enc, short_lines);
       if (block_type == BLOCK_SHORT)
         reorder_short(
             short_lines,

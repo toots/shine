@@ -748,6 +748,61 @@ static void allowed_distortion_short(psy_model_t *model, int32_t weight, int g,
   }
 }
 
+void shine_psy_lowpass(const psy_model_t *model, int32_t *long_lines,
+                       int32_t (*short_lines)[192]) {
+  if (!model->lowpass)
+    return;
+  for (int k = 0; k < GRANULE_SIZE; k++)
+    long_lines[k] =
+        (int32_t)(((int64_t)long_lines[k] * model->lowpass_long[k]) >> 15);
+  for (int window = 0; window < 3; window++)
+    for (int k = 0; k < 192; k++)
+      short_lines[window][k] = (int32_t)(((int64_t)short_lines[window][k] *
+                                          model->lowpass_short[k]) >>
+                                         15);
+}
+
+/* §bandwidth 1: no lowpass from this bitrate per channel. */
+#define LOWPASS_NONE_KBPS 128
+
+/* §bandwidth 1: the cutoff in Hz, 0 for none. */
+static int lowpass_cutoff(const shine_global_config *config) {
+  static const int kbps[11] = {8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112};
+  static const int hz[11] = {3000,  5500,  8000,  11000, 13000, 14500,
+                             15500, 16500, 18000, 19000, 19500};
+  /* Twice the bitrate per channel, to keep halves exact. */
+  const int rate2 = 2 * config->mpeg.bitrate / config->wave.channels;
+  int cutoff = hz[10];
+
+  if (rate2 >= 2 * LOWPASS_NONE_KBPS)
+    return 0;
+  if (rate2 <= 2 * kbps[0])
+    cutoff = hz[0];
+  else
+    for (int i = 1; i < 11; i++)
+      if (rate2 <= 2 * kbps[i]) {
+        cutoff = hz[i - 1] + (hz[i] - hz[i - 1]) * (rate2 - 2 * kbps[i - 1]) /
+                                 (2 * (kbps[i] - kbps[i - 1]));
+        break;
+      }
+  /* LOWPASS_NYQUIST_FRACTION = 0.95 of fs / 2. */
+  return 40LL * cutoff >= 19LL * config->wave.samplerate ? 0 : cutoff;
+}
+
+/* §bandwidth 2: the gain of the line centred at (2k + 1) fs / (4 lines),
+ * Q15; the pass edge is LOWPASS_PASS_FRACTION = 0.9 of the cutoff. */
+static int32_t lowpass_gain(int k, int lines, int samplerate, int cutoff) {
+  /* Frequencies in Hz times 4 lines, as integers. */
+  int64_t f = (int64_t)(2 * k + 1) * samplerate;
+  int64_t stop = 4LL * lines * cutoff, pass = stop * 9 / 10;
+
+  if (!cutoff || f <= pass)
+    return 1 << 15;
+  if (f >= stop)
+    return 0;
+  return (int32_t)(((stop - f) << 15) / (stop - pass));
+}
+
 void shine_psy_frame(shine_global_config *config) {
   psy_model_t *model = config->psy;
   const int granules = config->mpeg.granules_per_frame;
@@ -934,6 +989,17 @@ int shine_psy_initialise(shine_global_config *config) {
     model->ath_band[sb] = ath + model->row->log2_ath_offset;
   }
   model->xmin_bands = config->wave.samplerate <= 8000 ? 17 : 21;
+  {
+    int cutoff = lowpass_cutoff(config);
+
+    model->lowpass = cutoff != 0;
+    for (int k = 0; k < GRANULE_SIZE; k++)
+      model->lowpass_long[k] =
+          lowpass_gain(k, GRANULE_SIZE, config->wave.samplerate, cutoff);
+    for (int k = 0; k < 192; k++)
+      model->lowpass_short[k] =
+          lowpass_gain(k, 192, config->wave.samplerate, cutoff);
+  }
 
   {
     const int *sfb_s = shine_scale_fact_band_index_short[rate];

@@ -13,7 +13,8 @@ Per frame, in this order:
    of the frame ([block-switching.md](block-switching.md)). Before phase 4,
    every granule is NORM.
 2. **Filterbank and MDCT** of every granule of the frame, with the window of
-   its block type. In phase 4, also the short analysis spectra of every
+   its block type, then the **lowpass** (phase 5, [bandwidth.md](bandwidth.md))
+   on every spectrum it produced. In phase 4, also the short analysis spectra of every
    granule, whatever its block type ([spectral-analysis.md](spectral-analysis.md) §2).
 3. **Loudness** of every granule, then the **adaptive ATH update**, once
    ([ath.md](ath.md) §4). The updated factor is the only one used anywhere in
