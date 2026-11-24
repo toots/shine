@@ -13,9 +13,9 @@ With `kbps_ch` the bitrate divided by the number of channels (a joint or
 dual stereo stream counts two), the cutoff `f_c` is interpolated linearly
 in `kbps_ch` between the rows of this table, **tuning**:
 
-| `kbps_ch` | 8 | 16 | 24 | 32 | 40 | 48 | 56 | 64 | 80 | 96 | 112 |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| `f_c` (kHz) | 3 | 5.5 | 8 | 11 | 13 | 14.5 | 15.5 | 16.5 | 18 | 19 | 19.5 |
+| `kbps_ch` | 8 | 16 | 24 | 28 | 32 | 40 | 48 | 56 | 64 | 80 | 96 | 112 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `f_c` (kHz) | 3 | 7 | 9.5 | 11 | 11 | 14.5 | 14.5 | 17 | 17.25 | 18 | 19 | 19.5 |
 
 Below 8 the cutoff is that of 8. From `LOWPASS_NONE_KBPS` = 128 per
 channel there is no cutoff. Where `f_c ≥ LOWPASS_NYQUIST_FRACTION · fs/2`
