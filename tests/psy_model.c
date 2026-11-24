@@ -785,10 +785,16 @@ static void check_preecho(void) {
   for (int r = 3; r < 9; r++) {
     shine_t e = open_encoder(rates[r], 1, SHINE_MONO, 64);
     psy_model_t *m = e->psy;
+    /* §3.4 scales the limited threshold: a raise would lift it past the
+     * §3.1 bound. */
+    psy_bitrate_row_t row = *m->row;
     int32_t ecb_1[PSY_NPART_MAX], ecb_2[PSY_NPART_MAX];
     long position = 0;
 
     int most_limited = 0;
+
+    row.log2_mask_adjust = 0;
+    m->row = &row;
 
     for (int frame = 0; frame < 10; frame++) {
       /* The second limit holds after a NORM granule only. */
