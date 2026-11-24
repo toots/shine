@@ -61,7 +61,11 @@ void shine_mdct_sub(shine_global_config *config, int stride) {
           block_type == BLOCK_SHORT
               ? (int32_t (*)[18])config->psy->analysis_long[ch][gr]
               : mdct_enc;
-      int32_t short_lines[3][192];
+      int32_t scratch_lines[3][192];
+      /* The model analyses the short spectra of every granule
+       * (doc/psy/spectral-analysis.md §2). */
+      int32_t (*short_lines)[192] =
+          config->psy ? config->psy->short_lines[ch][gr] : scratch_lines;
 
       /* polyphase filtering */
       for (int k = 0; k < 18; k += 2) {
@@ -85,7 +89,7 @@ void shine_mdct_sub(shine_global_config *config, int stride) {
           mdct_in[k + 18] = config->l3_sb_sample[ch][gr + 1][k][band];
         }
 
-        if (block_type == BLOCK_SHORT) {
+        if (config->psy) {
           int32_t out[3][6];
 
           mdct_short(mdct_in, out);

@@ -15,54 +15,58 @@
 #include <string.h>
 
 enum {
-  PARTITIONS_COVER,     /* spectral-analysis §3, KC 1 */
-  PARTITIONS_NEST,      /* spectral-analysis §3, KC 1, 16 */
-  TABLES_RECOMPUTED,    /* KC 3, 14 */
-  SINE_ENERGY,          /* conventions, KC 20 */
-  BAND_ENERGY_SUM,      /* spectral-analysis §5, KC 1 */
-  SFB_EDGE_SWEEP,       /* KC 1 */
-  THRESHOLD_BOUNDS,     /* masking, KC 4 */
-  MASK_ADD,             /* masking §2, KC 13 */
-  TONALITY,             /* masking §1, KC 15 */
-  TONE_THRESHOLD,       /* masking, KC 15, 16 */
-  LIMIT_ORDER,          /* masking §3.4, KC 17 */
-  PREECHO_LIMIT,        /* masking §3.1, KC 9 */
-  SPREADING_RATES,      /* KC 14 */
-  LEVEL_SCALING,        /* KC 19 */
-  ATH_PART,             /* ath §2, KC 2 */
-  LOUDNESS_REFERENCE,   /* ath §4.1, KC 18, 19 */
-  ADAPTIVE_ATH_FADE,    /* ath §4.2, KC 18 */
-  ADAPTIVE_ATH_LEVEL,   /* ath §4.2, KC 18, 19 */
-  ATH_ADJUST,           /* ath §3, KC 18 */
-  MS_SIDE_ZERO,         /* stereo, KC 12 */
-  MS_SUM_LIMIT,         /* stereo §2, KC 12 */
-  MS_DEMASKING,         /* stereo §2, KC 12 */
-  MS_INDEPENDENCE,      /* stereo, KC 12 */
-  PE_BOUNDS,            /* perceptual-entropy, KC 21 */
-  PE_CAP_CONTINUITY,    /* perceptual-entropy §2, KC 21 */
-  CLICK_ALIGNMENT,      /* signal-path, KC 20 */
-  LEADING_SILENCE,      /* signal-path §4, KC 9 */
-  SILENCE_STATE,        /* signal-path §4, KC 5 */
-  INDEPENDENT_ENCODERS, /* signal-path §5, KC 8, 20 */
-  ALLOCATION_BOUNDS,    /* noise-allocation §1, §3 */
-  SCALEFACTOR_CODING,   /* noise-allocation §5 */
-  ALLOCATION_BEST,      /* noise-allocation §4 */
-  ALLOCATION_SILENCE,   /* noise-allocation §4 */
-  ALLOCATION_TIE,       /* noise-allocation §2 */
-  NOISE_MEASURE,        /* noise-allocation §1, §2 */
-  ALLOWED_DISTORTION,   /* allowed-distortion §2 */
-  GRANULE_BITS,         /* reservoir §3, KC 21 */
-  PE_SMOOTHING,         /* perceptual-entropy §3, KC 21 */
-  RESERVOIR_STEADY,     /* reservoir §3 */
-  RESERVOIR_BURST,      /* reservoir §3 */
-  STREAM_LAYOUT,        /* reservoir §1, §4 */
-  ALLOCATION_SURPLUS,   /* noise-allocation §4.1 */
-  BLOCK_SEQUENCE,       /* block-switching §2, §3 */
-  ATTACK_STEADY,        /* block-switching §1, KC 7 */
-  ATTACK_STEP,          /* block-switching §1.4, KC 7, 20 */
-  ATTACK_SIDE,          /* block-switching §1.7, §2, KC 8 */
-  ATTACK_LEVEL,         /* block-switching §1.5, KC 7 */
-  ATTACK_RULES,         /* block-switching §1.3, §1.5 */
+  PARTITIONS_COVER,         /* spectral-analysis §3, KC 1 */
+  PARTITIONS_NEST,          /* spectral-analysis §3, KC 1, 16 */
+  TABLES_RECOMPUTED,        /* KC 3, 14 */
+  SINE_ENERGY,              /* conventions, KC 20 */
+  BAND_ENERGY_SUM,          /* spectral-analysis §5, KC 1 */
+  SFB_EDGE_SWEEP,           /* KC 1 */
+  THRESHOLD_BOUNDS,         /* masking, KC 4 */
+  MASK_ADD,                 /* masking §2, KC 13 */
+  TONALITY,                 /* masking §1, KC 15 */
+  TONE_THRESHOLD,           /* masking, KC 15, 16 */
+  LIMIT_ORDER,              /* masking §3.4, KC 17 */
+  PREECHO_LIMIT,            /* masking §3.1, KC 9 */
+  SPREADING_RATES,          /* KC 14 */
+  LEVEL_SCALING,            /* KC 19 */
+  ATH_PART,                 /* ath §2, KC 2 */
+  LOUDNESS_REFERENCE,       /* ath §4.1, KC 18, 19 */
+  ADAPTIVE_ATH_FADE,        /* ath §4.2, KC 18 */
+  ADAPTIVE_ATH_LEVEL,       /* ath §4.2, KC 18, 19 */
+  ATH_ADJUST,               /* ath §3, KC 18 */
+  MS_SIDE_ZERO,             /* stereo, KC 12 */
+  MS_SUM_LIMIT,             /* stereo §2, KC 12 */
+  MS_DEMASKING,             /* stereo §2, KC 12 */
+  MS_INDEPENDENCE,          /* stereo, KC 12 */
+  PE_BOUNDS,                /* perceptual-entropy, KC 21 */
+  SHORT_THRESHOLD_BOUNDS,   /* masking §4, block-switching §4 */
+  PE_CAP_CONTINUITY,        /* perceptual-entropy §2, KC 21 */
+  CLICK_ALIGNMENT,          /* signal-path, KC 20 */
+  LEADING_SILENCE,          /* signal-path §4, KC 9 */
+  SILENCE_STATE,            /* signal-path §4, KC 5 */
+  INDEPENDENT_ENCODERS,     /* signal-path §5, KC 8, 20 */
+  ALLOCATION_BOUNDS,        /* noise-allocation §1, §3 */
+  SCALEFACTOR_CODING,       /* noise-allocation §5 */
+  ALLOCATION_BEST,          /* noise-allocation §4 */
+  ALLOCATION_SILENCE,       /* noise-allocation §4 */
+  ALLOCATION_TIE,           /* noise-allocation §2 */
+  NOISE_MEASURE,            /* noise-allocation §1, §2 */
+  ALLOWED_DISTORTION,       /* allowed-distortion §2 */
+  SHORT_ALLOWED_DISTORTION, /* allowed-distortion §2, §3 */
+  SHORT_SHAPED,             /* noise-allocation §6 */
+  SHORT_PREECHO,            /* block-switching §1.6, §4 */
+  GRANULE_BITS,             /* reservoir §3, KC 21 */
+  PE_SMOOTHING,             /* perceptual-entropy §3, KC 21 */
+  RESERVOIR_STEADY,         /* reservoir §3 */
+  RESERVOIR_BURST,          /* reservoir §3 */
+  STREAM_LAYOUT,            /* reservoir §1, §4 */
+  ALLOCATION_SURPLUS,       /* noise-allocation §4.1 */
+  BLOCK_SEQUENCE,           /* block-switching §2, §3 */
+  ATTACK_STEADY,            /* block-switching §1, KC 7 */
+  ATTACK_STEP,              /* block-switching §1.4, KC 7, 20 */
+  ATTACK_SIDE,              /* block-switching §1.7, §2, KC 8 */
+  ATTACK_LEVEL,             /* block-switching §1.5, KC 7 */
+  ATTACK_RULES,             /* block-switching §1.3, §1.5 */
   CHECK_COUNT
 };
 
@@ -102,7 +106,11 @@ static const char *check_names[CHECK_COUNT] = {
     [ATTACK_SIDE] = "anti-phase click",
     [ATTACK_LEVEL] = "attacks at lower levels",
     [ATTACK_RULES] = "decay and handled attacks",
+    [SHORT_ALLOWED_DISTORTION] = "short allowed distortion",
+    [SHORT_SHAPED] = "short granules amplified",
+    [SHORT_PREECHO] = "short pre-echo control",
     [PE_BOUNDS] = "PE bounds",
+    [SHORT_THRESHOLD_BOUNDS] = "short threshold bounds",
     [PE_CAP_CONTINUITY] = "PE cap continuity",
     [CLICK_ALIGNMENT] = "click alignment",
     [LEADING_SILENCE] = "leading silence",
@@ -183,6 +191,11 @@ static void check_granule(shine_t e);
 /* allowed-distortion §2: long bands 0..20 have an xmin, 0..16 at 8 kHz. */
 static int xmin_bands(shine_t e) {
   return e->wave.samplerate <= 8000 ? 17 : 21;
+}
+
+/* allowed-distortion §2: short bands 0..11 have an xmin, 0..8 at 8 kHz. */
+static int xmin_bands_short(shine_t e) {
+  return e->wave.samplerate <= 8000 ? 9 : 12;
 }
 
 /* Encodes one frame of `signal` from sample `*position`, checking the
@@ -493,7 +506,10 @@ static void check_sfb_edge(void) {
 /* Every output finite, within its stated bounds. */
 static void check_outputs(const psy_model_t *m, int granules,
                           const char *name) {
-  const int32_t pe_max = PSY_PE_LONG_BASE + 10 * 256 * 1000;
+  /* The base, plus 10 C per band at the ratio cap: the short formula has
+   * three windows of coefficients that add up to 681. */
+  const int32_t pe_max = PSY_PE_LONG_BASE + 10 * 256 * 1000,
+                pe_max_short = PSY_PE_SHORT_BASE + 3 * 10 * 256 * 681;
 
   for (int g = 0; g < granules; g++)
     for (int c = 0; c < m->channels; c++) {
@@ -507,8 +523,23 @@ static void check_outputs(const psy_model_t *m, int granules,
         ok &= thm == PSY_LOG_ZERO || thm > -500 * ONE;
       }
       check(THRESHOLD_BOUNDS, ok, "%s gr %d ch %d", name, g, c);
-      check(PE_BOUNDS, m->pe[g][c] >= PSY_PE_LONG_BASE && m->pe[g][c] < pe_max,
+      /* The short formula on a short granule: its base is the higher one. */
+      check(PE_BOUNDS,
+            m->pe[g][c] >= PSY_PE_LONG_BASE &&
+                m->pe[g][c] <=
+                    (m->pe[g][c] >= PSY_PE_SHORT_BASE ? pe_max_short : pe_max),
             "%s gr %d ch %d: PE %d", name, g, c, m->pe[g][c]);
+      /* Short thresholds exist for every granule, at most their energy. */
+      ok = 1;
+      for (int j = 0; j < 3; j++)
+        for (int sb = 0; sb < PSY_SHORT_BANDS; sb++) {
+          int32_t en = m->en_s[g][c][j][sb], thm = m->thm_s[g][c][j][sb];
+
+          ok &= thm <= en;
+          ok &= en == PSY_LOG_ZERO || (en > -400 * ONE && en < 8 * ONE);
+          ok &= thm == PSY_LOG_ZERO || thm > -500 * ONE;
+        }
+      check(SHORT_THRESHOLD_BOUNDS, ok, "%s gr %d ch %d", name, g, c);
     }
   check(ADAPTIVE_ATH_FADE,
         m->adjust_factor >= PSY_ADJUST_MIN &&
@@ -591,7 +622,7 @@ static void check_tonality(void) {
 
     for (int b = 0; b < m->npart; b++)
       flat[b] = average[b] = 123456789;
-    tonality(m, flat, average, &parts);
+    tonality(&m->layout[0], flat, average, &parts);
     for (int b = 0; b < m->npart; b++)
       ok &= parts.idx[b] == 0;
     check(TONALITY, ok, "%d Hz: a flat spectrum is tonal", rates[r]);
@@ -1312,6 +1343,79 @@ static int coding_bits(int mpeg1, unsigned compress, const int32_t *sf,
   return bits;
 }
 
+/* noise-allocation §6, by brute force like coding_bits: short bands 0..5
+ * on slen1 and 6..11 on slen2 in MPEG-1, four groups of three bands in
+ * MPEG-2, each band with its three windows. */
+static int short_coding_bits(int mpeg1, unsigned compress,
+                             const int32_t (*sf)[3], int *codes) {
+  int slen[4], bits = 0;
+
+  if (mpeg1) {
+    slen[0] = slen[1] = shine_slen1_tab[compress];
+    slen[2] = slen[3] = shine_slen2_tab[compress];
+  } else {
+    slen[0] = (compress >> 4) / 5;
+    slen[1] = (compress >> 4) % 5;
+    slen[2] = (compress & 15) >> 2;
+    slen[3] = compress & 3;
+  }
+  *codes = 1;
+  for (int sb = 0; sb < 12; sb++)
+    for (int window = 0; window < 3; window++) {
+      *codes &= sf[sb][window] < (1 << slen[sb / 3]);
+      bits += slen[sb / 3];
+    }
+  return bits;
+}
+
+/* Short granules checked, and those with a scalefactor above 0, by MPEG
+ * version (1 for MPEG-1). */
+static int short_granules[2], short_amplified[2];
+
+/* noise-allocation §5, §6: every scalefactor within its format, 0 in the
+ * bands without an xmin, and the cheapest coding. */
+static void check_scalefactors(shine_t e, int gr, int ch, const char *name) {
+  const int mpeg1 = e->mpeg.version == SHINE_MPEG_I;
+  const gr_info *gi = &e->side_info.gr[gr].ch[ch].tt;
+  const int is_short = gi->block_type == BLOCK_SHORT;
+  const int32_t *sf = e->scalefactor.l[gr][ch];
+  const int32_t (*sf_s)[3] = (const int32_t (*)[3])e->scalefactor.s[gr][ch];
+  int in_range = 1, codes, cheapest = -1, chosen, amplified = 0;
+
+  if (is_short)
+    for (int sb = 0; sb < PSY_SHORT_BANDS; sb++)
+      for (int window = 0; window < 3; window++) {
+        int value = sf_s[sb][window];
+
+        in_range &= value >= 0 && value <= (sb <= 5 ? 15 : 7) &&
+                    (sb < xmin_bands_short(e) || value == 0);
+        amplified |= value > 0;
+      }
+  else
+    for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
+      in_range &= sf[sb] >= 0 && sf[sb] <= (sb <= 10 ? 15 : 7) &&
+                  (sb < xmin_bands(e) || sf[sb] == 0);
+  for (unsigned c = 0; c < (mpeg1 ? 16u : 400u); c++) {
+    int bits = is_short ? short_coding_bits(mpeg1, c, sf_s, &codes)
+                        : coding_bits(mpeg1, c, sf, &codes);
+    if (codes && (cheapest < 0 || bits < cheapest))
+      cheapest = bits;
+  }
+  chosen = is_short
+               ? short_coding_bits(mpeg1, gi->scalefac_compress, sf_s, &codes)
+               : coding_bits(mpeg1, gi->scalefac_compress, sf, &codes);
+  check(SCALEFACTOR_CODING,
+        in_range && chosen == (int)gi->part2_length && codes &&
+            (int)gi->part2_length == cheapest,
+        "%s gr %d ch %d%s: scalefac_compress %u, %u bits, cheapest %d", name,
+        gr, ch, is_short ? " short" : "", gi->scalefac_compress,
+        gi->part2_length, cheapest);
+  if (is_short) {
+    short_granules[mpeg1]++;
+    short_amplified[mpeg1] += amplified;
+  }
+}
+
 /* perceptual-entropy §3: k[i] / 5. */
 static const double spec_taps[9] = {-0.0207887, -0.0378413, -0.0432472,
                                     -0.031183,  0,          0.0467745,
@@ -1352,8 +1456,9 @@ static double granule_budget(shine_t e, int gr) {
  * band over and uses floor_bits to ceiling_bits Huffman bits. */
 static int under(shine_t e, int gr, int ch, const scalefactors_t *s, int q,
                  int floor_bits, int ceiling_bits) {
+  const psy_bands_t *bands = &e->psy->bands;
   int ix[GRANULE_SIZE], bits;
-  int32_t noise[PSY_LONG_BANDS];
+  int32_t noise[PSY_ALLOCATION_BANDS];
   gr_info counted = e->side_info.gr[gr].ch[ch].tt;
 
   if (quantize_granule(e, ix, q, s) > PSY_IX_MAX)
@@ -1362,11 +1467,26 @@ static int under(shine_t e, int gr, int ch, const scalefactors_t *s, int q,
   if (bits < floor_bits || bits > ceiling_bits)
     return 0;
   band_noise(e, e->psy, ix, q, s, noise);
-  for (int sb = 0; sb < e->psy->xmin_bands; sb++)
-    if (noise[sb] > e->psy->xmin[gr][ch][sb] &&
-        e->psy->xmin[gr][ch][sb] < e->psy->en[gr][e->psy->ms ? ch + 2 : ch][sb])
+  for (int b = 0; b < bands->shaped; b++)
+    if (noise[b] > bands->xmin[b] && bands->xmin[b] < bands->en[b])
       return 0;
   return 1;
+}
+
+/* The scalefactors chosen for granule gr, channel ch, in the order of its
+ * band map: band 3 sb + window for a short granule. */
+static void chosen_scalefactors(shine_t e, int gr, int ch, scalefactors_t *s) {
+  const gr_info *gi = &e->side_info.gr[gr].ch[ch].tt;
+
+  memset(s, 0, sizeof(*s));
+  s->scale = (int)gi->scalefac_scale;
+  if (gi->block_type == BLOCK_SHORT)
+    for (int sb = 0; sb < PSY_SHORT_BANDS; sb++)
+      for (int window = 0; window < 3; window++)
+        s->sf[3 * sb + window] = (int)e->scalefactor.s[gr][ch][sb][window];
+  else
+    for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
+      s->sf[sb] = (int)e->scalefactor.l[gr][ch][sb];
 }
 
 static void prepare(shine_t e, int gr, int ch);
@@ -1385,9 +1505,7 @@ static void check_surplus(shine_t e, int gr, int ch, int max_bits,
 
   if (!e->l3loop.xrmax)
     return;
-  s.scale = (int)gi->scalefac_scale;
-  for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
-    s.sf[sb] = (int)e->scalefactor.l[gr][ch][sb];
+  chosen_scalefactors(e, gr, ch, &s);
   fitted_bits = fit(e, ix, &counted, max_bits - part2, &s, &fitted_q);
   if (fitted_bits < 0)
     return;
@@ -1404,14 +1522,13 @@ static void check_surplus(shine_t e, int gr, int ch, int max_bits,
       ALLOCATION_SURPLUS,
       q >= fitted_q &&
           (q == fitted_q || under(e, gr, ch, &s, q, floor_bits, fitted_bits)) &&
-          (q == MAX_STEPSIZE ||
+          (q == largest_step(gi) ||
            !under(e, gr, ch, &s, q + 1, floor_bits, fitted_bits)),
       "%s gr %d ch %d: step %d after %d, at least %d bits of %d", name, gr, ch,
       q, fitted_q, floor_bits, fitted_bits);
 }
 
 static void check_granule(shine_t e) {
-  const int mpeg1 = e->mpeg.version == SHINE_MPEG_I;
   char name[64];
 
   snprintf(name, sizeof(name), "%d Hz %d kbps mode %d", e->wave.samplerate,
@@ -1434,8 +1551,9 @@ static void check_granule(shine_t e) {
 
     for (int ch = 0; ch < e->wave.channels; ch++) {
       gr_info *gi = &e->side_info.gr[gr].ch[ch].tt;
-      const int32_t *sf = e->scalefactor.l[gr][ch];
-      int ix_max = 0, in_range = 1, codes, cheapest = -1;
+      const psy_bands_t *bands = &e->psy->bands;
+      scalefactors_t chosen;
+      int ix_max = 0;
 
       for (int k = 0; k < GRANULE_SIZE; k++)
         if (abs(e->l3_enc[ch][gr][k]) > ix_max)
@@ -1467,36 +1585,20 @@ static void check_granule(shine_t e) {
             "%s gr %d ch %d: ix up to %d, %d of %d bits", name, gr, ch, ix_max,
             bits, max_bits);
       prepare(e, gr, ch);
-      /* A short granule gets a plain step size search. */
-      if (gi->block_type != BLOCK_SHORT)
-        check_surplus(e, gr, ch, max_bits, reservoir, name);
+      check_surplus(e, gr, ch, max_bits, reservoir, name);
       /* What the encoder's reservoir became after this channel. */
       reservoir +=
           e->mean_bits / e->wave.channels - (e->l3loop.xrmax ? bits : 0);
 
       /* noise-allocation §2: never over, so never amplified. */
-      for (int sb = 0; sb < xmin_bands(e); sb++)
-        if (e->psy->xmin[gr][ch][sb] >=
-            e->psy->en[gr][e->psy->ms ? ch + 2 : ch][sb])
-          check(ALLOCATION_TIE, sf[sb] == 0,
+      chosen_scalefactors(e, gr, ch, &chosen);
+      for (int b = 0; b < bands->shaped; b++)
+        if (bands->xmin[b] >= bands->en[b])
+          check(ALLOCATION_TIE, chosen.sf[b] == 0,
                 "%s gr %d ch %d band %d: amplified by %d with its whole "
                 "energy allowed",
-                name, gr, ch, sb, sf[sb]);
-      for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
-        in_range &= sf[sb] >= 0 && sf[sb] <= (sb <= 10 ? 15 : 7) &&
-                    (sb < xmin_bands(e) || sf[sb] == 0);
-      for (unsigned c = 0; c < (mpeg1 ? 16u : 400u); c++) {
-        int bits = coding_bits(mpeg1, c, sf, &codes);
-        if (codes && (cheapest < 0 || bits < cheapest))
-          cheapest = bits;
-      }
-      check(SCALEFACTOR_CODING,
-            in_range &&
-                coding_bits(mpeg1, gi->scalefac_compress, sf, &codes) ==
-                    (int)gi->part2_length &&
-                codes && (int)gi->part2_length == cheapest,
-            "%s gr %d ch %d: scalefac_compress %u, %u bits, cheapest %d", name,
-            gr, ch, gi->scalefac_compress, gi->part2_length, cheapest);
+                name, gr, ch, b, chosen.sf[b]);
+      check_scalefactors(e, gr, ch, name);
     }
   }
 }
@@ -1528,19 +1630,19 @@ static void check_allocation_bounds(void) {
 /* D of the granule's current quantization, with the scalefactors s. */
 static int64_t distortion(shine_t e, int gr, int ch, const scalefactors_t *s,
                           int q) {
-  int32_t noise[PSY_LONG_BANDS];
+  const psy_bands_t *bands = &e->psy->bands;
+  int32_t noise[PSY_ALLOCATION_BANDS];
   int64_t d = 0;
 
   band_noise(e, e->psy, e->l3_enc[ch][gr], q, s, noise);
-  for (int sb = 0; sb < e->psy->xmin_bands; sb++)
-    if (noise[sb] > e->psy->xmin[gr][ch][sb] &&
-        e->psy->xmin[gr][ch][sb] < e->psy->en[gr][e->psy->ms ? ch + 2 : ch][sb])
-      d += noise[sb] - e->psy->xmin[gr][ch][sb];
+  for (int b = 0; b < bands->shaped; b++)
+    if (noise[b] > bands->xmin[b] && bands->xmin[b] < bands->en[b])
+      d += noise[b] - bands->xmin[b];
   return d;
 }
 
 /* Prepares granule gr, channel ch of the last frame as the iteration loop
- * does. */
+ * does, with its band map. */
 static void prepare(shine_t e, int gr, int ch) {
   e->l3loop.xr = e->mdct_freq[ch][gr];
   e->l3loop.xrmax = 0;
@@ -1549,18 +1651,23 @@ static void prepare(shine_t e, int gr, int ch) {
     if (e->l3loop.xrabs[k] > e->l3loop.xrmax)
       e->l3loop.xrmax = e->l3loop.xrabs[k];
   }
+  select_bands(e, gr, ch);
 }
 
 /* noise-allocation §4: the chosen attempt is no worse than attempt 0, and a
  * granule with nothing over keeps its scalefactors at 0. */
 static void check_allocation_best(void) {
   for (int r = 0; r < 9; r += 2)
-    for (int b = 0; b < 2; b++) {
-      int bitrate = b ? highest_bitrate(rates[r]) : lowest_bitrate(rates[r]);
+    for (int b = 0; b < 4; b++) {
+      int bitrate =
+          b & 1 ? highest_bitrate(rates[r]) : lowest_bitrate(rates[r]);
       shine_t e = open_encoder(rates[r], 2, SHINE_JOINT_STEREO, bitrate);
       double gain = 1;
       long position = 0;
       int max_bits;
+
+      /* Every other granule short. */
+      e->psy->forced_short_period = b & 2 ? 2 : 0;
       for (int frame = 0; frame < 5; frame++) {
         encode_frame(e, music, &gain, &position, NULL);
         for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
@@ -1578,9 +1685,7 @@ static void check_allocation_best(void) {
             d0 = distortion(e, gr, ch, &zero, q0);
 
             shine_psy_allocate(e, e->l3_enc[ch][gr], gr, ch, max_bits);
-            chosen.scale = (int)gi->scalefac_scale;
-            for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
-              chosen.sf[sb] = (int)e->scalefactor.l[gr][ch][sb];
+            chosen_scalefactors(e, gr, ch, &chosen);
             chosen_q = gi->quantizerStepSize;
             d = distortion(e, gr, ch, &chosen, chosen_q);
             check(ALLOCATION_BEST, d <= d0,
@@ -1590,53 +1695,82 @@ static void check_allocation_best(void) {
             /* Nothing over: every band is allowed full scale. */
             for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
               e->psy->xmin[gr][ch][sb] = 40 * ONE;
+            for (int window = 0; window < 3; window++)
+              for (int sb = 0; sb < PSY_SHORT_BANDS; sb++)
+                e->psy->xmin_s[gr][ch][window][sb] = 40 * ONE;
             shine_psy_allocate(e, e->l3_enc[ch][gr], gr, ch, max_bits);
-            for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
-              check(ALLOCATION_BEST, e->scalefactor.l[gr][ch][sb] == 0,
-                    "%d Hz: band %d amplified with nothing over", rates[r], sb);
+            chosen_scalefactors(e, gr, ch, &chosen);
+            for (int band = 0; band < PSY_ALLOCATION_BANDS; band++)
+              check(ALLOCATION_BEST, chosen.sf[band] == 0,
+                    "%d Hz: band %d amplified with nothing over", rates[r],
+                    band);
           }
       }
       shine_close(e);
     }
 }
 
+/* The coded lines of allocation band b: long sfb b, or window b % 3 of
+ * short sfb b / 3, whose windows follow each other (ISO 11172-3 2.4.3.4). */
+static void band_lines(int rate, int is_short, int b, int *first, int *last) {
+  if (is_short) {
+    const int *sfb = shine_scale_fact_band_index_short[rate];
+    int sb = b / 3, width = sfb[sb + 1] - sfb[sb];
+
+    *first = 3 * sfb[sb] + (b % 3) * width;
+    *last = *first + width;
+  } else {
+    *first = shine_scale_fact_band_index[rate][b];
+    *last = shine_scale_fact_band_index[rate][b + 1];
+  }
+}
+
 /* noise-allocation §1-§2: the noise of each band against the reconstruction
  * of the decoder's formula, in double precision. */
 static void check_noise_measure(void) {
-  for (int r = 0; r < 9; r += 4) {
-    shine_t e = open_encoder(rates[r], 1, SHINE_MONO, 64);
-    const int *sfb = shine_scale_fact_band_index[r];
+  for (int r = 0; r < 18; r += 4) {
+    const int is_short = r >= 9;
+    shine_t e = open_encoder(rates[r % 9], 1, SHINE_MONO, 64);
+    const psy_bands_t *bands = &e->psy->bands;
     double gain = 1;
     long position = 0;
 
+    /* Every granule but the stream's first short. */
+    e->psy->forced_short_period = is_short;
     for (int frame = 0; frame < 4; frame++)
       encode_frame(e, music, &gain, &position, NULL);
+    prepare(e, 0, 0);
+    check(NOISE_MEASURE, bands->is_short == is_short,
+          "%d Hz: granule 0 is not %s", rates[r % 9],
+          is_short ? "short" : "long");
     for (int scale = 0; scale < 2; scale++)
       for (int q = -40; q <= 10; q += 7) {
         scalefactors_t s;
-        int32_t noise[PSY_LONG_BANDS];
+        int32_t noise[PSY_ALLOCATION_BANDS];
 
         memset(&s, 0, sizeof(s));
         s.scale = scale;
-        for (int sb = 0; sb < PSY_LONG_BANDS - 1; sb++)
-          s.sf[sb] = sb % 4;
-        prepare(e, 0, 0);
+        for (int b = 0; b < bands->shaped; b++)
+          s.sf[b] = b % 4;
         if (quantize_granule(e, e->l3_enc[0][0], q, &s) > PSY_IX_MAX)
           continue;
         band_noise(e, e->psy, e->l3_enc[0][0], q, &s, noise);
-        for (int sb = 0; sb < e->psy->xmin_bands; sb++) {
-          double step = q - 2 * (1 + scale) * s.sf[sb], sum = 0;
+        for (int b = 0; b < bands->shaped; b++) {
+          double step = q - 2 * (1 + scale) * s.sf[b], sum = 0;
+          int first, last;
 
-          for (int k = sfb[sb]; k < sfb[sb + 1]; k++) {
+          band_lines(r % 9, is_short, b, &first, &last);
+          for (int k = first; k < last; k++) {
             double x = pow(e->l3_enc[0][0][k], 4.0 / 3) * pow(2, step / 4 + 31);
             sum += (e->l3loop.xrabs[k] - x) * (e->l3loop.xrabs[k] - x);
           }
-          sum *= exp2(PSY_LOG2_K_LONG / 65536.0);
+          sum *=
+              exp2((is_short ? PSY_LOG2_K_SHORT : PSY_LOG2_K_LONG) / 65536.0);
           if (sum > 0)
-            check(NOISE_MEASURE, fabs(db(noise[sb]) - 10 * log10(sum)) < 0.01,
+            check(NOISE_MEASURE, fabs(db(noise[b]) - 10 * log10(sum)) < 0.01,
                   "%d Hz step %d band %d: noise %.3f dB, reconstruction "
                   "gives %.3f dB",
-                  rates[r], (int)step, sb, db(noise[sb]), 10 * log10(sum));
+                  rates[r % 9], (int)step, b, db(noise[b]), 10 * log10(sum));
         }
       }
     shine_close(e);
@@ -1675,6 +1809,112 @@ static void check_xmin(shine_t e) {
     }
 }
 
+/* allowed-distortion §2, §3, in floating point: the allowed distortion of
+ * each window of a short granule, from the short band energies and
+ * thresholds, then carried forward by the temporal masking; and the
+ * allocation reads it per band and window. */
+static void check_xmin_short(shine_t e, int gr, int ch) {
+  psy_model_t *m = e->psy;
+  const int c = m->ms ? ch + 2 : ch;
+  const double decay =
+      pow(10, -192 / (0.01 * e->wave.samplerate)); /* TEMPORAL_SUSTAIN */
+  int32_t weight = ath_weight(m);
+  int ok = 1;
+
+  for (int sb = 0; sb < xmin_bands_short(e); sb++) {
+    double x[3];
+
+    for (int j = 0; j < 3; j++) {
+      int32_t en = m->en_s[gr][c][j][sb], thm = m->thm_s[gr][c][j][sb];
+      double v =
+          fmin(linear(en), linear(ath_adjust(m, weight, m->ath_band_s[sb]) +
+                                  psy_band_offset_s[sb]));
+
+      if (en != PSY_LOG_ZERO && thm != PSY_LOG_ZERO)
+        v = fmax(v, linear(thm + psy_band_offset_s[sb]));
+      x[j] = fmax(v, linear(PSY_LOG2_XMIN_FLOOR));
+    }
+    for (int j = 1; j < 3; j++)
+      if (x[j - 1] > x[j])
+        x[j] += (x[j - 1] - x[j]) * decay;
+    for (int j = 0; j < 3; j++)
+      ok &= fabs(db(m->xmin_s[gr][ch][j][sb]) - 10 * log10(x[j])) < 0.01;
+  }
+  prepare(e, gr, ch);
+  for (int sb = 0; sb < PSY_SHORT_BANDS; sb++)
+    for (int j = 0; j < 3; j++)
+      ok &= m->bands.xmin[3 * sb + j] == m->xmin_s[gr][ch][j][sb] &&
+            m->bands.en[3 * sb + j] == m->en_s[gr][c][j][sb];
+  check(SHORT_ALLOWED_DISTORTION, ok, "%d Hz gr %d ch %d", e->wave.samplerate,
+        gr, ch);
+}
+
+/* block-switching §4 in floating point, on the dB values of one band:
+ * last[0..2] the windows before, thm[0..2] this granule's, attacks[0..3],
+ * the previous granule's slot 2, pulse shifts. */
+static void preecho_reference(const double last[3], const double thm[3],
+                              const int attacks[4], int last_slot2,
+                              const int pulse[3], double out[3]) {
+  const double att0 = 10 * log10(0.8), late = 0.6 * 0.6, early = 0.3 * 0.6;
+
+  for (int j = 0; j < 3; j++) {
+    double prev = j ? out[j - 1] : last[2];
+    double prev2 = j == 0 ? last[1] : j == 1 ? last[2] : out[0];
+    double t = thm[j] + att0;
+
+    if (attacks[j] >= 2 || attacks[j + 1] == 1)
+      t = fmin(t, late * prev + (1 - late) * t);
+    if (attacks[j] == 1)
+      t = fmin(t, early * prev + (1 - early) * t);
+    else if (j ? attacks[j - 1] == 3 : last_slot2 == 3)
+      t = fmin(t, early * prev2 + (1 - early) * t);
+    /* pulse 1, 0.5, 0.25. */
+    out[j] = t - pulse[j] * 10 * log10(2);
+  }
+}
+
+/* block-switching §4, §1.6: the short thresholds after the pre-echo
+ * control, for every attack pattern and pulse factor, against the formula
+ * in floating point. */
+static void check_short_preecho(void) {
+  shine_t e = open_encoder(44100, 1, SHINE_MONO, 128);
+  psy_model_t *m = e->psy;
+  int lowered = 0;
+
+  for (int pattern = 0; pattern < 4 * 4 * 4 * 4 * 2; pattern++) {
+    int attacks[4], last_slot2 = pattern & 1 ? 3 : 0, pulse[3];
+    double last[3] = {-40, -35, -60}, thm[3] = {-20, -25, -18}, expected[3];
+
+    for (int s = 0; s < 4; s++)
+      attacks[s] = (pattern >> (1 + 2 * s)) & 3;
+    for (int j = 0; j < 3; j++)
+      pulse[j] = (pattern + j) % 3;
+    memcpy(m->attacks[0][0], attacks, sizeof(attacks));
+    memcpy(m->pulse[0][0], pulse, sizeof(pulse));
+    m->previous_slot2[0] = last_slot2;
+    m->have_last_thm_s = 1;
+    for (int sb = 0; sb < PSY_SHORT_BANDS; sb++)
+      for (int j = 0; j < 3; j++) {
+        m->last_thm_s[0][sb][j] = (int32_t)lrint(last[j] / 10 / log10(2) * ONE);
+        m->thm_s[0][0][j][sb] = (int32_t)lrint(thm[j] / 10 / log10(2) * ONE);
+      }
+    short_preecho(m, 0, 0);
+    preecho_reference(last, thm, attacks, last_slot2, pulse, expected);
+    for (int j = 0; j < 3; j++) {
+      check(SHORT_PREECHO, fabs(db(m->thm_s[0][0][j][0]) - expected[j]) < 0.01,
+            "attacks %d %d %d %d, slot 2 before %d, pulse %d: window %d at "
+            "%.3f dB, expected %.3f dB",
+            attacks[0], attacks[1], attacks[2], attacks[3], last_slot2,
+            pulse[j], j, db(m->thm_s[0][0][j][0]), expected[j]);
+      lowered += expected[j] < thm[j] + 10 * log10(0.8) - 0.5;
+    }
+    check(SHORT_PREECHO, m->previous_slot2[0] == attacks[2],
+          "slot 2 kept as %d, not %d", m->previous_slot2[0], attacks[2]);
+  }
+  check(SHORT_PREECHO, lowered > 0, "no pattern lowered a threshold");
+  shine_close(e);
+}
+
 static void check_allowed_distortion(void) {
   for (int r = 0; r < 9; r += 2) {
     shine_t e =
@@ -1685,6 +1925,17 @@ static void check_allowed_distortion(void) {
     for (int frame = 0; frame < 6; frame++) {
       encode_frame(e, music, &gain, &position, NULL);
       check_xmin(e);
+    }
+    shine_close(e);
+    /* Short granules, forced every other one. */
+    e = open_encoder(rates[r], 2, SHINE_JOINT_STEREO, r < 3 ? 128 : 64);
+    e->psy->forced_short_period = 2;
+    for (int frame = 0; frame < 6; frame++) {
+      encode_frame(e, music, &gain, &position, NULL);
+      for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
+        if (e->side_info.gr[gr].ch[0].tt.block_type == BLOCK_SHORT)
+          for (int ch = 0; ch < 2; ch++)
+            check_xmin_short(e, gr, ch);
     }
     shine_close(e);
   }
@@ -1704,12 +1955,13 @@ static void check_allowed_distortion(void) {
 /* noise-allocation §4: only the bands that are over are raised, and the
  * switch to scalefac_scale = 1 halves every scalefactor, rounded up. */
 static void check_amplify(void) {
+  const psy_bands_t long_map = {.is_short = 0}, short_map = {.is_short = 1};
   scalefactors_t s;
-  int over[PSY_LONG_BANDS] = {0}, raised, only_over = 1;
+  int over[PSY_ALLOCATION_BANDS] = {0}, raised, only_over = 1;
 
   memset(&s, 0, sizeof(s));
   over[3] = over[12] = 1;
-  raised = amplify(&s, over, 21);
+  raised = amplify(&long_map, &s, over, 21);
   for (int sb = 0; sb < 21; sb++)
     only_over &= s.sf[sb] == (over[sb] ? 1 : 0);
   check(ALLOCATION_BEST, raised == 2 && only_over && !s.scale,
@@ -1718,7 +1970,7 @@ static void check_amplify(void) {
   for (int sb = 0; sb < 21; sb++)
     s.sf[sb] = sb % 6;
   s.sf[12] = 7; /* at its largest */
-  raised = amplify(&s, over, 21);
+  raised = amplify(&long_map, &s, over, 21);
   only_over = s.scale == 1;
   for (int sb = 0; sb < 21; sb++) {
     int halved = ((sb == 12 ? 7 : sb % 6) + 1) / 2;
@@ -1726,6 +1978,21 @@ static void check_amplify(void) {
   }
   check(ALLOCATION_BEST, raised == 2 && only_over,
         "the switch to scalefac_scale 1 left the wrong scalefactors");
+
+  /* noise-allocation §6: short band 5 (bands 15..17) codes up to 15, short
+   * band 6 (from band 18) up to 7. */
+  for (int b = 15; b <= 18; b++) {
+    memset(&s, 0, sizeof(s));
+    memset(over, 0, sizeof(over));
+    s.sf[b] = 7;
+    over[b] = 1;
+    raised = amplify(&short_map, &s, over, 36);
+    check(ALLOCATION_BEST,
+          b < 18 ? raised == 1 && !s.scale && s.sf[b] == 8
+                 : raised == 1 && s.scale && s.sf[b] == 5,
+          "short band %d at 7: raised %d, scalefac_scale %d, sf %d", b, raised,
+          s.scale, s.sf[b]);
+  }
 }
 
 /* noise-allocation §4: silence has step size and scalefactors 0, and codes
@@ -2217,6 +2484,7 @@ int main(void) {
   check_amplify();
   check_noise_measure();
   check_allowed_distortion();
+  check_short_preecho();
   check_reservoir_steady();
   check_reservoir_burst();
   check_pe_smoothing();
@@ -2226,6 +2494,13 @@ int main(void) {
   check_attack_step();
   check_attack_level();
   check_attack_rules();
+
+  /* Short granules were checked, and some got scalefactors, in both
+   * formats. */
+  for (int mpeg1 = 0; mpeg1 < 2; mpeg1++)
+    check(SHORT_SHAPED, short_granules[mpeg1] > 0 && short_amplified[mpeg1] > 0,
+          "MPEG-%s: %d short granules, %d with a scalefactor",
+          mpeg1 ? "1" : "2", short_granules[mpeg1], short_amplified[mpeg1]);
 
   for (int i = 0; i < CHECK_COUNT; i++) {
     printf("%-30s %6d run, %d failed\n", check_names[i], runs[i], failures[i]);

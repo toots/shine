@@ -100,12 +100,12 @@ static int32_t mask_add(int32_t m1, int32_t m2, int distance, int delta) {
 
 /* §masking 1, from the tonality spectrum: n·m - a and a·L stay below 2^63,
  * as partitions are under 256 lines and line energies under 2^53. */
-static void tonality(const psy_model_t *model, const uint64_t *max_t,
+static void tonality(const psy_layout_t *layout, const uint64_t *max_t,
                      const uint64_t *avg_t, psy_partitions_t *parts) {
-  const int16_t *start = psy_part_start[model->rate];
+  const int16_t *start = layout->start;
 
-  for (int b = 0; b < model->npart; b++) {
-    int first = b > 0 ? b - 1 : b, last = b < model->npart - 1 ? b + 1 : b;
+  for (int b = 0; b < layout->npart; b++) {
+    int first = b > 0 ? b - 1 : b, last = b < layout->npart - 1 ? b + 1 : b;
     uint64_t a = 0, m = 0, idx;
     int n = last - first + 1, lines = start[last + 1] - start[first] - 1;
 
@@ -131,13 +131,13 @@ static int energy_shift(uint64_t peak) {
 
 /* §spectral-analysis 1, 3: line energies, partition sums and tonality.
  * Returns the log2 total energy. */
-static int32_t analyse(psy_model_t *model, psy_channel_t *channel,
-                       const int64_t *x, psy_partitions_t *parts) {
-  const int16_t *start = psy_part_start[model->rate];
+static int32_t analyse_in(const psy_layout_t *layout, psy_channel_t *channel,
+                          const int64_t *x, psy_partitions_t *parts) {
+  const int16_t *start = layout->start;
   uint64_t max_t[PSY_NPART_MAX], avg_t[PSY_NPART_MAX], peak = 0, total = 0;
   int shift, shift_t, last_shift = channel->last_shift;
 
-  for (int k = 0; k < GRANULE_SIZE; k++)
+  for (int k = 0; k < layout->lines; k++)
     if ((uint64_t)(x[k] * x[k]) > peak)
       peak = (uint64_t)(x[k] * x[k]);
   shift = energy_shift(peak);
@@ -147,9 +147,9 @@ static int32_t analyse(psy_model_t *model, psy_channel_t *channel,
    * ratio. Each term is below 2^52. */
   shift_t = shift > last_shift ? shift : last_shift;
   parts->shift = shift;
-  parts->unit = PSY_LOG2_K_LONG + shift * ONE;
+  parts->unit = layout->log2_k + shift * ONE;
 
-  for (int b = 0; b < model->npart; b++) {
+  for (int b = 0; b < layout->npart; b++) {
     uint64_t sum = 0, max = 0, sum_t = 0, peak_t = 0;
 
     for (int k = start[b]; k < start[b + 1]; k++) {
@@ -174,19 +174,23 @@ static int32_t analyse(psy_model_t *model, psy_channel_t *channel,
     total += sum;
   }
   channel->last_shift = shift;
-  tonality(model, max_t, avg_t, parts);
+  tonality(layout, max_t, avg_t, parts);
   return scale(shine_psy_log2(total), parts->unit);
 }
 
-/* §masking 2-3: spreading, pre-echo limit, tonal ceiling, lowering. */
-static void threshold(psy_model_t *model, psy_channel_t *channel,
-                      psy_partitions_t *parts) {
-  const int rate = model->rate;
-  const int16_t *start = psy_part_start[rate];
+static int32_t analyse(psy_model_t *model, psy_channel_t *channel,
+                       const int64_t *x, psy_partitions_t *parts) {
+  return analyse_in(&model->layout[0], channel, x, parts);
+}
 
-  for (int b = 0; b < model->npart; b++) {
-    const int lo = psy_spread_lo[rate][b], hi = psy_spread_hi[rate][b];
-    const int32_t *spread = &psy_spread[rate][psy_spread_offset[rate][b]];
+/* §masking 2-3: spreading, pre-echo limit, tonal ceiling, lowering. */
+static void threshold_in(psy_model_t *model, const psy_layout_t *layout,
+                         psy_channel_t *channel, psy_partitions_t *parts) {
+  const int16_t *start = layout->start;
+
+  for (int b = 0; b < layout->npart; b++) {
+    const int lo = layout->spread_lo[b], hi = layout->spread_hi[b];
+    const int32_t *spread = &layout->spread[layout->spread_offset[b]];
     const int delta = psy_delta[parts->idx[b]];
     int32_t ecb = ZERO, thr, avg_mask, lowering;
     int idx_sum = 0;
@@ -205,21 +209,25 @@ static void threshold(psy_model_t *model, psy_channel_t *channel,
 
     /* §3.1: every granule is NORM before short blocks, so both limits. */
     thr = ecb;
-    if (channel->granules_seen >= 1 && channel->nb_1[b] != ZERO)
+    /* §3.2: no pre-echo limit on the short layout. */
+    if (layout->preecho && channel->granules_seen >= 1 &&
+        channel->nb_1[b] != ZERO)
       thr = min32(thr, channel->nb_1[b] + PSY_LOG2_PREECHO_RATIO_1);
     /* §3.1: the second limit is dropped after a granule that is not NORM. */
-    if (model->previous_type == BLOCK_NORM && channel->granules_seen >= 2 &&
-        channel->nb_2[b] != ZERO)
+    if (layout->preecho && model->previous_type == BLOCK_NORM &&
+        channel->granules_seen >= 2 && channel->nb_2[b] != ZERO)
       thr = min32(thr, channel->nb_2[b] + PSY_LOG2_PREECHO_RATIO_2);
     channel->nb_2[b] = channel->nb_1[b];
     channel->nb_1[b] = ecb;
 
     /* §3.3 */
     if (start[b + 1] - start[b] >= 2)
-      thr = min32(thr, scale(parts->max[b], model->minval[b] + avg_mask));
+      thr = min32(thr, scale(parts->max[b], layout->minval[b] + avg_mask));
 
     /* §3.4 */
-    lowering = psy_part_masking_lower[rate][b] + model->row->log2_mask_adjust;
+    lowering = layout->masking_lower[b] +
+               (layout->preecho ? model->row->log2_mask_adjust
+                                : model->row->log2_mask_adjust_short);
     if (lowering > 0)
       thr = scale(thr, lowering);
     thr = min32(thr, parts->eb[b]);
@@ -229,6 +237,11 @@ static void threshold(psy_model_t *model, psy_channel_t *channel,
   }
   if (channel->granules_seen < 2)
     channel->granules_seen++;
+}
+
+static void threshold(psy_model_t *model, psy_channel_t *channel,
+                      psy_partitions_t *parts) {
+  threshold_in(model, &model->layout[0], channel, parts);
 }
 
 /* §ath 3 */
@@ -241,14 +254,15 @@ static int32_t ath_adjust(const psy_model_t *model, int32_t weight,
 }
 
 /* §stereo 2, per partition. */
-static void ms_correction(const psy_model_t *model, psy_partitions_t *parts,
-                          int32_t weight) {
-  for (int b = 0; b < model->npart; b++) {
+static void ms_correction_in(const psy_model_t *model,
+                             const psy_layout_t *layout,
+                             psy_partitions_t *parts, int32_t weight) {
+  for (int b = 0; b < layout->npart; b++) {
     const int32_t tl = parts[0].thr[b], tr = parts[1].thr[b],
                   tm = parts[2].thr[b], ts = parts[3].thr[b];
     const int32_t ebm = parts[2].eb[b], ebs = parts[3].eb[b];
-    const int32_t mld = psy_part_mld[model->rate][b];
-    const int32_t ath = ath_adjust(model, weight, model->ath_part[b]);
+    const int32_t mld = layout->mld[b];
+    const int32_t ath = ath_adjust(model, weight, layout->ath_part[b]);
     int32_t rm = tm, rs = ts, tlr, m, s, limit, sum;
 
     if (tl <= scale(tr, PSY_LOG2_MS_SIMILARITY) &&
@@ -270,14 +284,20 @@ static void ms_correction(const psy_model_t *model, psy_partitions_t *parts,
   }
 }
 
+static void ms_correction(const psy_model_t *model, psy_partitions_t *parts,
+                          int32_t weight) {
+  ms_correction_in(model, &model->layout[0], parts, weight);
+}
+
 /* §spectral-analysis 5 */
-static void band_sums(const psy_model_t *model, const psy_partitions_t *parts,
-                      int32_t *en, int32_t *thm) {
-  for (int sb = 0; sb < PSY_LONG_BANDS; sb++) {
+static void band_sums_in(const psy_layout_t *layout,
+                         const psy_partitions_t *parts, int32_t *en,
+                         int32_t *thm) {
+  for (int sb = 0; sb < layout->bands; sb++) {
     uint64_t energy = 0;
     int32_t threshold = ZERO;
 
-    for (int b = model->band_part[sb]; b < model->band_part[sb + 1]; b++) {
+    for (int b = layout->band_part[sb]; b < layout->band_part[sb + 1]; b++) {
       energy += parts->eb_raw[b];
       threshold = shine_psy_log_add(threshold, parts->thr[b]);
     }
@@ -286,6 +306,11 @@ static void band_sums(const psy_model_t *model, const psy_partitions_t *parts,
      * may round a few LSB above the exact one. */
     thm[sb] = min32(threshold, en[sb]);
   }
+}
+
+static void band_sums(const psy_model_t *model, const psy_partitions_t *parts,
+                      int32_t *en, int32_t *thm) {
+  band_sums_in(&model->layout[0], parts, en, thm);
 }
 
 /* §perceptual-entropy 2, long formula, Q8. */
@@ -466,13 +491,14 @@ static void sub_block_peaks(const psy_model_t *model, int channels, int start,
 /* §1.3 to §1.5 for analysis channel c: the slots of the granule, and whether
  * it needs short blocks. */
 static int detect_attacks(psy_model_t *model, int c, const int64_t peaks[9],
-                          int slots[4]) {
+                          int slots[4], int pulse[3]) {
   const int64_t threshold =
       c == 3 ? model->row->attack_ratio_side : model->row->attack_ratio;
   int64_t sums[4];
   int needs_short;
 
   slots[0] = model->next_slot0[c];
+  pulse[0] = model->next_pulse0[c];
   sums[0] = model->last_window_sum[c];
   for (int s = 1; s <= 3; s++) {
     sums[s] = 0;
@@ -489,6 +515,20 @@ static int detect_attacks(psy_model_t *model, int c, const int64_t peaks[9],
                         (q << 16) > threshold * PSY_ATTACK_DECAY * p))
         slots[s] = t + 1;
     }
+  }
+  /* §1.6: a window whose level sits in its first sub-blocks. Slot s holds
+   * window s; slot 3 is the next granule's first window. */
+  for (int s = 1; s <= 3; s++) {
+    const int64_t *p = &peaks[3 * (s - 1)];
+    int64_t sum = p[0] + p[1] + p[2];
+    int shift = PSY_PULSE_DIVISOR * p[2] < sum
+                    ? (PSY_PULSE_DIVISOR * p[1] < sum ? 2 : 1)
+                    : 0;
+
+    if (s < 3)
+      pulse[s] = shift;
+    else
+      model->next_pulse0[c] = shift;
   }
   model->last_peaks[c][0] = peaks[7];
   model->last_peaks[c][1] = peaks[8];
@@ -524,13 +564,14 @@ static int detect_attacks(psy_model_t *model, int c, const int64_t peaks[9],
 /* §1.7, §2: whether the detector granule at input[start] makes its coded
  * granule short, on any analysis channel. Its slots go to attacks. */
 static int detect_granule(psy_model_t *model, int channels, int start,
-                          int attacks[PSY_CHANNELS][4]) {
+                          int attacks[PSY_CHANNELS][4],
+                          int pulse[PSY_CHANNELS][3]) {
   int64_t peaks[PSY_CHANNELS][9];
   int needs_short = 0;
 
   sub_block_peaks(model, channels, start, peaks);
   for (int c = 0; c < model->channels; c++)
-    needs_short |= detect_attacks(model, c, peaks[c], attacks[c]);
+    needs_short |= detect_attacks(model, c, peaks[c], attacks[c], pulse[c]);
   return needs_short;
 }
 
@@ -554,12 +595,13 @@ int shine_psy_block_types(shine_global_config *config, int stride) {
   model->is_short[0] = model->is_short[granules];
   memcpy(model->attacks[0], model->attacks[granules],
          sizeof(model->attacks[0]));
+  memcpy(model->pulse[0], model->pulse[granules], sizeof(model->pulse[0]));
   for (int g = first; g <= granules; g++)
     model->is_short[g] =
         detect_granule(model, channels,
                        PSY_INPUT_HISTORY - PSY_LOOKAHEAD - PSY_DETECTOR_OFFSET +
                            g * GRANULE_SIZE,
-                       model->attacks[g]);
+                       model->attacks[g], model->pulse[g]);
   if (model->forced_short_period)
     for (int g = 0; g <= granules; g++)
       model->is_short[g] = forced_short(model, model->granule_index + g);
@@ -583,6 +625,129 @@ int shine_psy_block_types(shine_global_config *config, int stride) {
   return 1;
 }
 
+/* §perceptual-entropy 2, short formula, Q8. */
+static int32_t perceptual_entropy_short(int32_t (*en)[PSY_SHORT_BANDS],
+                                        int32_t (*thm)[PSY_SHORT_BANDS]) {
+  int32_t pe = PSY_PE_SHORT_BASE;
+
+  for (int j = 0; j < 3; j++)
+    for (int sb = 0; sb < 12; sb++)
+      if (thm[j][sb] != ZERO && en[j][sb] > thm[j][sb]) {
+        int32_t ratio =
+            (int32_t)(((int64_t)(en[j][sb] - thm[j][sb]) * PSY_LOG10_2) >> 16);
+
+        if (ratio > PSY_PE_RATIO_CAP)
+          ratio = PSY_PE_RATIO_CAP;
+        pe += (int32_t)(((int64_t)psy_pe_short[sb] * ratio) >> 16);
+      }
+  return pe;
+}
+
+/* interp(x, y, r) of conventions.md in the log domain, r in Q16. */
+static int32_t interp(int32_t x, int32_t y, int32_t r) {
+  if (x == ZERO || y == ZERO)
+    return ZERO;
+  return (int32_t)(((int64_t)r * x + (int64_t)(ONE - r) * y) >> 16);
+}
+
+/* PREECHO_ATT0, and PREECHO_ATT1 and PREECHO_ATT2 times PREECHO_BLEND. */
+#define LOG2_PREECHO_ATT0 -21098
+#define PREECHO_LATE 23593
+#define PREECHO_EARLY 11796
+
+/* §block-switching 4: the short thresholds of analysis channel c in granule
+ * g, against the windows before them. */
+static void short_preecho(psy_model_t *model, int g, int c) {
+  const int *attacks = model->attacks[g][c];
+  int32_t (*thm)[PSY_SHORT_BANDS] = model->thm_s[g][c];
+
+  for (int sb = 0; sb < PSY_SHORT_BANDS; sb++) {
+    int32_t *last = model->last_thm_s[c][sb], new[3];
+
+    if (!model->have_last_thm_s)
+      last[0] = last[1] = last[2] = thm[0][sb];
+    for (int j = 0; j < 3; j++) {
+      int32_t prev = j ? new[j - 1] : last[2];
+      int32_t prev2 = j == 0 ? last[1] : j == 1 ? last[2] : new[0];
+      int32_t t = scale(thm[j][sb], LOG2_PREECHO_ATT0);
+
+      if (attacks[j] >= 2 || attacks[j + 1] == 1)
+        t = min32(t, interp(prev, t, PREECHO_LATE));
+      if (attacks[j] == 1)
+        t = min32(t, interp(prev, t, PREECHO_EARLY));
+      else if (j ? attacks[j - 1] == 3 : model->previous_slot2[c] == 3)
+        t = min32(t, interp(prev2, t, PREECHO_EARLY));
+      new[j] = scale(t, -ONE * model->pulse[g][c][j]);
+    }
+    for (int j = 0; j < 3; j++)
+      thm[j][sb] = last[j] = new[j];
+  }
+  model->previous_slot2[c] = attacks[2];
+}
+
+/* §masking 4, §stereo 2: the three short windows of granule g. */
+static void short_model(shine_global_config *config, int g, int32_t weight) {
+  psy_model_t *model = config->psy;
+  const psy_layout_t *layout = &model->layout[1];
+  const int stereo = config->wave.channels == 2;
+  psy_partitions_t parts[PSY_CHANNELS];
+  int64_t x[PSY_CHANNELS][192];
+
+  for (int j = 0; j < 3; j++) {
+    for (int k = 0; k < 192; k++) {
+      x[0][k] = model->short_lines[0][g][j][k];
+      if (stereo)
+        x[1][k] = model->short_lines[1][g][j][k];
+      if (model->channels == 4) {
+        x[2][k] = mid_side(x[0][k] + x[1][k]);
+        x[3][k] = mid_side(x[0][k] - x[1][k]);
+      }
+    }
+    for (int c = 0; c < model->channels; c++) {
+      analyse_in(layout, &model->channel_s[c], x[c], &parts[c]);
+      threshold_in(model, layout, &model->channel_s[c], &parts[c]);
+    }
+    if (model->channels == 4)
+      ms_correction_in(model, layout, parts, weight);
+    for (int c = 0; c < model->channels; c++)
+      band_sums_in(layout, &parts[c], model->en_s[g][c][j],
+                   model->thm_s[g][c][j]);
+  }
+  for (int c = 0; c < model->channels; c++)
+    short_preecho(model, g, c);
+  model->have_last_thm_s = 1;
+}
+
+/* §allowed-distortion 2, 3, for coded channel ch of a short granule, from
+ * analysis channel c. */
+static void allowed_distortion_short(psy_model_t *model, int32_t weight, int g,
+                                     int ch, int c) {
+  int32_t (*xmin)[PSY_SHORT_BANDS] = model->xmin_s[g][ch];
+
+  for (int sb = 0; sb < PSY_SHORT_BANDS; sb++) {
+    for (int j = 0; j < 3; j++) {
+      int32_t en = model->en_s[g][c][j][sb], x;
+
+      if (sb >= model->xmin_bands_s) {
+        xmin[j][sb] = ZERO;
+        continue;
+      }
+      x = min32(en, ath_adjust(model, weight, model->ath_band_s[sb]) +
+                        psy_band_offset_s[sb]);
+      if (en != ZERO)
+        x = max32(x, scale(model->thm_s[g][c][j][sb], psy_band_offset_s[sb]));
+      xmin[j][sb] = max32(x, PSY_LOG2_XMIN_FLOOR);
+    }
+    /* §3: a window's allowed noise carries into the next. */
+    if (sb < model->xmin_bands_s)
+      for (int j = 1; j < 3; j++)
+        if (xmin[j - 1][sb] > xmin[j][sb])
+          xmin[j][sb] = shine_psy_log_add(
+              xmin[j][sb] + psy_log2_temporal_keep[model->rate],
+              xmin[j - 1][sb] + psy_log2_temporal_decay[model->rate]);
+  }
+}
+
 void shine_psy_frame(shine_global_config *config) {
   psy_model_t *model = config->psy;
   const int granules = config->mpeg.granules_per_frame;
@@ -593,8 +758,14 @@ void shine_psy_frame(shine_global_config *config) {
 
   /* §signal-path 1 step 3: loudness and the ATH update, before the model. */
   for (int g = 0; g < granules; g++) {
+    /* The long spectrum (§spectral-analysis 1.1). */
+    const int is_short =
+        config->side_info.gr[g].ch[0].tt.block_type == BLOCK_SHORT;
+
     for (int ch = 0; ch < config->wave.channels; ch++)
-      model->loudness[g][ch] = loudness(model, config->mdct_freq[ch][g]);
+      model->loudness[g][ch] =
+          loudness(model, is_short ? model->analysis_long[ch][g]
+                                   : config->mdct_freq[ch][g]);
     frame_loudness[g] =
         stereo ? shine_psy_log_add(model->loudness[g][0], model->loudness[g][1])
                : scale(model->loudness[g][0], ONE);
@@ -632,6 +803,13 @@ void shine_psy_frame(shine_global_config *config) {
       band_sums(model, &parts[c], model->en[g][c], model->thm[g][c]);
       model->pe[g][c] = perceptual_entropy(model->en[g][c], model->thm[g][c]);
     }
+    /* §masking 4: short thresholds for every granule, whatever its type.
+     * §perceptual-entropy 1: the PE of a short granule is the short one. */
+    short_model(config, g, weight);
+    if (type == BLOCK_SHORT)
+      for (int c = 0; c < model->channels; c++)
+        model->pe[g][c] =
+            perceptual_entropy_short(model->en_s[g][c], model->thm_s[g][c]);
     if (model->channels == 4) {
       pe_lr += model->pe[g][0] + model->pe[g][1];
       pe_ms += model->pe[g][2] + model->pe[g][3];
@@ -655,6 +833,8 @@ void shine_psy_frame(shine_global_config *config) {
     for (int ch = 0; ch < config->wave.channels; ch++) {
       allowed_distortion(model, weight, model->ms ? ch + 2 : ch,
                          model->xmin[g][ch], g);
+      if (config->side_info.gr[g].ch[ch].tt.block_type == BLOCK_SHORT)
+        allowed_distortion_short(model, weight, g, ch, model->ms ? ch + 2 : ch);
       pe_frame += model->pe[g][model->ms ? ch + 2 : ch];
     }
   smooth_pe(model, pe_frame);
@@ -755,6 +935,79 @@ int shine_psy_initialise(shine_global_config *config) {
   }
   model->xmin_bands = config->wave.samplerate <= 8000 ? 17 : 21;
 
+  {
+    const int *sfb_s = shine_scale_fact_band_index_short[rate];
+    const int16_t *start_s = psy_part_start_s[rate];
+    int32_t ath_s[192];
+
+    for (int k = 0; k < 192; k++)
+      ath_s[k] = psy_ath_line_s[rate][k] +
+                 (int32_t)(((int64_t)psy_ath_line_curve_s[rate][k] *
+                            model->row->ath_curve) >>
+                           16);
+    for (int b = 0, sb = 0; b < psy_npart_s[rate]; b++) {
+      /* §masking 3.3, short. */
+      int32_t x = psy_part_minval_x_s[rate][b], ath = ath_s[start_s[b]];
+
+      if (x > 6 * ONE)
+        x = 30 * ONE;
+      if (x < -model->row->minval_depth)
+        x = -model->row->minval_depth;
+      model->minval_s[b] =
+          (int32_t)(((int64_t)(x - 8 * ONE) * PSY_DB_TO_LOG2) >> 16) +
+          shine_psy_log2((uint64_t)(start_s[b + 1] - start_s[b]));
+      for (int k = start_s[b] + 1; k < start_s[b + 1]; k++)
+        ath = min32(ath, ath_s[k]);
+      model->ath_part_s[b] = ath + model->row->log2_ath_offset;
+      while (sfb_s[sb] < start_s[b])
+        sb++;
+      if (sfb_s[sb] == start_s[b])
+        model->band_part_s[sb] = b;
+    }
+    model->band_part_s[PSY_SHORT_BANDS] = psy_npart_s[rate];
+    for (int sb = 0; sb < PSY_SHORT_BANDS; sb++) {
+      int32_t ath = ath_s[sfb_s[sb]];
+
+      for (int k = sfb_s[sb] + 1; k < sfb_s[sb + 1]; k++)
+        ath = min32(ath, ath_s[k]);
+      model->ath_band_s[sb] = ath + model->row->log2_ath_offset;
+    }
+    model->xmin_bands_s = config->wave.samplerate <= 8000 ? 9 : 12;
+  }
+  model->layout[1] = (psy_layout_t){
+      .npart = psy_npart_s[rate],
+      .lines = 192,
+      .bands = PSY_SHORT_BANDS,
+      .log2_k = PSY_LOG2_K_SHORT,
+      .start = psy_part_start_s[rate],
+      .mld = psy_part_mld_s[rate],
+      .masking_lower = psy_part_masking_lower_s[rate],
+      .spread_lo = psy_spread_lo_s[rate],
+      .spread_hi = psy_spread_hi_s[rate],
+      .spread_offset = psy_spread_offset_s[rate],
+      .spread = psy_spread_s[rate],
+      .band_part = model->band_part_s,
+      .minval = model->minval_s,
+      .ath_part = model->ath_part_s,
+  };
+  model->layout[0] = (psy_layout_t){
+      .npart = model->npart,
+      .lines = GRANULE_SIZE,
+      .bands = PSY_LONG_BANDS,
+      .preecho = 1,
+      .log2_k = PSY_LOG2_K_LONG,
+      .start = psy_part_start[rate],
+      .mld = psy_part_mld[rate],
+      .masking_lower = psy_part_masking_lower[rate],
+      .spread_lo = psy_spread_lo[rate],
+      .spread_hi = psy_spread_hi[rate],
+      .spread_offset = psy_spread_offset[rate],
+      .spread = psy_spread[rate],
+      .band_part = model->band_part,
+      .minval = model->minval,
+      .ath_part = model->ath_part,
+  };
+
   config->psy = model;
   return 0;
 }
@@ -768,12 +1021,53 @@ int shine_psy_initialise(shine_global_config *config) {
 #define STEP_MIN -120
 
 typedef struct {
-  int sf[PSY_LONG_BANDS];
+  int sf[PSY_ALLOCATION_BANDS];
   int scale; /* scalefac_scale */
 } scalefactors_t;
 
-/* §5: both formats code up to 15 in bands 0..10 and 7 in bands 11..20. */
-static int largest_scalefactor(int sb) { return sb <= 10 ? 15 : 7; }
+/* §5, §6: both formats code up to 15 in long bands 0..10 and 7 in bands
+ * 11..20, up to 15 in short bands 0..5 and 7 in bands 6..11. */
+static int largest_scalefactor(const psy_bands_t *bands, int sb) {
+  return bands->is_short ? (sb < 18 ? 15 : 7) : (sb <= 10 ? 15 : 7);
+}
+
+/* The bands of coded channel ch of granule gr, for the allocation: the
+ * long bands, or each short band of each window in coded order. */
+static void select_bands(shine_global_config *config, int gr, int ch) {
+  psy_model_t *model = config->psy;
+  psy_bands_t *bands = &model->bands;
+  const int rate = config->mpeg.samplerate_index;
+  const int c = model->ms ? ch + 2 : ch;
+
+  bands->is_short =
+      config->side_info.gr[gr].ch[ch].tt.block_type == BLOCK_SHORT;
+  if (!bands->is_short) {
+    bands->count = PSY_LONG_BANDS;
+    bands->shaped = model->xmin_bands;
+    bands->log2_k = PSY_LOG2_K_LONG;
+    for (int sb = 0; sb <= PSY_LONG_BANDS; sb++)
+      bands->edge[sb] = shine_scale_fact_band_index[rate][sb];
+    for (int sb = 0; sb < PSY_LONG_BANDS; sb++) {
+      bands->xmin[sb] = model->xmin[gr][ch][sb];
+      bands->en[sb] = model->en[gr][c][sb];
+    }
+    return;
+  }
+  bands->count = 3 * PSY_SHORT_BANDS;
+  bands->shaped = 3 * model->xmin_bands_s;
+  bands->log2_k = PSY_LOG2_K_SHORT;
+  for (int sb = 0; sb < PSY_SHORT_BANDS; sb++) {
+    const int *sfb = shine_scale_fact_band_index_short[rate];
+    int width = sfb[sb + 1] - sfb[sb];
+
+    for (int window = 0; window < 3; window++) {
+      bands->edge[3 * sb + window] = 3 * sfb[sb] + window * width;
+      bands->xmin[3 * sb + window] = model->xmin_s[gr][ch][window][sb];
+      bands->en[3 * sb + window] = model->en_s[gr][c][window][sb];
+    }
+  }
+  bands->edge[3 * PSY_SHORT_BANDS] = GRANULE_SIZE;
+}
 
 static int bits_for(int value) {
   int bits = 0;
@@ -792,9 +1086,34 @@ static int group_max(const int *sf, int first, int last) {
   return max;
 }
 
-/* §5: the cheapest coding of the scalefactors. Returns part2_length. */
-static int scalefactor_coding(const scalefactors_t *s, int mpeg1,
-                              unsigned *compress) {
+/* §5, §6: the cheapest coding of the scalefactors. Returns part2_length. */
+static int scalefactor_coding(const psy_bands_t *bands, const scalefactors_t *s,
+                              int mpeg1, unsigned *compress) {
+  if (bands->is_short) {
+    /* Four groups of three bands, each with its three windows. */
+    int slen[4];
+
+    for (int group = 0; group < 4; group++)
+      slen[group] = bits_for(group_max(s->sf, 9 * group, 9 * group + 8));
+    if (mpeg1) {
+      /* Bands 0..5 share slen1 and bands 6..11 slen2. */
+      int need1 = slen[0] > slen[1] ? slen[0] : slen[1],
+          need2 = slen[2] > slen[3] ? slen[2] : slen[3], best = -1;
+
+      for (unsigned c = 0; c < 16; c++)
+        if (shine_slen1_tab[c] >= need1 && shine_slen2_tab[c] >= need2) {
+          int bits = 18 * (shine_slen1_tab[c] + shine_slen2_tab[c]);
+          if (best < 0 || bits < best) {
+            best = bits;
+            *compress = c;
+          }
+        }
+      return best;
+    }
+    *compress =
+        (unsigned)(((5 * slen[0] + slen[1]) << 4) + (slen[2] << 2) + slen[3]);
+    return 9 * (slen[0] + slen[1] + slen[2] + slen[3]);
+  }
   if (mpeg1) {
     int need1 = bits_for(group_max(s->sf, 0, 10)),
         need2 = bits_for(group_max(s->sf, 11, 20)), best = -1;
@@ -819,6 +1138,13 @@ static int scalefactor_coding(const scalefactors_t *s, int mpeg1,
   }
 }
 
+/* §1, §6: a short block's global_gain is SHORT_HEADROOM_STEPS above its
+ * step size. */
+static int largest_step(const gr_info *gi) {
+  return MAX_STEPSIZE -
+         (gi->block_type == BLOCK_SHORT ? SHORT_HEADROOM_STEPS : 0);
+}
+
 static int band_step(int q, const scalefactors_t *s, int sb) {
   return q - 2 * (1 + s->scale) * s->sf[sb];
 }
@@ -827,15 +1153,16 @@ static int band_step(int q, const scalefactors_t *s, int sb) {
  * a step is too small or below the exact range. */
 static int quantize_granule(shine_global_config *config, int *ix, int q,
                             const scalefactors_t *s) {
-  const int *sfb = shine_scale_fact_band_index[config->mpeg.samplerate_index];
+  const psy_bands_t *bands = &config->psy->bands;
   int max = 0;
 
-  for (int sb = 0; sb < PSY_LONG_BANDS; sb++) {
+  for (int sb = 0; sb < bands->count; sb++) {
     int step = band_step(q, s, sb), band_max;
 
     if (step < STEP_MIN)
       return PSY_IX_MAX + 1;
-    band_max = shine_quantize_band(ix, sfb[sb], sfb[sb + 1], step, config);
+    band_max = shine_quantize_band(ix, bands->edge[sb], bands->edge[sb + 1],
+                                   step, config);
     if (band_max > max)
       max = band_max;
   }
@@ -847,10 +1174,7 @@ static int quantize_granule(shine_global_config *config, int *ix, int q,
  * largest step size. */
 static int fit(shine_global_config *config, int *ix, gr_info *gi, int budget,
                const scalefactors_t *s, int *q) {
-  /* A short block's global_gain is SHORT_HEADROOM_STEPS above its step. */
-  int low = STEP_MIN - 1, bits;
-  int high =
-      MAX_STEPSIZE - (gi->block_type == BLOCK_SHORT ? SHORT_HEADROOM_STEPS : 0);
+  int low = STEP_MIN - 1, high = largest_step(gi), bits;
 
   if (quantize_granule(config, ix, high, s) > PSY_IX_MAX ||
       shine_count_bits(ix, gi, config) > budget)
@@ -890,16 +1214,16 @@ static uint64_t reconstruct(int ix, int step) {
 static void band_noise(shine_global_config *config, const psy_model_t *model,
                        const int *ix, int q, const scalefactors_t *s,
                        int32_t *noise) {
-  const int *sfb = shine_scale_fact_band_index[config->mpeg.samplerate_index];
+  const psy_bands_t *bands = &model->bands;
 
-  for (int sb = 0; sb < model->xmin_bands; sb++) {
+  for (int sb = 0; sb < bands->shaped; sb++) {
     int step = band_step(q, s, sb), shift;
     uint64_t error[256], peak = 0, sum = 0;
-    int lines = sfb[sb + 1] - sfb[sb];
+    int first = bands->edge[sb], lines = bands->edge[sb + 1] - first;
 
     for (int k = 0; k < lines; k++) {
-      int64_t difference = (int64_t)config->l3loop.xrabs[sfb[sb] + k] -
-                           (int64_t)reconstruct(ix[sfb[sb] + k], step);
+      int64_t difference = (int64_t)config->l3loop.xrabs[first + k] -
+                           (int64_t)reconstruct(ix[first + k], step);
 
       error[k] = (uint64_t)(difference < 0 ? -difference : difference);
       if (error[k] > peak)
@@ -908,26 +1232,27 @@ static void band_noise(shine_global_config *config, const psy_model_t *model,
     shift = peak >> 28 ? highest_bit(peak) - 27 : 0;
     for (int k = 0; k < lines; k++)
       sum += (error[k] >> shift) * (error[k] >> shift);
-    noise[sb] = scale(shine_psy_log2(sum), PSY_LOG2_K_LONG + 2 * shift * ONE);
+    noise[sb] = scale(shine_psy_log2(sum), bands->log2_k + 2 * shift * ONE);
   }
 }
 
 /* §4: raises every band that is over and can be amplified, switching to
  * scalefac_scale = 1 when one reaches its largest scalefactor. Returns the
  * number of bands raised. */
-static int amplify(scalefactors_t *s, const int *over, int bands) {
+static int amplify(const psy_bands_t *map, scalefactors_t *s, const int *over,
+                   int bands) {
   int raised = 0;
 
   if (!s->scale)
     for (int sb = 0; sb < bands; sb++)
-      if (over[sb] && s->sf[sb] == largest_scalefactor(sb)) {
+      if (over[sb] && s->sf[sb] == largest_scalefactor(map, sb)) {
         s->scale = 1;
         for (int b = 0; b < bands; b++)
           s->sf[b] = (s->sf[b] + 1) / 2;
         break;
       }
   for (int sb = 0; sb < bands; sb++)
-    if (over[sb] && s->sf[sb] < largest_scalefactor(sb)) {
+    if (over[sb] && s->sf[sb] < largest_scalefactor(map, sb)) {
       s->sf[sb]++;
       raised++;
     }
@@ -986,7 +1311,7 @@ static int under_at(shine_global_config *config, int *ix, gr_info *gi, int q,
                     const int32_t *en, int floor_bits, int ceiling_bits,
                     int *bits) {
   const psy_model_t *model = config->psy;
-  int32_t noise[PSY_LONG_BANDS];
+  int32_t noise[PSY_ALLOCATION_BANDS];
 
   if (quantize_granule(config, ix, q, s) > PSY_IX_MAX)
     return 0;
@@ -995,7 +1320,7 @@ static int under_at(shine_global_config *config, int *ix, gr_info *gi, int q,
   if (*bits < floor_bits || *bits > ceiling_bits)
     return 0;
   band_noise(config, model, ix, q, s, noise);
-  for (int sb = 0; sb < model->xmin_bands; sb++)
+  for (int sb = 0; sb < model->bands.shaped; sb++)
     if (noise[sb] > xmin[sb] && xmin[sb] < en[sb])
       return 0;
   return 1;
@@ -1003,10 +1328,10 @@ static int under_at(shine_global_config *config, int *ix, gr_info *gi, int q,
 
 int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
                        int gr, int ch, int max_bits) {
-  const psy_model_t *model = config->psy;
-  const int32_t *xmin = model->xmin[gr][ch];
-  const int32_t *en = model->en[gr][model->ms ? ch + 2 : ch];
-  const int bands = model->xmin_bands;
+  psy_model_t *model = config->psy;
+  const psy_bands_t *map = (select_bands(config, gr, ch), &model->bands);
+  const int32_t *xmin = map->xmin, *en = map->en;
+  const int bands = map->shaped;
   gr_info *gi = &config->side_info.gr[gr].ch[ch].tt;
   scalefactors_t s, best_s;
   gr_info best_gi;
@@ -1019,31 +1344,13 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
   best_gi = *gi;
   /* Kept only if no attempt can be made: silence at the largest step. */
   memset(best_ix, 0, sizeof(best_ix));
-  best_q = MAX_STEPSIZE;
-  /* ponytail: a short block gets a plain step size search until the short
-   * thresholds exist (doc/psy/masking.md §4). */
-  if (gi->block_type == BLOCK_SHORT) {
-    int bits = fit(config, ix, gi, max_bits, &s, &best_q);
-
-    memset(config->scalefactor.s[gr][ch], 0,
-           sizeof(config->scalefactor.s[gr][ch]));
-    for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
-      config->scalefactor.l[gr][ch][sb] = 0;
-    if (bits < 0) {
-      memset(ix, 0, GRANULE_SIZE * sizeof(*ix));
-      best_q = MAX_STEPSIZE - SHORT_HEADROOM_STEPS;
-      bits = 0;
-    }
-    gi->quantizerStepSize = best_q;
-    gi->scalefac_scale = gi->scalefac_compress = gi->part2_length = 0;
-    return bits;
-  }
+  best_q = largest_step(gi);
   for (int attempt = 0; attempt < OUTER_ATTEMPTS; attempt++) {
-    int32_t noise[PSY_LONG_BANDS];
-    int over[PSY_LONG_BANDS], any_over = 0, all_amplified = 1, q, bits;
+    int32_t noise[PSY_ALLOCATION_BANDS];
+    int over[PSY_ALLOCATION_BANDS], any_over = 0, all_amplified = 1, q, bits;
     unsigned compress;
-    int part2 =
-        scalefactor_coding(&s, config->mpeg.version == SHINE_MPEG_I, &compress);
+    int part2 = scalefactor_coding(
+        map, &s, config->mpeg.version == SHINE_MPEG_I, &compress);
     int64_t distortion = 0;
 
     if (part2 > max_bits)
@@ -1070,7 +1377,7 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
       best_gi = *gi;
       memcpy(best_ix, ix, sizeof(best_ix));
     }
-    if (!any_over || !amplify(&s, over, bands))
+    if (!any_over || !amplify(map, &s, over, bands))
       break;
     for (int sb = 0; sb < bands; sb++)
       all_amplified &= s.sf[sb] > 0;
@@ -1082,7 +1389,7 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
    * as the reservoir has room for what it leaves. */
   if (best_distortion == 0 && config->ResvSize < config->ResvMax) {
     int floor_bits = best_bits - (config->ResvMax - config->ResvSize);
-    int low = best_q, high = MAX_STEPSIZE + 1, bits;
+    int low = best_q, high = largest_step(gi) + 1, bits;
 
     while (high - low > 1) {
       int middle = low + (high - low) / 2;
@@ -1109,6 +1416,10 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
   gi->scalefac_compress = best_compress;
   gi->part2_length = (unsigned)best_part2;
   for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
-    config->scalefactor.l[gr][ch][sb] = best_s.sf[sb];
+    config->scalefactor.l[gr][ch][sb] = map->is_short ? 0 : best_s.sf[sb];
+  for (int sb = 0; sb < PSY_SHORT_BANDS; sb++)
+    for (int window = 0; window < 3; window++)
+      config->scalefactor.s[gr][ch][sb][window] =
+          map->is_short ? best_s.sf[3 * sb + window] : 0;
   return best_part2 + best_bits;
 }

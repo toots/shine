@@ -15,6 +15,7 @@
 /* Analysis channels: left (or mono), right, mid, side. */
 #define PSY_CHANNELS 4
 #define PSY_LONG_BANDS 22
+#define PSY_SHORT_BANDS 13
 #define PSY_PE_HISTORY 19
 
 /* The detector granule of a coded granule starts 336 samples before the
@@ -46,12 +47,41 @@ typedef struct {
   int32_t thr[PSY_NPART_MAX];
 } psy_partitions_t;
 
+/* A partition layout, long or short (doc/psy/spectral-analysis.md §3), with
+ * the tables of the stream's sample rate and bitrate. */
+typedef struct {
+  int npart, lines, bands;
+  int preecho;    /* the long layout: masking.md §3.1 applies, MASK_ADJUST */
+  int32_t log2_k; /* energy unit of a squared coefficient */
+  const int16_t *start; /* first line of each partition, then lines */
+  const int32_t *mld, *masking_lower;
+  const uint8_t *spread_lo, *spread_hi;
+  const int16_t *spread_offset;
+  const int32_t *spread;
+  const int *band_part; /* first partition of each band, then npart */
+  const int32_t *minval, *ath_part;
+} psy_layout_t;
+
+#define PSY_ALLOCATION_BANDS (3 * PSY_SHORT_BANDS)
+
+/* The bands the noise allocation works on, for one coded channel of one
+ * granule (doc/psy/noise-allocation.md §6): the long bands, or each short
+ * band of each window in coded order, band 3 sb + window. */
+typedef struct {
+  int is_short, count;
+  int shaped; /* the first bands, which have an allowed distortion */
+  int32_t log2_k;
+  int edge[PSY_ALLOCATION_BANDS + 1]; /* first line of each band, then 576 */
+  int32_t xmin[PSY_ALLOCATION_BANDS], en[PSY_ALLOCATION_BANDS];
+} psy_bands_t;
+
 typedef struct psy_model {
   int rate; /* samplerate index */
   int npart;
   int channels; /* analysis channels: 1, 2, or 4 with M/S */
   int adapt_ath;
   const psy_bitrate_row_t *row;
+  psy_layout_t layout[2];            /* long, short */
   int band_part[PSY_LONG_BANDS + 1]; /* first partition of each band */
   int32_t minval[PSY_NPART_MAX];
   int32_t ath_part[PSY_NPART_MAX];
@@ -92,7 +122,30 @@ typedef struct psy_model {
    * granules, with the normal window. */
   int32_t analysis_long[MAX_CHANNELS][MAX_GRANULES][GRANULE_SIZE];
   unsigned previous_type; /* final block type of the granule before */
-  int was_short;          /* the granule before the frame's first */
+
+  /* doc/psy/spectral-analysis.md §2: the three short spectra of every
+   * granule of the frame, lines in ascending frequency. */
+  int32_t short_lines[MAX_CHANNELS][MAX_GRANULES][3][192];
+  psy_channel_t channel_s[PSY_CHANNELS];
+  int band_part_s[PSY_SHORT_BANDS + 1];
+  int32_t minval_s[PSY_NPART_S_MAX], ath_part_s[PSY_NPART_S_MAX];
+  int32_t ath_band_s[PSY_SHORT_BANDS];
+  int xmin_bands_s;  /* short bands with an allowed distortion */
+  psy_bands_t bands; /* of the channel being allocated */
+  /* Short band energies and thresholds, per window, after the short
+   * pre-echo control (doc/psy/block-switching.md §4). */
+  int32_t en_s[MAX_GRANULES][PSY_CHANNELS][3][PSY_SHORT_BANDS];
+  int32_t thm_s[MAX_GRANULES][PSY_CHANNELS][3][PSY_SHORT_BANDS];
+  int32_t last_thm_s[PSY_CHANNELS][PSY_SHORT_BANDS][3];
+  int have_last_thm_s;
+  /* §1.6: the pulse factor of each window as a right shift, 0 to 2; that
+   * of the next granule's first window; slot 2 of the granule before. */
+  int pulse[MAX_GRANULES + 1][PSY_CHANNELS][3], next_pulse0[PSY_CHANNELS];
+  int previous_slot2[PSY_CHANNELS];
+  /* Allowed distortion of a short granule, per coded channel, window and
+   * band (doc/psy/allowed-distortion.md §2, §3). */
+  int32_t xmin_s[MAX_GRANULES][MAX_CHANNELS][3][PSY_SHORT_BANDS];
+  int was_short; /* the granule before the frame's first */
   /* The attack slots 0..3 of each granule of the frame, after the rules. */
   int attacks[MAX_GRANULES + 1][PSY_CHANNELS][4];
   /* doc/psy/perceptual-entropy.md §3: the PE in use of the last frames, Q8,
