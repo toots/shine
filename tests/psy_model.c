@@ -1839,7 +1839,8 @@ static void check_quantiser(void) {
       xr[k] = (int32_t)fmin(target / scale, 2147483647.0);
       e->l3loop.xrabs[k] = xr[k];
     }
-    shine_quantize_band(ix, 0, GRANULE_SIZE, step, e);
+    shine_quantize_band(ix, 0, GRANULE_SIZE, step,
+                        shine_band_peak(0, GRANULE_SIZE, e), e);
     for (int k = 0; k < GRANULE_SIZE; k++) {
       double scale = step > 0
                          ? shine_steptab_fraction[step] / 9223372036854775808.0

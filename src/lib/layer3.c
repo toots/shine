@@ -141,6 +141,8 @@ shine_global_config *shine_initialise(const shine_config_t *pub_config) {
   config->mpeg.frac_slots_per_frame = slots_numerator % config->wave.samplerate;
   config->mpeg.slot_lag = -config->mpeg.frac_slots_per_frame;
 
+  shine_quantize_initialise(config);
+
   if (shine_psy_initialise(config) < 0) {
     free(config);
     return NULL;

@@ -5,10 +5,17 @@
 
 void shine_iteration_loop(shine_global_config *config);
 
-/* Quantizes lines begin..end - 1 of the current granule with one step size.
- * Returns the largest ix, above 8192 when the step is too small. */
+/* Fills the quantiser's thresholds. */
+void shine_quantize_initialise(shine_global_config *config);
+
+/* The largest magnitude of lines begin..end - 1 of the current granule. */
+int32_t shine_band_peak(int begin, int end, const shine_global_config *config);
+
+/* Quantizes lines begin..end - 1 of the current granule, whose largest
+ * magnitude is peak, with one step size. Returns the largest ix, above 8192
+ * when the step is too small. */
 int shine_quantize_band(int ix[GRANULE_SIZE], int begin, int end, int stepsize,
-                        shine_global_config *config);
+                        int32_t peak, shine_global_config *config);
 
 /* Huffman bits of ix, choosing the granule's code tables and regions. */
 int shine_count_bits(int ix[GRANULE_SIZE], gr_info *cod_info,

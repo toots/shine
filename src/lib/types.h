@@ -67,10 +67,22 @@ typedef struct {
   int original;  /* + */
 } priv_shine_mpeg_t;
 
+/* Largest quantised value of a band whose lines are quantised by comparing
+ * them with thresholds. */
+#define QUANT_DIRECT_LEVELS 3
+
+/* Lines quantised together by quantize, according to their largest. */
+#define QUANT_RUN_LINES 32
+
 typedef struct {
   int32_t *xr;                 /* magnitudes of the spectral values */
   int32_t xrabs[GRANULE_SIZE]; /* xr absolute */
   int32_t xrmax;               /* maximum of xrabs array */
+  /* Maximum of each run of QUANT_RUN_LINES lines, without the model. */
+  int32_t run_peak[GRANULE_SIZE / QUANT_RUN_LINES];
+  /* For each step size up to 0, the smallest xrabs quantised to 1, 2...
+   * QUANT_DIRECT_LEVELS + 1. */
+  uint32_t quant_threshold[128][QUANT_DIRECT_LEVELS + 1];
 } l3loop_t;
 
 typedef struct {

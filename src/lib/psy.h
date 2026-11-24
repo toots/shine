@@ -73,6 +73,7 @@ typedef struct {
   int32_t log2_k;
   int edge[PSY_ALLOCATION_BANDS + 1]; /* first line of each band, then 576 */
   int32_t xmin[PSY_ALLOCATION_BANDS], en[PSY_ALLOCATION_BANDS];
+  int32_t peak[PSY_ALLOCATION_BANDS]; /* largest magnitude of each band */
 } psy_bands_t;
 
 typedef struct psy_model {

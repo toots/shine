@@ -15,7 +15,10 @@
 #define ENERGY_BITS 52
 
 /* Number of the highest set bit, x > 0. */
-static int highest_bit(uint64_t x) {
+static inline int highest_bit(uint64_t x) {
+#if defined(__GNUC__) || defined(__clang__)
+  return 63 - __builtin_clzll(x);
+#else
   int n = 0;
 
   for (int step = 32; step; step >>= 1)
@@ -24,9 +27,10 @@ static int highest_bit(uint64_t x) {
       n += step;
     }
   return n;
+#endif
 }
 
-int32_t shine_psy_log2(uint64_t x) {
+static inline int32_t log2_q16(uint64_t x) {
   int n;
   uint32_t mantissa, index, rest;
 
@@ -44,8 +48,10 @@ int32_t shine_psy_log2(uint64_t x) {
                    22);
 }
 
+int32_t shine_psy_log2(uint64_t x) { return log2_q16(x); }
+
 /* 2^x in Q30 for x <= 0, interpolated in psy_exp2_table. */
-static uint32_t exp2_q30(int32_t x) {
+static inline uint32_t exp2_q30(int32_t x) {
   int32_t whole = -(x >> 16); /* x = -whole + fraction, 0 <= fraction < 1 */
   uint32_t fraction = (uint32_t)x & 0xffff, index = fraction >> 7,
            rest = fraction & 0x7f;
@@ -62,14 +68,16 @@ static uint32_t exp2_q30(int32_t x) {
   return whole ? value >> whole : value;
 }
 
-int32_t shine_psy_log_add(int32_t a, int32_t b) {
+static inline int32_t log_add(int32_t a, int32_t b) {
   int32_t high = a > b ? a : b, low = a > b ? b : a;
 
   if (low == ZERO)
     return high;
   /* log2(1 + 2^(low - high)) + high; the sum is below 2^31. */
-  return high + shine_psy_log2((1u << 30) + exp2_q30(low - high)) - 30 * ONE;
+  return high + log2_q16((1u << 30) + exp2_q30(low - high)) - 30 * ONE;
 }
+
+int32_t shine_psy_log_add(int32_t a, int32_t b) { return log_add(a, b); }
 
 /* A product with a non-zero factor b. */
 static int32_t scale(int32_t a, int32_t b) { return a == ZERO ? ZERO : a + b; }
@@ -78,7 +86,8 @@ static int32_t min32(int32_t a, int32_t b) { return a < b ? a : b; }
 static int32_t max32(int32_t a, int32_t b) { return a > b ? a : b; }
 
 /* §masking 2: the non-linear addition law. */
-static int32_t mask_add(int32_t m1, int32_t m2, int distance, int delta) {
+static inline int32_t mask_add(int32_t m1, int32_t m2, int distance,
+                               int delta) {
   int32_t ratio;
 
   if (m1 == ZERO)
@@ -87,15 +96,17 @@ static int32_t mask_add(int32_t m1, int32_t m2, int distance, int delta) {
     return m1;
   ratio = m1 > m2 ? m1 - m2 : m2 - m1;
   if ((distance < 0 ? -distance : distance) <= delta) {
-    if (ratio >= PSY_LOG2_ADD_NEAR_LIMIT)
-      return shine_psy_log_add(m1, m2);
     /* int(16 log10(r)), 0..8 below the near limit. */
-    return shine_psy_log_add(m1, m2) +
-           psy_add_boost[((int64_t)ratio * PSY_ADD_INDEX_SCALE) >> 32];
+    int32_t boost =
+        ratio >= PSY_LOG2_ADD_NEAR_LIMIT
+            ? 0
+            : psy_add_boost[((int64_t)ratio * PSY_ADD_INDEX_SCALE) >> 32];
+
+    return log_add(m1, m2) + boost;
   }
-  if (ratio < PSY_LOG2_ADD_FAR_LIMIT)
-    return shine_psy_log_add(m1, m2);
-  return max32(m1, m2);
+  if (ratio >= PSY_LOG2_ADD_FAR_LIMIT)
+    return max32(m1, m2);
+  return log_add(m1, m2);
 }
 
 /* §masking 1, from the tonality spectrum: n·m - a and a·L stay below 2^63,
@@ -183,28 +194,63 @@ static int32_t analyse(psy_model_t *model, psy_channel_t *channel,
   return analyse_in(&model->layout[0], channel, x, parts);
 }
 
+/* Partitions spread side by side: each one's sum is a chain of additions
+ * waiting on one another, and separate chains overlap in the processor. */
+#define SPREAD_LANES 4
+
+/* §masking 2: the spread energy of each partition, before the average
+ * masking index, and the sum of the indices it spans. */
+static void spread_energy(const psy_layout_t *layout,
+                          const psy_partitions_t *parts, int32_t *ecb,
+                          int *idx_sum) {
+  for (int first = 0; first < layout->npart; first += SPREAD_LANES) {
+    const int lanes = layout->npart - first < SPREAD_LANES
+                          ? layout->npart - first
+                          : SPREAD_LANES;
+    const int32_t *spread[SPREAD_LANES];
+    int lo[SPREAD_LANES], width[SPREAD_LANES], delta[SPREAD_LANES], widest = 0;
+
+    for (int lane = 0; lane < lanes; lane++) {
+      const int b = first + lane;
+
+      lo[lane] = layout->spread_lo[b];
+      width[lane] = layout->spread_hi[b] - lo[lane] + 1;
+      spread[lane] = &layout->spread[layout->spread_offset[b]];
+      delta[lane] = psy_delta[parts->idx[b]];
+      ecb[b] = ZERO;
+      idx_sum[b] = 0;
+      if (width[lane] > widest)
+        widest = width[lane];
+    }
+    for (int step = 0; step < widest; step++)
+      for (int lane = 0; lane < lanes; lane++) {
+        const int b = first + lane, p = lo[lane] + step;
+        int32_t term;
+
+        if (step >= width[lane])
+          continue;
+        term = scale(parts->eb[p], spread[lane][step] + psy_tab[parts->idx[p]]);
+        ecb[b] = step ? mask_add(ecb[b], term, p - b, delta[lane]) : term;
+        idx_sum[b] += parts->idx[p];
+      }
+  }
+}
+
 /* §masking 2-3: spreading, pre-echo limit, tonal ceiling, lowering. */
 static void threshold_in(psy_model_t *model, const psy_layout_t *layout,
                          psy_channel_t *channel, psy_partitions_t *parts) {
   const int16_t *start = layout->start;
+  int32_t spread_ecb[PSY_NPART_MAX];
+  int idx_sum[PSY_NPART_MAX];
 
+  spread_energy(layout, parts, spread_ecb, idx_sum);
   for (int b = 0; b < layout->npart; b++) {
     const int lo = layout->spread_lo[b], hi = layout->spread_hi[b];
-    const int32_t *spread = &layout->spread[layout->spread_offset[b]];
-    const int delta = psy_delta[parts->idx[b]];
-    int32_t ecb = ZERO, thr, avg_mask, lowering;
-    int idx_sum = 0;
+    int32_t ecb, thr, avg_mask, lowering;
 
-    for (int p = lo; p <= hi; p++) {
-      int32_t term =
-          scale(parts->eb[p], spread[p - lo] + psy_tab[parts->idx[p]]);
-
-      ecb = p == lo ? term : mask_add(ecb, term, p - b, delta);
-      idx_sum += parts->idx[p];
-    }
-    avg_mask = psy_tab[(1 + 2 * idx_sum) / (2 * (hi - lo + 1))] +
+    avg_mask = psy_tab[(1 + 2 * idx_sum[b]) / (2 * (hi - lo + 1))] +
                PSY_LOG2_AVG_MASK_FACTOR;
-    ecb = scale(ecb, avg_mask);
+    ecb = scale(spread_ecb[b], avg_mask);
     parts->ecb[b] = ecb;
 
     /* §3.1: every granule is NORM before short blocks, so both limits. */
@@ -1099,7 +1145,7 @@ static int largest_scalefactor(const psy_bands_t *bands, int sb) {
 
 /* The bands of coded channel ch of granule gr, for the allocation: the
  * long bands, or each short band of each window in coded order. */
-static void select_bands(shine_global_config *config, int gr, int ch) {
+static void select_band_layout(shine_global_config *config, int gr, int ch) {
   psy_model_t *model = config->psy;
   psy_bands_t *bands = &model->bands;
   const int rate = config->mpeg.samplerate_index;
@@ -1133,6 +1179,15 @@ static void select_bands(shine_global_config *config, int gr, int ch) {
     }
   }
   bands->edge[3 * PSY_SHORT_BANDS] = GRANULE_SIZE;
+}
+
+static void select_bands(shine_global_config *config, int gr, int ch) {
+  psy_bands_t *bands = &config->psy->bands;
+
+  select_band_layout(config, gr, ch);
+  for (int sb = 0; sb < bands->count; sb++)
+    bands->peak[sb] =
+        shine_band_peak(bands->edge[sb], bands->edge[sb + 1], config);
 }
 
 static int bits_for(int value) {
@@ -1228,7 +1283,7 @@ static int quantize_granule(shine_global_config *config, int *ix, int q,
     if (step < STEP_MIN)
       return PSY_IX_MAX + 1;
     band_max = shine_quantize_band(ix, bands->edge[sb], bands->edge[sb + 1],
-                                   step, config);
+                                   step, bands->peak[sb], config);
     if (band_max > max)
       max = band_max;
   }

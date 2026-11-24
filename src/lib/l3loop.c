@@ -14,12 +14,9 @@
 static int part2_length(int gr, int ch, shine_global_config *config);
 static int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE],
                                gr_info *cod_info, shine_global_config *config);
-static int count_bit(int ix[GRANULE_SIZE], unsigned int start, unsigned int end,
-                     unsigned int table);
-static int bigv_bitcount(int ix[GRANULE_SIZE], gr_info *gi);
 static int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin,
-                            unsigned int end);
-static void bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info);
+                            unsigned int end, int *bits);
+static int bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info);
 static void subdivide(gr_info *cod_info, shine_global_config *config);
 static int count1_bitcount(int ix[GRANULE_SIZE], gr_info *cod_info);
 static void calc_runlen(int ix[GRANULE_SIZE], gr_info *cod_info);
@@ -42,11 +39,10 @@ int shine_inner_loop(int ix[GRANULE_SIZE], int max_bits, gr_info *cod_info,
     while (quantize(ix, ++cod_info->quantizerStepSize, config) > 8192)
       ; /* within table range? */
 
-    calc_runlen(ix, cod_info);                     /* rzero,count1,big_values*/
-    bits = c1bits = count1_bitcount(ix, cod_info); /* count1_table selection*/
-    subdivide(cod_info, config);                   /* bigvalues sfb division */
-    bigv_tab_select(ix, cod_info);                 /* codebook selection*/
-    bits += bvbits = bigv_bitcount(ix, cod_info);  /* bit count */
+    calc_runlen(ix, cod_info);                      /* rzero,count1,big_values*/
+    bits = c1bits = count1_bitcount(ix, cod_info);  /* count1_table selection*/
+    subdivide(cod_info, config);                    /* bigvalues sfb division */
+    bits += bvbits = bigv_tab_select(ix, cod_info); /* tables, bit count */
     /* All coefficients quantize to 0 well before MAX_STEPSIZE. */
   } while (bits > max_bits && cod_info->quantizerStepSize < MAX_STEPSIZE);
   return bits;
@@ -133,6 +129,11 @@ void shine_iteration_loop(shine_global_config *config) {
       cod_info->preflag = 0;
       cod_info->scalefac_scale = 0;
       cod_info->count1table_select = 0;
+
+      if (!config->psy)
+        for (int run = 0; run < GRANULE_SIZE / QUANT_RUN_LINES; run++)
+          config->l3loop.run_peak[run] = shine_band_peak(
+              run * QUANT_RUN_LINES, (run + 1) * QUANT_RUN_LINES, config);
 
       /* all spectral values zero ? */
       if (config->psy) {
@@ -242,6 +243,60 @@ static int pow34(uint32_t x) {
   return low;
 }
 
+/* The quantiser of exact_index as a function of x_q8 alone is a staircase:
+ * the smallest x_q8 it takes to level, which is below the table split. */
+static int64_t level_start(int level) {
+  for (int ln = 0; ln < QUANT_SPLIT_LINES; ln++) {
+    int64_t first = ln ? ln * 256 - 128 : 0;
+
+    if (shine_quant_base[ln] >= level)
+      return first;
+    if (shine_quant_base[ln] + 1 >= level &&
+        shine_quant_split[ln] < ln * 256 + 128)
+      return shine_quant_split[ln] > first ? shine_quant_split[ln] : first;
+  }
+  return INT64_MAX >> 24;
+}
+
+void shine_quantize_initialise(shine_global_config *config) {
+  for (int level = 1; level <= QUANT_DIRECT_LEVELS + 1; level++) {
+    /* x_q8 >= start when xrabs * scalei + 2^23 >= start * 2^24. */
+    int64_t product = (level_start(level) << 24) - (1LL << 23);
+
+    for (int step = 0; step < 128; step++) {
+      int64_t scalei = shine_steptabi[step];
+      int64_t threshold = product <= 0 ? 0 : (product + scalei - 1) / scalei;
+
+      /* No magnitude reaches 2^31. */
+      config->l3loop.quant_threshold[step][level - 1] =
+          threshold > INT32_MAX ? 1u << 31 : (uint32_t)threshold;
+    }
+  }
+}
+
+/* Quantizes lines begin..end - 1, all below threshold[QUANT_DIRECT_LEVELS]:
+ * each line is the number of thresholds it reaches. Returns the largest. */
+static int quantize_direct(int ix[GRANULE_SIZE], int begin, int end,
+                           uint32_t peak, const uint32_t *threshold,
+                           const int32_t *xrabs) {
+  int max = 0;
+
+  while (max < QUANT_DIRECT_LEVELS && peak >= threshold[max])
+    max++;
+  if (!max) {
+    memset(&ix[begin], 0, (size_t)(end - begin) * sizeof(*ix));
+    return 0;
+  }
+  for (int i = begin; i < end; i++) {
+    int count = 0;
+
+    for (int level = 0; level < QUANT_DIRECT_LEVELS; level++)
+      count += (uint32_t)xrabs[i] >= threshold[level];
+    ix[i] = count;
+  }
+  return max;
+}
+
 /* Quantizes lines begin..end - 1 with one step size, whose largest
  * coefficient is xrmax. Returns the largest ix, above 8192 when the step is
  * too small for the table range. */
@@ -250,9 +305,15 @@ static int quantize_range(int ix[GRANULE_SIZE], int begin, int end,
                           shine_global_config *config) {
   int max = 0;
   int32_t scalei;
+  const uint32_t *threshold;
 
   if (stepsize > 0)
     return quantize_coarse(ix, begin, end, stepsize, config);
+
+  threshold = config->l3loop.quant_threshold[stepsize + 127];
+  if ((uint32_t)xrmax < threshold[QUANT_DIRECT_LEVELS])
+    return quantize_direct(ix, begin, end, (uint32_t)xrmax, threshold,
+                           config->l3loop.xrabs);
 
   scalei = shine_steptabi[stepsize + 127]; /* 2**(-stepsize/4) */
 
@@ -261,20 +322,31 @@ static int quantize_range(int ix[GRANULE_SIZE], int begin, int end,
   if ((mulr(xrmax, scalei)) > 165140) /* 8192**(4/3) */
     return 16384; /* no point in continuing, stepsize not big enough */
 
+  /* Whether every line is below the table split of exact_index. */
+  if (((((int64_t)xrmax * scalei + (1LL << 23)) >> 24) + 128) >> 8 <
+      QUANT_SPLIT_LINES) {
+    for (int i = begin; i < end; i++) {
+      int64_t x_q8 =
+          ((int64_t)config->l3loop.xrabs[i] * scalei + (1LL << 23)) >> 24;
+      int ln = (int)((x_q8 + 128) >> 8);
+
+      ix[i] = shine_quant_base[ln] + (x_q8 >= shine_quant_split[ln]);
+      if (max < ix[i])
+        max = ix[i];
+    }
+    return max;
+  }
+
   for (int i = begin; i < end; i++) {
-    /* This calculation is very sensitive. The multiply must round it's
-     * result or bad things happen to the quality.
-     */
+    /* The multiply must round its result: truncating it moves the
+     * boundaries between quantised values. */
     int64_t x_q8 =
-        ((int64_t)labs(config->l3loop.xr[i]) * scalei + (1LL << 23)) >> 24;
+        ((int64_t)config->l3loop.xrabs[i] * scalei + (1LL << 23)) >> 24;
     int ln = (int)((x_q8 + 128) >> 8);
 
     /* The table covers about all values; the quick check above bounds the
      * rest by 165140. */
     ix[i] = exact_index(ln, x_q8);
-
-    /* calculate ixmax while we're here */
-    /* note. ix cannot be negative */
     if (max < ix[i])
       max = ix[i];
   }
@@ -283,8 +355,22 @@ static int quantize_range(int ix[GRANULE_SIZE], int begin, int end,
 }
 
 int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config) {
-  return quantize_range(ix, 0, GRANULE_SIZE, stepsize, config->l3loop.xrmax,
-                        config);
+  int max = 0;
+
+  /* Whether the step is too small, as quantize_range finds for the run of
+   * the largest line. */
+  if (stepsize <= 0 &&
+      mulr(config->l3loop.xrmax, shine_steptabi[stepsize + 127]) > 165140)
+    return 16384;
+  for (int run = 0; run < GRANULE_SIZE / QUANT_RUN_LINES; run++) {
+    int run_max =
+        quantize_range(ix, run * QUANT_RUN_LINES, (run + 1) * QUANT_RUN_LINES,
+                       stepsize, config->l3loop.run_peak[run], config);
+
+    if (run_max > max)
+      max = run_max;
+  }
+  return max;
 }
 
 /*
@@ -463,23 +549,25 @@ void subdivide(gr_info *cod_info, shine_global_config *config) {
  * ----------------
  * Function: Select huffman code tables for bigvalues regions
  */
-void bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info) {
+int bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info) {
+  int bits = 0;
+
   cod_info->table_select[0] = 0;
   cod_info->table_select[1] = 0;
   cod_info->table_select[2] = 0;
 
-  {
-    if (cod_info->address1 > 0)
-      cod_info->table_select[0] = new_choose_table(ix, 0, cod_info->address1);
+  if (cod_info->address1 > 0)
+    cod_info->table_select[0] =
+        new_choose_table(ix, 0, cod_info->address1, &bits);
 
-    if (cod_info->address2 > cod_info->address1)
-      cod_info->table_select[1] =
-          new_choose_table(ix, cod_info->address1, cod_info->address2);
+  if (cod_info->address2 > cod_info->address1)
+    cod_info->table_select[1] =
+        new_choose_table(ix, cod_info->address1, cod_info->address2, &bits);
 
-    if (cod_info->big_values << 1 > cod_info->address2)
-      cod_info->table_select[2] =
-          new_choose_table(ix, cod_info->address2, cod_info->big_values << 1);
-  }
+  if (cod_info->big_values << 1 > cod_info->address2)
+    cod_info->table_select[2] = new_choose_table(
+        ix, cod_info->address2, cod_info->big_values << 1, &bits);
+  return bits;
 }
 
 /*
@@ -504,9 +592,9 @@ static int escape_table(int first, unsigned int max) {
 /* The cheapest table for a region whose largest value is above 15: the
  * first one that codes max in each of the two families. */
 static int choose_escape_table(int ix[GRANULE_SIZE], unsigned int begin,
-                               unsigned int end, unsigned int max) {
+                               unsigned int end, unsigned int max, int *bits) {
   int low = escape_table(16, max), high = escape_table(24, max);
-  uint32_t codes = 0, escapes = 0;
+  uint32_t codes = 0, escapes = 0, low_bits, high_bits;
 
   for (unsigned int i = begin; i < end; i += 2) {
     unsigned int x = ix[i], y = ix[i + 1];
@@ -521,17 +609,17 @@ static int choose_escape_table(int ix[GRANULE_SIZE], unsigned int begin,
     }
     codes += shine_huffman_escape_cost[16 * x + y];
   }
-  return (codes >> 16) + escapes * shine_huffman_table[high].linbits <
-                 (codes & 0xffff) + escapes * shine_huffman_table[low].linbits
-             ? high
-             : low;
+  high_bits = (codes >> 16) + escapes * shine_huffman_table[high].linbits;
+  low_bits = (codes & 0xffff) + escapes * shine_huffman_table[low].linbits;
+  *bits += (int)(high_bits < low_bits ? high_bits : low_bits);
+  return high_bits < low_bits ? high : low;
 }
 
 /* The cheapest table that codes [begin, end), the lowest one on a tie.
  * Each 16-bit field of a sum holds the bits of one candidate: a region has
  * at most 288 pairs of at most 27 bits. */
-int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin,
-                     unsigned int end) {
+int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin, unsigned int end,
+                     int *bits) {
   unsigned int max = ix_max(ix, begin, end);
   const shine_huffman_choice_t *choice = &shine_huffman_choice[max & 15];
   const uint64_t *cost = shine_huffman_choice_cost + choice->offset;
@@ -541,8 +629,11 @@ int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin,
 
   if (!max)
     return 0;
+  /* The sign bits, which the costs leave out. */
+  for (unsigned int i = begin; i < end; i++)
+    *bits += ix[i] != 0;
   if (max > 15)
-    return choose_escape_table(ix, begin, end, max);
+    return choose_escape_table(ix, begin, end, max, bits);
 
   if (choice->count <= 4)
     for (unsigned int i = begin; i < end; i += 2)
@@ -559,82 +650,8 @@ int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin,
     if (((sums[i >> 2] >> (16 * (i & 3))) & 0xffff) <
         ((sums[best >> 2] >> (16 * (best & 3))) & 0xffff))
       best = i;
+  *bits += (int)((sums[best >> 2] >> (16 * (best & 3))) & 0xffff);
   return choice->tables[best];
-}
-
-/*
- * bigv_bitcount:
- * --------------
- * Function: Count the number of bits necessary to code the bigvalues region.
- */
-int bigv_bitcount(int ix[GRANULE_SIZE], gr_info *gi) {
-  int bits = 0;
-  unsigned int table;
-
-  if ((table = gi->table_select[0])) /* region0 */
-    bits += count_bit(ix, 0, gi->address1, table);
-  if ((table = gi->table_select[1])) /* region1 */
-    bits += count_bit(ix, gi->address1, gi->address2, table);
-  if ((table = gi->table_select[2])) /* region2 */
-    bits += count_bit(ix, gi->address2, gi->address3, table);
-  return bits;
-}
-
-/*
- * count_bit:
- * ----------
- * Function: Count the number of bits necessary to code the subregion.
- */
-int count_bit(int ix[GRANULE_SIZE], unsigned int start, unsigned int end,
-              unsigned int table) {
-  unsigned linbits, ylen;
-  unsigned int i;
-  int sum;
-  int x, y;
-  const struct huffcodetab *h;
-
-  if (!table)
-    return 0;
-
-  h = &(shine_huffman_table[table]);
-  sum = 0;
-
-  ylen = h->ylen;
-  linbits = h->linbits;
-
-  if (table > 15) { /* ESC-table is used */
-    for (i = start; i < end; i += 2) {
-      x = ix[i];
-      y = ix[i + 1];
-      if (x > 14) {
-        x = 15;
-        sum += linbits;
-      }
-      if (y > 14) {
-        y = 15;
-        sum += linbits;
-      }
-
-      sum += h->hlen[(x * ylen) + y];
-      if (x)
-        sum++;
-      if (y)
-        sum++;
-    }
-  } else { /* No ESC-words */
-    for (i = start; i < end; i += 2) {
-      x = ix[i];
-      y = ix[i + 1];
-
-      sum += h->hlen[(x * ylen) + y];
-
-      if (x != 0)
-        sum++;
-      if (y != 0)
-        sum++;
-    }
-  }
-  return sum;
 }
 
 /*
@@ -662,11 +679,10 @@ int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE],
     if (quantize(ix, next + half, config) > 8192)
       bit = 100000; /* fail */
     else {
-      calc_runlen(ix, cod_info);           /* rzero,count1,big_values */
-      bit = count1_bitcount(ix, cod_info); /* count1_table selection */
-      subdivide(cod_info, config);         /* bigvalues sfb division */
-      bigv_tab_select(ix, cod_info);       /* codebook selection */
-      bit += bigv_bitcount(ix, cod_info);  /* bit count */
+      calc_runlen(ix, cod_info);            /* rzero,count1,big_values */
+      bit = count1_bitcount(ix, cod_info);  /* count1_table selection */
+      subdivide(cod_info, config);          /* bigvalues sfb division */
+      bit += bigv_tab_select(ix, cod_info); /* tables, bit count */
     }
 
     if (bit < desired_rate)
@@ -680,14 +696,18 @@ int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE],
   return next;
 }
 
-int shine_quantize_band(int ix[GRANULE_SIZE], int begin, int end, int stepsize,
-                        shine_global_config *config) {
-  int32_t xrmax = 0;
+int32_t shine_band_peak(int begin, int end, const shine_global_config *config) {
+  int32_t peak = 0;
 
   for (int i = begin; i < end; i++)
-    if (config->l3loop.xrabs[i] > xrmax)
-      xrmax = config->l3loop.xrabs[i];
-  return quantize_range(ix, begin, end, stepsize, xrmax, config);
+    if (config->l3loop.xrabs[i] > peak)
+      peak = config->l3loop.xrabs[i];
+  return peak;
+}
+
+int shine_quantize_band(int ix[GRANULE_SIZE], int begin, int end, int stepsize,
+                        int32_t peak, shine_global_config *config) {
+  return quantize_range(ix, begin, end, stepsize, peak, config);
 }
 
 int shine_count_bits(int ix[GRANULE_SIZE], gr_info *cod_info,
@@ -697,6 +717,5 @@ int shine_count_bits(int ix[GRANULE_SIZE], gr_info *cod_info,
   calc_runlen(ix, cod_info);
   bits = count1_bitcount(ix, cod_info);
   subdivide(cod_info, config);
-  bigv_tab_select(ix, cod_info);
-  return bits + bigv_bitcount(ix, cod_info);
+  return bits + bigv_tab_select(ix, cod_info);
 }
