@@ -83,6 +83,13 @@ static long log_q16(double x) { return fixed(log2(x), LOG_ONE); }
 /* dB as an energy factor, log2 Q16. */
 static long db_q16(double db) { return fixed(db * log2(10) / 10, LOG_ONE); }
 
+/* The MDCT calls the model's lowpass; the generator measures the
+ * transform without one. */
+void shine_psy_lowpass(const psy_model_t *model, int32_t *long_lines,
+                       int32_t (*short_lines)[192]) {
+  (void)model, (void)long_lines, (void)short_lines;
+}
+
 static void print_array(const char *type, const char *name, const long *values,
                         int count) {
   printf("static const %s %s[%d] = {", type, name, count);
