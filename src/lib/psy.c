@@ -428,7 +428,7 @@ static int forced_short(const psy_model_t *model, long granule) {
 
 /* §1.1: the attack filter at input[n], Q16 of a sample. */
 static int64_t attack_filter(const int16_t *input, int n) {
-  int64_t sum = (int64_t)input[n] << 16;
+  int64_t sum = (int64_t)input[n] * 65536;
 
   for (int j = 0; j < 5; j++)
     sum += (int64_t)psy_attack_taps[j] *
