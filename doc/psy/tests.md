@@ -83,48 +83,55 @@ perceptual score per item, compared with the previous commit.
 
 ### 4.1 The score
 
-The perceptual score of an item is the lower of the Objective Difference
-Grades of the advanced and the basic version of PEAQ (ITU-R BS.1387), from 0
-(imperceptible) to −4 (very annoying), with the decoded stream time-aligned
-to its source. PEAQ was designed for perceptual audio codecs.
+The perceptual score of an item is the 2f-model (Kastner and Herre, WASPAA
+2019): an estimate of the MUSHRA score, from 0 (bad) to 100 (excellent),
+from two model output variables of the basic version of PEAQ (ITU-R
+BS.1387), with the decoded stream time-aligned to its source:
+
+```
+score = 56.1345 / (1 + (−0.0282·AvgModDiff1 − 0.8628)²) − 27.1451·ADB + 86.3515
+```
+
+limited to 0..100, in the parameters calibrated for a public PEAQ
+implementation. The Objective Difference Grade of PEAQ (the lower of its
+advanced and basic versions, 0 to −4) is reported beside it.
 
 The score is a measuring instrument with a known resolution, not a listener.
 It was validated on a public listening test of codec-like artefacts with
 expert listeners (ODAQ: 30 trials, 26 listeners, MUSHRA scores), and the
 rules below come from that validation:
 
-- **Where it follows listeners.** Its grades correlate with the listeners'
-  scores on band limitation (0.93), pre-echo (0.93), unmasked noise (0.81)
-  and tonality mismatch (0.78), and poorly on spectral holes (0.38), which
-  it grades between −3.1 and −3.6 whether listeners found them bad or good.
+- **Where it follows listeners.** Its scores correlate with the listeners'
+  overall at 0.85 (the ODG: 0.80), and on band limitation (0.97), pre-echo
+  (0.95), spectral holes (0.84), unmasked noise (0.81) and tonality mismatch
+  (0.76). The ODG follows spectral holes poorly (0.36), grading them between
+  −3.1 and −3.6 whether listeners found them bad or good: that is why it is
+  not the score any more. Over seven listening tests of coded audio, the
+  2f-model ranks first of 13 measures and the ODG eighth (Torcoli et al.,
+  IEEE TASLP 2021).
 - **Its resolution.** Between two versions of one item that listeners
-  clearly separate, the grades pick the same winner in 94% of pairs when
-  they differ by 0.2 or more, and in 72% when they differ by less. A
-  difference below 0.2 on one item says little.
-- **Spurious good grades.** On heavily distorted items either version
-  sometimes returns a grade near 0. The two versions seldom do so on the
-  same encode, which is why the score is the lower of the two. The lower
-  grade follows the listeners as well as the advanced version alone
-  (0.80 against 0.81).
-- **Implementations** differ by a few tenths of a grade, and the open ones
-  do not meet the standard's conformance tolerances. Scores are compared
-  only between runs of one implementation, never with published figures.
+  clearly separate, the scores picked the same winner in every pair (50 of
+  50) when they differed by 5 or more, in 81% when they differed by 2 to 5,
+  in 64% below 2. A difference below 5 on one item says little.
+- **What it does not see.** Neither it nor the ODG is validated for the
+  stereo image: changes to stereo coding are checked by listening.
+- **Implementations** differ, and the open ones do not meet the standard's
+  conformance tolerances. Scores are compared only between runs of one
+  implementation, never with published figures.
 
 ### 4.2 The gate
 
 Between the previous commit and the new one, and between each quality level
 and the next one:
 
-- **Per item.** The score MUST NOT fall by more than `ODG_TOLERANCE` = 0.2,
-  except where both scores are below `ODG_FLOOR` = −3.0, where spectral
-  holes pin the grades and their difference does not tell which encode is
-  better.
+- **Per item.** The score MUST NOT fall by more than `SCORE_TOLERANCE` = 5,
+  except where both scores are 0, the bottom of the scale.
 - **Per configuration.** The mean score over the items of one sample rate,
   channel layout and bitrate MUST NOT fall by more than
-  `ODG_MEAN_TOLERANCE` = 0.03. A mean over many items resolves what one
+  `SCORE_MEAN_TOLERANCE` = 0.75. A mean over many items resolves what one
   item cannot.
 - **Misjudged items.** An item whose score falls by more than
-  `ODG_TOLERANCE` when the bitrate rises, at one quality level, is one the
+  `SCORE_TOLERANCE` when the bitrate rises, at one quality level, is one the
   score misjudges. It is reported, and left out of both rules. It is a
   candidate for a listening check.
 

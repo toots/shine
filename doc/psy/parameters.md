@@ -96,9 +96,8 @@ be retuned together with the allocator of phase 2.
 | `DECISION_AGREEMENT` | 99% | conformance | [tests.md](tests.md) §3 |
 | `THRESHOLD_TOLERANCE` | 0.5 dB | conformance | [tests.md](tests.md) §3 |
 | `NUMERIC_AGREEMENT` | 99.9% | conformance | [tests.md](tests.md) §3 |
-| `ODG_TOLERANCE` | 0.2 | conformance | [tests.md](tests.md) §4.2 |
-| `ODG_MEAN_TOLERANCE` | 0.03 | conformance | [tests.md](tests.md) §4.2 |
-| `ODG_FLOOR` | −3.0 | conformance | [tests.md](tests.md) §4.2 |
+| `SCORE_TOLERANCE` | 5 | conformance | [tests.md](tests.md) §4.2 |
+| `SCORE_MEAN_TOLERANCE` | 0.75 | conformance | [tests.md](tests.md) §4.2 |
 
 ## 3. Configuration
 
