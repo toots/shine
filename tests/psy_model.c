@@ -5,6 +5,7 @@
  *
  * It includes the model's source to reach its internal values. */
 
+#include "huffman.h"
 #include "psy.c"
 
 #include <limits.h>
@@ -55,6 +56,7 @@ enum {
   SHORT_ALLOWED_DISTORTION, /* allowed-distortion §2, §3 */
   SHORT_SHAPED,             /* noise-allocation §6 */
   SHORT_PREECHO,            /* block-switching §1.6, §4 */
+  HUFFMAN_TABLE,            /* ISO 11172-3 2.4.2.7: cheapest table per region */
   GRANULE_BITS,             /* reservoir §3, KC 21 */
   PE_SMOOTHING,             /* perceptual-entropy §3, KC 21 */
   RESERVOIR_STEADY,         /* reservoir §3 */
@@ -109,6 +111,7 @@ static const char *check_names[CHECK_COUNT] = {
     [SHORT_ALLOWED_DISTORTION] = "short allowed distortion",
     [SHORT_SHAPED] = "short granules amplified",
     [SHORT_PREECHO] = "short pre-echo control",
+    [HUFFMAN_TABLE] = "cheapest Huffman table",
     [PE_BOUNDS] = "PE bounds",
     [SHORT_THRESHOLD_BOUNDS] = "short threshold bounds",
     [PE_CAP_CONTINUITY] = "PE cap continuity",
@@ -1368,6 +1371,64 @@ static int short_coding_bits(int mpeg1, unsigned compress,
   return bits;
 }
 
+/* Bits of lines [begin, end) in big-value table t, or -1 if t cannot code
+ * them: values up to xlen - 1, or 15 + linmax with linbits. */
+static int table_bits(const int *ix, int begin, int end, int t) {
+  const struct huffcodetab *h = &shine_huffman_table[t];
+  int bits = 0;
+
+  /* Table 0 codes a region of zeros in no bits. */
+  if (t == 0) {
+    for (int i = begin; i < end; i++)
+      if (ix[i])
+        return -1;
+    return 0;
+  }
+  if (!h->xlen)
+    return -1;
+  for (int i = begin; i < end; i += 2) {
+    int pair[2] = {abs(ix[i]), abs(ix[i + 1])};
+
+    for (int k = 0; k < 2; k++) {
+      if (pair[k] >= (int)h->xlen - (h->linbits ? 1 : 0)) {
+        if (!h->linbits || pair[k] - 15 > (int)h->linmax)
+          return -1;
+        bits += (int)h->linbits;
+        pair[k] = 15;
+      }
+      bits += pair[k] != 0;
+    }
+    bits += h->hlen[pair[0] * h->ylen + pair[1]];
+  }
+  return bits;
+}
+
+/* Every big-value region is coded with the cheapest table that codes it. */
+static void check_huffman_tables(shine_t e, int gr, int ch, const char *name) {
+  const gr_info *gi = &e->side_info.gr[gr].ch[ch].tt;
+  const int *ix = e->l3_enc[ch][gr];
+  const int bounds[4] = {0, (int)gi->address1, (int)gi->address2,
+                         (int)gi->address3};
+
+  for (int region = 0; region < 3; region++) {
+    int begin = bounds[region], end = bounds[region + 1], cheapest = -1;
+
+    if (end <= begin)
+      continue;
+    for (int t = 0; t < 32; t++) {
+      int bits = table_bits(ix, begin, end, t);
+
+      if (bits >= 0 && (cheapest < 0 || bits < cheapest))
+        cheapest = bits;
+    }
+    check(HUFFMAN_TABLE,
+          table_bits(ix, begin, end, (int)gi->table_select[region]) == cheapest,
+          "%s gr %d ch %d region %d: table %u, %d bits, cheapest %d", name, gr,
+          ch, region, gi->table_select[region],
+          table_bits(ix, begin, end, (int)gi->table_select[region]), cheapest);
+  }
+}
+
 /* Short granules checked, and those with a scalefactor above 0, by MPEG
  * version (1 for MPEG-1). */
 static int short_granules[2], short_amplified[2];
@@ -1599,6 +1660,7 @@ static void check_granule(shine_t e) {
                 "energy allowed",
                 name, gr, ch, b, chosen.sf[b]);
       check_scalefactors(e, gr, ch, name);
+      check_huffman_tables(e, gr, ch, name);
     }
   }
 }

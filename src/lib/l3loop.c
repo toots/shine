@@ -394,6 +394,7 @@ void subdivide(gr_info *cod_info, shine_global_config *config) {
   if (!cod_info->big_values) { /* no big_values region */
     cod_info->region0_count = 0;
     cod_info->region1_count = 0;
+    cod_info->address1 = cod_info->address2 = cod_info->address3 = 0;
   } else if (cod_info->block_type) {
     /* Two regions at a fixed boundary (ISO 11172-3 2.4.2.7): after 3 short
      * bands, or 8 long ones. */
@@ -474,93 +475,40 @@ void bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info) {
  * of the Huffman tables as defined in the IS (Table B.7), and will not work
  * with any arbitrary tables.
  */
+/* The bits of [begin, end) in table t, or -1 if t cannot code max. */
+static int table_cost(int ix[GRANULE_SIZE], unsigned int begin,
+                      unsigned int end, unsigned int max, int t) {
+  const struct huffcodetab *h = &shine_huffman_table[t];
+
+  if (h->linbits ? max > 15 + h->linmax : max >= h->xlen)
+    return -1;
+  return count_bit(ix, begin, end, t);
+}
+
+/* The cheapest table that codes [begin, end). Among the tables with
+ * linbits, 16..23 share their codes and so do 24..31: in each family the
+ * one with the fewest linbits that codes max is the cheapest. */
 int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin,
                      unsigned int end) {
-  int i;
-  unsigned int max;
-  int choice[2];
-  int sum[2];
+  unsigned int max = ix_max(ix, begin, end);
+  int choice = 0, best = -1;
 
-  max = ix_max(ix, begin, end);
   if (!max)
     return 0;
+  for (int t = 1; t < 32; t++) {
+    int bits = table_cost(ix, begin, end, max, t);
 
-  choice[0] = 0;
-  choice[1] = 0;
-
-  if (max < 15) {
-    /* try tables with no linbits */
-    for (i = 14; i--;)
-      if (shine_huffman_table[i].xlen > max) {
-        choice[0] = i;
-        break;
-      }
-
-    sum[0] = count_bit(ix, begin, end, choice[0]);
-
-    switch (choice[0]) {
-    case 2:
-      sum[1] = count_bit(ix, begin, end, 3);
-      if (sum[1] <= sum[0])
-        choice[0] = 3;
-      break;
-
-    case 5:
-      sum[1] = count_bit(ix, begin, end, 6);
-      if (sum[1] <= sum[0])
-        choice[0] = 6;
-      break;
-
-    case 7:
-      sum[1] = count_bit(ix, begin, end, 8);
-      if (sum[1] <= sum[0]) {
-        choice[0] = 8;
-        sum[0] = sum[1];
-      }
-      sum[1] = count_bit(ix, begin, end, 9);
-      if (sum[1] <= sum[0])
-        choice[0] = 9;
-      break;
-
-    case 10:
-      sum[1] = count_bit(ix, begin, end, 11);
-      if (sum[1] <= sum[0]) {
-        choice[0] = 11;
-        sum[0] = sum[1];
-      }
-      sum[1] = count_bit(ix, begin, end, 12);
-      if (sum[1] <= sum[0])
-        choice[0] = 12;
-      break;
-
-    case 13:
-      sum[1] = count_bit(ix, begin, end, 15);
-      if (sum[1] <= sum[0])
-        choice[0] = 15;
-      break;
+    if (bits < 0)
+      continue;
+    if (best < 0 || bits < best) {
+      best = bits;
+      choice = t;
     }
-  } else {
-    /* try tables with linbits */
-    max -= 15;
-
-    for (i = 15; i < 24; i++)
-      if (shine_huffman_table[i].linmax >= max) {
-        choice[0] = i;
-        break;
-      }
-
-    for (i = 24; i < 32; i++)
-      if (shine_huffman_table[i].linmax >= max) {
-        choice[1] = i;
-        break;
-      }
-
-    sum[0] = count_bit(ix, begin, end, choice[0]);
-    sum[1] = count_bit(ix, begin, end, choice[1]);
-    if (sum[1] < sum[0])
-      choice[0] = choice[1];
+    /* The rest of this family costs more linbits for the same codes. */
+    if (shine_huffman_table[t].linbits)
+      t = t < 24 ? 23 : 31;
   }
-  return choice[0];
+  return choice;
 }
 
 /*
@@ -695,10 +643,6 @@ int shine_count_bits(int ix[GRANULE_SIZE], gr_info *cod_info,
                      shine_global_config *config) {
   int bits;
 
-  /* subdivide leaves the region addresses as they were when there are no big
-   * values, and the table choice and count would read them: the count must
-   * depend on ix alone. */
-  cod_info->address1 = cod_info->address2 = cod_info->address3 = 0;
   calc_runlen(ix, cod_info);
   bits = count1_bitcount(ix, cod_info);
   subdivide(cod_info, config);

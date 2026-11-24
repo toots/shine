@@ -57,10 +57,9 @@ change does more than it claims. The commit message says which kind it is.
 - [x] Prefix the global `samplerates` and `bitrates` symbols with `shine_`;
       make `granules_per_frame` const.
 
-- [ ] Quality 0 counts and writes the Huffman tables of a granule with no
-      big values from the region addresses of the previous granule. Nothing
-      is coded with them, so streams decode right, but `table_select` holds
-      stale values. Fixing it changes the quality 0 goldens (decode-exact).
+- [x] Quality 0 counted and wrote the Huffman tables of a granule with no
+      big values from the region addresses of the previous granule: its
+      `table_select` held stale values. The addresses are now cleared.
 
 ## Fixed point
 
@@ -97,13 +96,16 @@ quality report before the next one starts.
 
 - [x] Decide the perceptual metric: PEAQ, the lower ODG of its two versions
       (`doc/psy/tests.md` §4).
-- [ ] Phase 1: masking model in the MDCT domain (band energies, spreading,
-      absolute threshold of hearing, tonality), integer `log2`.
-- [ ] Phase 2: noise allocation: outer loop raising scalefactors where noise
+- [x] Phase 1: masking model in the MDCT domain (band energies, spreading,
+      absolute threshold of hearing, tonality), integer `log2`, M/S.
+- [x] Phase 2: noise allocation: outer loop raising scalefactors where noise
       exceeds the threshold (`doc/psy/noise-allocation.md`), with MPEG-1
-      `slen` and MPEG-2 LSF `scalefac_compress` coding. Left: retune
-      `MASK_ADJUST`, `ATH_LOWER`, `ATH_CURVE` and `TONALITY_SCALE` with the
-      metric; `scfsi` and `preflag`, to save bits.
+      `slen` and MPEG-2 LSF `scalefac_compress` coding, and the bits of a
+      granule shared between its channels by perceptual entropy.
+- [ ] Retune `MASK_ADJUST`, `ATH_LOWER`, `ATH_CURVE` and `TONALITY_SCALE`
+      once listening tests give enough per-item data: the score alone is too
+      coarse to tune on.
+- [ ] `scfsi` and `preflag`, to save bits.
 - [ ] `MASK_ADJUST` wants retuning, on means over a wide corpus and on
       held-out items (`doc/psy/tests.md` §4.2). A first attempt, tuned on 8
       music excerpts at 44.1 kHz, gained up to 0.4 ODG there and lost up to
@@ -115,14 +117,24 @@ quality report before the next one starts.
       its 3/4 power, which moves the boundary between 1 and 2 from 1.86 to
       1.5: more bits and more error there than the textbook rounding. Try
       the exact rule at quality 1.
-- [ ] The Huffman bit count is not monotonic in the step size: on a quiet
-      tone at 32 kHz, one step size counted 888 bits between neighbours at
-      580 and 544 (largest value 42). A table or region choice is far from
-      the cheapest there. Fixing it changes the quality 0 goldens.
+- [x] Huffman table choice: the search stopped at table 13 for any value
+      below 15, so tables 1..12 were never used, and a largest value of 15
+      went to the escape tables. Each region now gets the cheapest table
+      that codes it.
 - [x] Phase 3: the bit reservoir, at quality 1 (`doc/psy/reservoir.md`):
       a granule draws on it by its perceptual entropy, and a channel with no
       band over leaves the bits it does not need.
-- [ ] Phase 4: block switching (short blocks) for transients.
+- [x] Phase 4: block switching (short blocks) for transients: attack
+      detection with a 256-sample look-ahead, start, short and stop windows,
+      the short-window model and noise shaping on the short bands.
+- [ ] The float oracle covers long blocks only: extend it to the attack
+      detector and the short-window model, or delete it once the phases are
+      merged (`doc/psy/tests.md` §3).
+- [ ] `subblock_gain` is always 0 (`doc/psy/noise-allocation.md` §6).
+- [ ] A listening round on transients with the reservoir and short blocks,
+      and on the items the metric gate flagged.
+- [ ] A build option to leave the model out of the library, for small
+      targets: quality 0 does not use it.
 
 ## Cleanup and formatting
 
