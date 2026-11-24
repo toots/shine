@@ -51,9 +51,13 @@ R ≤ RESV_MAX = max(0, min(8 · MAIN_DATA_BEGIN_MAX, BUFFER_BITS − frame_bits
   one where the stream has padding. Where a frame alone is longer (320 kbps
   at 32 kHz), `RESV_MAX` is 0.
 
-Bits above the limit MUST be spent as stuffing in the frame that would
-exceed it: added to a `part2_3_length` where one has room below
-`PART2_3_MAX`, as ancillary bits otherwise. Stuffing bits are zero.
+Bits above the limit, and those that would leave `R` short of a whole byte,
+MUST be spent as stuffing in the frame that would exceed it, written as
+ancillary bits after its last granule, and set to zero. They MUST NOT be
+added to a `part2_3_length`: a decoder reads every bit of a granule's
+`part2_3_length` as coefficients, and bits that do not form whole codes of
+the granule's count1 table decode as nonzero values, at the granule's
+gain.
 
 ## 3. Bits of a granule
 

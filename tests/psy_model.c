@@ -56,6 +56,7 @@ enum {
   SHORT_ALLOWED_DISTORTION, /* allowed-distortion §2, §3 */
   SHORT_SHAPED,             /* noise-allocation §6 */
   SHORT_PREECHO,            /* block-switching §1.6, §4 */
+  STUFFING,                 /* reservoir §2 */
   HUFFMAN_TABLE,            /* ISO 11172-3 2.4.2.7: cheapest table per region */
   GRANULE_BITS,             /* reservoir §3, KC 21 */
   PE_SMOOTHING,             /* perceptual-entropy §3, KC 21 */
@@ -111,6 +112,7 @@ static const char *check_names[CHECK_COUNT] = {
     [SHORT_ALLOWED_DISTORTION] = "short allowed distortion",
     [SHORT_SHAPED] = "short granules amplified",
     [SHORT_PREECHO] = "short pre-echo control",
+    [STUFFING] = "no stuffing in a granule",
     [HUFFMAN_TABLE] = "cheapest Huffman table",
     [PE_BOUNDS] = "PE bounds",
     [SHORT_THRESHOLD_BOUNDS] = "short threshold bounds",
@@ -1619,8 +1621,7 @@ static void check_granule(shine_t e) {
       for (int k = 0; k < GRANULE_SIZE; k++)
         if (abs(e->l3_enc[ch][gr][k]) > ix_max)
           ix_max = abs(e->l3_enc[ch][gr][k]);
-      /* part2_3_length also holds the frame's stuffing bits: count the
-       * granule's own. */
+      /* The granule's own bits, recounted. */
       gr_info counted = *gi;
       int magnitudes[GRANULE_SIZE], bits;
 
@@ -1642,6 +1643,10 @@ static void check_granule(shine_t e) {
         first = total - first > 4095 ? total - 4095 : first;
         max_bits = ch ? total - first : first;
       }
+      /* reservoir §2: no stuffing inside a granule. */
+      check(STUFFING, (int)gi->part2_3_length == bits,
+            "%s gr %d ch %d: part2_3_length %u, the granule's bits %d", name,
+            gr, ch, gi->part2_3_length, bits);
       check(ALLOCATION_BOUNDS, ix_max <= PSY_IX_MAX && bits <= max_bits,
             "%s gr %d ch %d: ix up to %d, %d of %d bits", name, gr, ch, ix_max,
             bits, max_bits);
