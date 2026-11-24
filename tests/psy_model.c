@@ -813,55 +813,69 @@ static void check_preecho(void) {
  * interior partition is its energy times the integral of s3, 1, times tab[8]
  * twice and AVG_MASK_FACTOR, at every rate. Around a single masker, the
  * spread per Bark follows s3. */
+/* spectral-analysis §4: the SNR offset of a short maskee partition, dB. */
+static double short_norm_db(double bval) {
+  return bval < 13 ? -8.25 : -8.25 + (bval - 13) * (8.25 - 4.5) / 11;
+}
+
 static void check_spreading_rates(void) {
   const double integral = 20 * log10(0.11749) + 10 * log10(0.5);
 
-  for (int r = 0; r < 9; r++) {
-    shine_t e = open_encoder(rates[r], 1, SHINE_MONO, 64);
-    psy_model_t *m = e->psy;
-    const int16_t *start = psy_part_start[r];
-    double delta = rates[r] / 1152.0;
-    int masker = m->npart / 2;
+  for (int r = 0; r < 9; r++)
+    for (int is_short = 0; is_short < 2; is_short++) {
+      shine_t e = open_encoder(rates[r], 1, SHINE_MONO, 64);
+      psy_model_t *m = e->psy;
+      const psy_layout_t *layout = &m->layout[is_short];
+      const int16_t *start = layout->start;
+      const int32_t *bval = is_short ? psy_part_bval_s[r] : psy_part_bval[r];
+      double delta = rates[r] / (is_short ? 384.0 : 1152.0);
+      int masker = layout->npart / 2;
 
-    for (int pass = 0; pass < 2; pass++) {
-      psy_channel_t channel;
-      psy_partitions_t parts;
+      for (int pass = 0; pass < 2; pass++) {
+        psy_channel_t channel;
+        psy_partitions_t parts;
 
-      memset(&channel, 0, sizeof(channel));
-      memset(&parts, 0, sizeof(parts));
-      for (int b = 0; b < m->npart; b++) {
-        double width = bark(start[b + 1] * delta) - bark(start[b] * delta);
+        memset(&channel, 0, sizeof(channel));
+        memset(&parts, 0, sizeof(parts));
+        for (int b = 0; b < layout->npart; b++) {
+          double width = bark(start[b + 1] * delta) - bark(start[b] * delta);
 
-        parts.eb[b] = pass ? (b == masker ? 0 : PSY_LOG_ZERO)
-                           : (int32_t)lrint(log2(width) * 65536);
-        parts.max[b] = parts.eb[b];
-        parts.idx[b] = pass ? 0 : 8;
+          parts.eb[b] = pass ? (b == masker ? 0 : PSY_LOG_ZERO)
+                             : (int32_t)lrint(log2(width) * 65536);
+          parts.max[b] = parts.eb[b];
+          parts.idx[b] = pass ? 0 : 8;
+        }
+        threshold_in(m, layout, &channel, &parts);
+        for (int b = 0; b < layout->npart; b++) {
+          double z = bval[b] / 65536.0, zm = bval[masker] / 65536.0;
+          double width = bark(start[b + 1] * delta) - bark(start[b] * delta);
+          double norm = is_short ? short_norm_db(z) : 0;
+
+          /* The sum approximates the integral where partitions are narrow;
+           * short windows at high rates have partitions of one line, about
+           * 1 Bark wide, at low frequencies. */
+          if (!pass && z > 3 && z < 15 && width < 0.5)
+            check(SPREADING_RATES,
+                  fabs(db(parts.ecb[b]) - db(parts.eb[b]) - integral - norm) <
+                      1,
+                  "%d Hz %s partition %d at %.1f Bark: flat density spreads "
+                  "to %.2f dB of its energy, the integral gives %.2f dB",
+                  rates[r], is_short ? "short" : "long", b, z,
+                  db(parts.ecb[b]) - db(parts.eb[b]), integral + norm);
+          /* tab[0] = 1 and AVG_MASK_FACTOR scale the single masker. */
+          if (pass && spreading(z - zm) > 1e-5)
+            check(SPREADING_RATES,
+                  fabs(db(parts.ecb[b]) - 10 * log10(width / 2) -
+                       10 * log10(spreading(z - zm)) - norm) < 0.01,
+                  "%d Hz %s: spread at %.2f Bark from the masker is %.2f dB "
+                  "per Bark, s3 gives %.2f dB",
+                  rates[r], is_short ? "short" : "long", z - zm,
+                  db(parts.ecb[b]) - 10 * log10(width),
+                  10 * log10(spreading(z - zm) / 2) + norm);
+        }
       }
-      threshold(m, &channel, &parts);
-      for (int b = 0; b < m->npart; b++) {
-        double z = psy_part_bval[r][b] / 65536.0,
-               zm = psy_part_bval[r][masker] / 65536.0;
-        double width = bark(start[b + 1] * delta) - bark(start[b] * delta);
-
-        if (!pass && z > 3 && z < 15)
-          check(SPREADING_RATES,
-                fabs(db(parts.ecb[b]) - db(parts.eb[b]) - integral) < 1,
-                "%d Hz partition %d at %.1f Bark: flat density spreads to "
-                "%.2f dB of its energy, the integral gives %.2f dB",
-                rates[r], b, z, db(parts.ecb[b]) - db(parts.eb[b]), integral);
-        /* tab[0] = 1 and AVG_MASK_FACTOR scale the single masker. */
-        if (pass && spreading(z - zm) > 1e-5)
-          check(SPREADING_RATES,
-                fabs(db(parts.ecb[b]) - 10 * log10(width / 2) -
-                     10 * log10(spreading(z - zm))) < 0.01,
-                "%d Hz: spread at %.2f Bark from the masker is %.2f dB per "
-                "Bark, s3 gives %.2f dB",
-                rates[r], z - zm, db(parts.ecb[b]) - 10 * log10(width),
-                10 * log10(spreading(z - zm) / 2));
-      }
+      shine_close(e);
     }
-    shine_close(e);
-  }
 }
 
 /* KC 19: in L/R, the thresholds follow the input level exactly, since no
