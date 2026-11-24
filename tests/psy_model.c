@@ -1885,17 +1885,18 @@ static void check_quantiser(void) {
 
 /* bandwidth §1: the cutoff in Hz, 0 for none, in floating point. */
 static double expected_cutoff(int samplerate, int channels, int bitrate) {
-  static const double kbps[11] = {8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112};
-  static const double hz[11] = {3000,  5500,  8000,  11000, 13000, 14500,
-                                15500, 16500, 18000, 19000, 19500};
-  double per_channel = (double)bitrate / channels, cutoff = hz[10];
+  static const double kbps[12] = {8,  16, 24, 28, 32, 40,
+                                  48, 56, 64, 80, 96, 112};
+  static const double hz[12] = {3000,  7000,  9500,  11000, 11000, 14500,
+                                14500, 17000, 17250, 18000, 19000, 19500};
+  double per_channel = (double)bitrate / channels, cutoff = hz[11];
 
   if (per_channel >= 128)
     return 0;
   if (per_channel <= kbps[0])
     cutoff = hz[0];
   else
-    for (int i = 1; i < 11; i++)
+    for (int i = 1; i < 12; i++)
       if (per_channel <= kbps[i]) {
         cutoff = hz[i - 1] + (hz[i] - hz[i - 1]) * (per_channel - kbps[i - 1]) /
                                  (kbps[i] - kbps[i - 1]);

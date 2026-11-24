@@ -812,19 +812,19 @@ void shine_psy_lowpass(const psy_model_t *model, int32_t *long_lines,
 #define LOWPASS_NONE_KBPS 128
 
 int shine_psy_cutoff(int bitrate, int channels) {
-  static const int kbps[11] = {8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112};
-  static const int hz[11] = {3000,  5500,  8000,  11000, 13000, 14500,
-                             15500, 16500, 18000, 19000, 19500};
+  static const int kbps[12] = {8, 16, 24, 28, 32, 40, 48, 56, 64, 80, 96, 112};
+  static const int hz[12] = {3000,  7000,  9500,  11000, 11000, 14500,
+                             14500, 17000, 17250, 18000, 19000, 19500};
   /* Twice the bitrate per channel, to keep halves exact. */
   const int rate2 = 2 * bitrate / channels;
-  int cutoff = hz[10];
+  int cutoff = hz[11];
 
   if (rate2 >= 2 * LOWPASS_NONE_KBPS)
     return 0;
   if (rate2 <= 2 * kbps[0])
     cutoff = hz[0];
   else
-    for (int i = 1; i < 11; i++)
+    for (int i = 1; i < 12; i++)
       if (rate2 <= 2 * kbps[i]) {
         cutoff = hz[i - 1] + (hz[i] - hz[i - 1]) * (rate2 - 2 * kbps[i - 1]) /
                                  (2 * (kbps[i] - kbps[i - 1]));
