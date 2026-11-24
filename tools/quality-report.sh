@@ -8,7 +8,8 @@
 # of the advanced and basic versions of PEAQ (ITU-R BS.1387), from 0,
 # imperceptible, to -4, very annoying: on heavy distortion each version
 # sometimes gives a spuriously good grade, seldom both (doc/psy/tests.md §4).
-# The columns adv and basic give the two grades. They are computed by the
+# The columns adv and basic give the two grades, and 2f an estimate of
+# the MUSHRA score (see odg below). They are computed by the
 # peaq command of GstPEAQ (https://github.com/HSU-ANT/gstpeaq), found in PATH
 # or given as PEAQ, with its plugin in GST_PLUGIN_PATH; the columns are "-"
 # without it. GstPEAQ does not meet the standard's conformance tolerances:
@@ -89,27 +90,50 @@ decode_mpg123() {
 }
 
 # The score of the decoded PCM, delayed by $1 samples, then the ODG of the
-# advanced and basic versions it is the lower of. PEAQ does not align its
-# inputs: the decoded stream is trimmed to the reference.
+# advanced and basic versions it is the lower of, then the 2f-model: an
+# estimate of the MUSHRA score, 0 to 100, from two model output variables
+# of the basic version (Kastner and Herre, WASPAA 2019, in the parameters
+# calibrated for a public PEAQ implementation; Torcoli et al., IEEE TASLP
+# 2021, rank it first of 13 measures on coded audio). PEAQ does not align
+# its inputs: the decoded stream is trimmed to the reference.
 odg() {
-  [ -n "$peaq" ] || { echo "- - -"; return; }
+  [ -n "$peaq" ] || { echo "- - - -"; return; }
   frames=$(($(wc -c <"$work/reference.raw") / 2 / channels))
   ffmpeg -nostdin -loglevel error -y -f s16le -ar "$rate" -ac "$channels" \
     -i "$work/decoded.raw" \
     -af "atrim=start_sample=$1:end_sample=$(($1 + frames))" "$work/aligned.wav"
   for version in advanced basic; do
-    # GstPEAQ sometimes hangs: give it two minutes.
-    "$peaq" --$version "$work/item.wav" "$work/aligned.wav" \
-      >"$work/peaq.txt" 2>/dev/null &
+    # GstPEAQ sometimes hangs: give it two minutes. The basic version runs
+    # through the element, which also prints the model output variables.
+    if [ $version = basic ] && command -v gst-launch-1.0 >/dev/null; then
+      gst-launch-1.0 -q peaq name=p console-output=true \
+        filesrc location="$work/item.wav" ! wavparse ! audioconvert ! \
+        audioresample ! audio/x-raw,rate=48000 ! p.ref \
+        filesrc location="$work/aligned.wav" ! wavparse ! audioconvert ! \
+        audioresample ! audio/x-raw,rate=48000 ! p.test \
+        >"$work/peaq.txt" 2>/dev/null &
+    else
+      "$peaq" --$version "$work/item.wav" "$work/aligned.wav" \
+        >"$work/peaq.txt" 2>/dev/null &
+    fi
     peaq_pid=$!
     (sleep 120; kill $peaq_pid 2>/dev/null) >/dev/null 2>&1 &
     watchdog=$!
     wait $peaq_pid 2>/dev/null || true
     kill $watchdog 2>/dev/null || true
-    sed -n 's/^Objective Difference Grade: //p' "$work/peaq.txt"
-  done | awk '{ v[NR] = $1 } END {
-    if (NR == 2) printf "%.3f %.3f %.3f\n", (v[1] < v[2] ? v[1] : v[2]), v[1], v[2]
-    else print "- - -" }'
+    awk '/^Objective Difference Grade:/ { odg = $4 }
+         /AvgModDiff1B:/ { amd = $2 } /^ *ADBB:/ { adb = $2 }
+         END { if (odg != "") print odg, (amd == "" ? "-" : amd), (adb == "" ? "-" : adb) }' \
+      "$work/peaq.txt"
+  done | awk '{ v[NR] = $1; amd = $2; adb = $3 } END {
+    if (NR != 2) { print "- - - -"; exit }
+    mms = "-"
+    if (amd != "-" && adb != "-") {
+      t = -0.0282 * amd - 0.8628
+      mms = 56.1345 / (1 + t * t) - 27.1451 * adb + 86.3515
+      mms = sprintf("%.1f", mms < 0 ? 0 : mms > 100 ? 100 : mms)
+    }
+    printf "%.3f %.3f %.3f %s\n", (v[1] < v[2] ? v[1] : v[2]), v[1], v[2], mms }'
 }
 
 # One line: item, rate, channels, bitrate, encoder, decoder, level, SNR,
@@ -121,7 +145,7 @@ measure() {
     if decode_$decoder "$work/out.mp3" "$work/decoded.raw" 2>/dev/null &&
        result=$("$work/compare_pcm" "$channels" "$work/reference.raw" \
                 "$work/decoded.raw"); then
-      printf '%-28s %5s %1s %5s  %-8s %-7s %7s %7s %6s %7s %7s %7s\n' "$item" \
+      printf '%-28s %5s %1s %5s  %-8s %-7s %7s %7s %6s %7s %7s %7s %5s\n' "$item" \
         "$rate" "$channels" "$bitrate" "$1" $decoder $result \
         $(odg "${result##* }")
     else
@@ -132,8 +156,8 @@ measure() {
 }
 
 [ -z "$header" ] ||
-  printf '%-28s %5s %1s %5s  %-8s %-7s %7s %7s %6s %7s %7s %7s\n' item rate c \
-    kbps encoder decoder "level" "SNR" delay ODG adv basic
+  printf '%-28s %5s %1s %5s  %-8s %-7s %7s %7s %6s %7s %7s %7s %5s\n' item rate c \
+    kbps encoder decoder "level" "SNR" delay ODG adv basic 2f
 if [ "$jobs" -gt 1 ] && [ $# -gt 1 ]; then
   printf '%s\n' "$@" | SHINEENC=$shineenc PEAQ=$peaq xargs -P "$jobs" -I{} \
     "$0" -H $gate -b "$bitrates" -q "$qualities" -m "$mode" {}
