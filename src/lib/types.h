@@ -150,6 +150,13 @@ typedef struct shine_global_flags {
   l3loop_t l3loop;
   subband_t subband;
   struct psy_model *psy; /* NULL at quality 0 */
+  /* doc/psy/resampling.md: NULL when the input is at the encoding rate,
+   * wave.samplerate. */
+  struct shine_resampler *resampler;
+  int input_samples;                /* per pass, at the input rate */
+  int16_t *resampled[MAX_CHANNELS]; /* converted samples not yet in a frame */
+  int resampled_count;
+  int resampled_capacity;
 } shine_global_config;
 
 #endif

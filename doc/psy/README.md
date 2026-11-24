@@ -31,6 +31,7 @@ metric report before the next one starts.
 | 3. Reservoir | PE smoothing, the bit reservoir, the bits of a granule from its PE |
 | 4. Short blocks | attack detection, block types, short analysis and thresholds, short pre-echo control, temporal masking between short windows |
 | 5. Bandwidth | the lowpass cutoff by bitrate per channel, applied to the MDCT before the model |
+| 6. Resampling | the encoding rate by bitrate per channel, the sample rate converter |
 
 Every file and section names its phase.
 
@@ -59,6 +60,8 @@ Read in this order:
 10. [noise-allocation.md](noise-allocation.md): quantisation, noise, the
     inner and outer loops, scalefactor coding.
 11. [bandwidth.md](bandwidth.md): the lowpass cutoff and filter.
+    [resampling.md](resampling.md): the encoding rate and the sample rate
+    converter.
 12. [reservoir.md](reservoir.md): the reservoir in the bitstream, its limit,
     the bits of a granule, delayed output.
 13. [parameters.md](parameters.md): every constant, essential or tuning, and

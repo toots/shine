@@ -53,4 +53,8 @@ extern const uint64_t shine_huffman_choice_cost[];
  * tables 16..23 in the low half, 24..31 in the high half. */
 extern const uint32_t shine_huffman_escape_cost[256];
 
+/* doc/psy/resampling.md §2, in Q30: the value at i / RESAMPLE_POINTS output
+ * periods from the centre is at index i + 1. */
+extern const int32_t shine_resample_prototype[];
+
 #endif

@@ -811,13 +811,12 @@ void shine_psy_lowpass(const psy_model_t *model, int32_t *long_lines,
 /* §bandwidth 1: no lowpass from this bitrate per channel. */
 #define LOWPASS_NONE_KBPS 128
 
-/* §bandwidth 1: the cutoff in Hz, 0 for none. */
-static int lowpass_cutoff(const shine_global_config *config) {
+int shine_psy_cutoff(int bitrate, int channels) {
   static const int kbps[11] = {8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112};
   static const int hz[11] = {3000,  5500,  8000,  11000, 13000, 14500,
                              15500, 16500, 18000, 19000, 19500};
   /* Twice the bitrate per channel, to keep halves exact. */
-  const int rate2 = 2 * config->mpeg.bitrate / config->wave.channels;
+  const int rate2 = 2 * bitrate / channels;
   int cutoff = hz[10];
 
   if (rate2 >= 2 * LOWPASS_NONE_KBPS)
@@ -831,6 +830,13 @@ static int lowpass_cutoff(const shine_global_config *config) {
                                  (2 * (kbps[i] - kbps[i - 1]));
         break;
       }
+  return cutoff;
+}
+
+/* §bandwidth 1: the cutoff of the stream in Hz, 0 for none. */
+static int lowpass_cutoff(const shine_global_config *config) {
+  int cutoff = shine_psy_cutoff(config->mpeg.bitrate, config->wave.channels);
+
   /* LOWPASS_NYQUIST_FRACTION = 0.95 of fs / 2. */
   return 40LL * cutoff >= 19LL * config->wave.samplerate ? 0 : cutoff;
 }

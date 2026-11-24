@@ -37,9 +37,26 @@ static void fill(int16_t *samples, int count, int channels, int frame,
 
 static int used_reservoir;
 
-static int check_stream(const shine_config_t *config, const char *name,
+/* `config` at `quality`, with the rate it is encoded at. */
+static shine_config_t encoded_config(const shine_config_t *config,
+                                     int quality) {
+  shine_config_t encoded = *config;
+  shine_t encoder;
+
+  encoded.mpeg.quality = quality;
+  encoder = shine_initialise(&encoded);
+  if (encoder) {
+    encoded.wave.samplerate = shine_samplerate(encoder);
+    shine_close(encoder);
+  }
+  return encoded;
+}
+
+static int check_stream(const shine_config_t *input_config, const char *name,
                         int quality) {
-  shine_config_t copy = *config;
+  shine_config_t copy = *input_config;
+  const shine_config_t encoded = encoded_config(input_config, quality);
+  const shine_config_t *config = &encoded;
   const int mpeg1 = config->wave.samplerate >= 32000;
   const int channels = config->wave.channels;
   const int padded = (mpeg1 ? 144 : 72) * config->mpeg.bitrate * 1000 %
@@ -90,8 +107,13 @@ static int check_stream(const shine_config_t *config, const char *name,
     }
   }
 
-  if (walk_frames(&stream, config, name) < FRAMES)
+  /* The input's frames, at the encoding rate. */
+  if (walk_frames(&stream, config, name) <
+      (long)FRAMES * samples_per_pass * config->wave.samplerate /
+          input_config->wave.samplerate / (mpeg1 ? 1152 : 576)) {
+    printf("FAIL %s quality %d: frames are missing\n", name, quality);
     goto end;
+  }
 
   while (position < stream.size) {
     const unsigned char *header = stream.data + position;

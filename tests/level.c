@@ -1,7 +1,8 @@
 /* Output level: tones encoded by the library and decoded by FFmpeg come out
- * at the input level. At quality 1, tones across the spectrum check that
- * scalefactors are decoded with the amplification they were encoded with
- * (doc/psy/tests.md §1). Skipped when ffmpeg is not in the PATH. */
+ * at the input level, after the encoder's delay. At quality 1, tones across the
+ * spectrum check that scalefactors are decoded with the amplification they were
+ * encoded with (doc/psy/tests.md §1). Skipped when ffmpeg is not in the PATH.
+ */
 
 #include "helpers.h"
 
@@ -75,8 +76,11 @@ static int check_level(const level_case_t *test) {
   config.mpeg.quality = test->quality;
 
   encoder = shine_initialise(&config);
+  /* The delay is in samples of the encoded stream, and the decoded stream
+   * is converted back to the input's rate. */
   if (encoder)
-    delay = shine_encoder_delay(encoder) + MP3_DECODER_DELAY;
+    delay = (int)(((long)shine_encoder_delay(encoder) + MP3_DECODER_DELAY) *
+                  test->samplerate / shine_samplerate(encoder));
   if (!samples || !encoder) {
     printf("FAIL %s: cannot initialise\n", name);
     goto end;
@@ -94,7 +98,8 @@ static int check_level(const level_case_t *test) {
   }
 
   snprintf(command, sizeof(command),
-           "ffmpeg -v error -i level.mp3 -f s16le -acodec pcm_s16le -");
+           "ffmpeg -v error -i level.mp3 -ar %d -f s16le -acodec pcm_s16le -",
+           test->samplerate);
   file = popen(command, "r");
   if (!file) {
     printf("FAIL %s: cannot run ffmpeg\n", name);
@@ -147,6 +152,11 @@ int main(void) {
       {22050, 64, SHINE_MONO, 1, 72057},
       {8000, 16, SHINE_MONO, 1, 10294},
       {8000, 16, SHINE_MONO, 1, 41175},
+      /* Converted to 24 and 32 kHz (doc/psy/resampling.md §1). */
+      {44100, 64, SHINE_JOINT_STEREO, 1, 2059},
+      {44100, 64, SHINE_JOINT_STEREO, 1, 10294},
+      {44100, 96, SHINE_JOINT_STEREO, 1, 10294},
+      {48000, 48, SHINE_MONO, 1, 10294},
   };
   const int count = sizeof(cases) / sizeof(*cases);
   int passed = 0;

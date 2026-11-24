@@ -174,6 +174,10 @@ int shine_psy_initialise(shine_global_config *config);
  * stride of those samples. */
 int shine_psy_block_types(shine_global_config *config, int stride);
 
+/* doc/psy/bandwidth.md §1: the cutoff of a bitrate in Hz at any sample
+ * rate, 0 for none. */
+int shine_psy_cutoff(int bitrate, int channels);
+
 /* doc/psy/bandwidth.md §2: the lowpass on a granule's long lines and its
  * three short windows, in frequency order. */
 void shine_psy_lowpass(const psy_model_t *model, int32_t *long_lines,

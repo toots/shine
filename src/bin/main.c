@@ -139,16 +139,19 @@ static int parse_command(int argc, char **argv, shine_config_t *config) {
 }
 
 /* Print some info about what we're going to encode */
-static void check_config(shine_config_t *config) {
+static void check_config(shine_config_t *config, shine_t s) {
   static char *version_names[4] = {"2.5", "reserved", "II", "I"};
   static char *mode_names[4] = {"stereo", "joint-stereo", "dual-channel",
                                 "mono"};
   static char *demp_names[4] = {"none", "50/15us", "", "CCITT"};
 
   printf("MPEG-%s layer III, %s  Psychoacoustic Model: Shine\n",
-         version_names[shine_check_config(config->wave.samplerate,
+         version_names[shine_check_config(shine_samplerate(s),
                                           config->mpeg.bitrate)],
          mode_names[config->mpeg.mode]);
+  if (shine_samplerate(s) != config->wave.samplerate)
+    printf("Resampling: %d Hz to %d Hz\n", config->wave.samplerate,
+           shine_samplerate(s));
   printf("Bitrate: %d kbps  ", config->mpeg.bitrate);
   printf("De-emphasis: %s   %s %s\n", demp_names[config->mpeg.emphasis],
          ((config->mpeg.original) ? "Original" : ""),
@@ -217,7 +220,7 @@ int main(int argc, char **argv) {
 
   /* Print some info about the file about to be created (optional) */
   if (!quiet)
-    check_config(&config);
+    check_config(&config, s);
 
   samples_per_pass = shine_samples_per_pass(s);
 

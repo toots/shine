@@ -129,8 +129,14 @@ shine_t shine_initialise(const shine_config_t *config);
 /* Maximum possible value for the function below. */
 #define SHINE_MAX_SAMPLES 1152
 
-/* Returns audio samples expected in each frame. */
+/* Returns audio samples expected in each call to `shine_encode_buffer`. */
 int shine_samples_per_pass(shine_t s);
+
+/* Returns the samplerate of the encoded stream. Above quality 0 the encoder
+ * converts the input to a lower samplerate when the bitrate is too low for
+ * the input's: a call to `shine_encode_buffer` then returns the frames that
+ * its samples complete, none or several. */
+int shine_samplerate(shine_t s);
 
 /* Encode audio data. Source data must have `shine_samples_per_pass(s)` audio
  * samples per channels. Mono encoder only expect one channel.
@@ -158,7 +164,7 @@ unsigned char *shine_encode_buffer_interleaved(shine_t s, const int16_t *data,
                                                int *written);
 
 /* Number of samples the encoded stream lags the input by, before any decoder
- * delay. */
+ * delay, at the samplerate of the encoded stream (`shine_samplerate`). */
 int shine_encoder_delay(shine_t s);
 
 /* Drain the encoder and return all remaining data. Encodes silence until the

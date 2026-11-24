@@ -8,7 +8,8 @@ noinst_HEADERS = src/bin/main.h src/bin/wave.h \
                  src/lib/bitstream.h src/lib/huffman.h src/lib/l3bitstream.h \
                  src/lib/l3loop.h src/lib/l3mdct.h src/lib/l3subband.h \
                  src/lib/fixed_point.h src/lib/reservoir.h src/lib/tables.h \
-                 src/lib/types.h src/lib/psy.h src/lib/psy_tables.h
+                 src/lib/types.h src/lib/psy.h src/lib/psy_tables.h \
+                 src/lib/resample.h
 
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS  = -I m4
@@ -20,11 +21,12 @@ lib_LTLIBRARIES      = libshine.la
 # Everything but the model, which tests/psy_model.c includes.
 CORE_SOURCES         = src/lib/bitstream.c src/lib/huffman.c \
                        src/lib/l3bitstream.c src/lib/l3loop.c src/lib/l3mdct.c \
-                       src/lib/l3subband.c src/lib/layer3.c src/lib/reservoir.c \
+                       src/lib/l3subband.c src/lib/layer3.c src/lib/resample.c \
+                       src/lib/reservoir.c \
                        src/lib/tables.c src/lib/precomputed_tables.c
 libshine_la_SOURCES  = $(CORE_SOURCES) src/lib/psy.c
 
-libshine_la_LDFLAGS  = -no-undefined -version-info 4:0:1 -export-symbols $(srcdir)/libshine.sym
+libshine_la_LDFLAGS  = -no-undefined -version-info 5:0:2 -export-symbols $(srcdir)/libshine.sym
 libshine_ladir       = ${prefix}/include/shine
 libshine_la_HEADERS  = src/lib/layer3.h
 
@@ -35,7 +37,8 @@ shineenc_LDADD   = libshine.la
 # One program per concern. A new test needs its program here and its
 # _SOURCES line below.
 TESTS          = tests/config tests/framing tests/flush tests/wave tests/cli \
-                 tests/golden tests/level tests/reservoir tests/psy_model
+                 tests/golden tests/level tests/reservoir tests/psy_model \
+                 tests/resample
 check_PROGRAMS = $(TESTS)
 TEST_HELPERS   = tests/helpers.c tests/helpers.h
 LDADD          = libshine.la
@@ -54,6 +57,11 @@ tests_reservoir_SOURCES = tests/reservoir.c $(TEST_HELPERS)
 tests_psy_model_SOURCES = tests/psy_model.c $(CORE_SOURCES)
 tests_psy_model_CFLAGS  = $(AM_CFLAGS)
 tests_psy_model_LDADD   = -lm
+
+# Built from the library's sources, to reach the converter.
+tests_resample_SOURCES = tests/resample.c $(TEST_HELPERS) $(libshine_la_SOURCES)
+tests_resample_CFLAGS  = $(AM_CFLAGS)
+tests_resample_LDADD   = -lm
 
 AM_TESTS_ENVIRONMENT = SHINEENC='$(abs_top_builddir)/shineenc'; export SHINEENC; \
                        SHINE_GOLDEN='$(abs_top_srcdir)/tests/golden.txt'; export SHINE_GOLDEN;

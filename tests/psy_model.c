@@ -15,6 +15,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* The model is tested at the rate of the input. */
+#include "resample.h"
+#define shine_initialise(config)                                               \
+  shine_initialise_at(config, (config)->wave.samplerate)
+
 enum {
   PARTITIONS_COVER,         /* spectral-analysis §3, KC 1 */
   PARTITIONS_NEST,          /* spectral-analysis §3, KC 1, 16 */
