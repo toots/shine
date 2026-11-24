@@ -17,11 +17,11 @@ higher one. All columns are **tuning**.
 | 8 | 3.5 | 6.60 | 145 | 0 | −30 | 11 |
 | 16 | 3.5 | 6.60 | 145 | 0 | −25 | 11 |
 | 24 | 3.5 | 6.60 | 145 | 0 | −20 | 11 |
-| 32 | 3.5 | 6.60 | 145 | 0 | −15 | 11 |
-| 40 | 3.5 | 6.60 | 145 | 0 | −10 | 11 |
-| 48 | 3.5 | 6.60 | 145 | 0 | −10 | 11 |
-| 56 | 3.5 | 6.60 | 145 | 0 | −6 | 11 |
-| 64 | 3.5 | 6.60 | 145 | 4 | −2 | 11 |
+| 32 | 3.5 | 6.60 | 145 | 3 | −15 | 11 |
+| 40 | 3.5 | 6.60 | 145 | 6 | −10 | 11 |
+| 48 | 3.5 | 6.60 | 145 | 5 | −10 | 11 |
+| 56 | 3.5 | 6.60 | 145 | 6 | −6 | 11 |
+| 64 | 3.5 | 6.60 | 145 | 5 | −2 | 11 |
 | 80 | 3.5 | 6.60 | 145 | 2 | 0 | 8 |
 | 96 | 2.50 | 6.60 | 145 | 0 | 1 | 5.5 |
 | 112 | 1.80 | 6.60 | 145 | 0 | 2 | 4.5 |
@@ -55,8 +55,6 @@ be retuned together with the allocator of phase 2.
 | `TONALITY_SCALE` | 20 | tuning | [masking.md](masking.md) §1 |
 | `TONALITY_SMOOTHING` | 2 granules | tuning | [spectral-analysis.md](spectral-analysis.md) §1.2 |
 | `tab`, `delta` | table | tuning | [conventions.md](conventions.md) |
-| `ADD_NEAR_LIMIT` | 10^(9/16) | tuning | [masking.md](masking.md) §2 |
-| `ADD_FAR_LIMIT` | 10^(24/16) | tuning | [masking.md](masking.md) §2 |
 | `T` | table | tuning | [masking.md](masking.md) §2 |
 | `AVG_MASK_FACTOR` | 0.5 (−3 dB) | tuning | [masking.md](masking.md) §2 |
 | `PREECHO_RATIO_1`, `PREECHO_RATIO_2` | 2, 16 | tuning | [masking.md](masking.md) §3.1 |
@@ -96,6 +94,7 @@ be retuned together with the allocator of phase 2.
 | `DECISION_AGREEMENT` | 99% | conformance | [tests.md](tests.md) §3 |
 | `THRESHOLD_TOLERANCE` | 0.5 dB | conformance | [tests.md](tests.md) §3 |
 | `NUMERIC_AGREEMENT` | 99.9% | conformance | [tests.md](tests.md) §3 |
+| `SPREAD_EXACT_RANGE` | 120 dB | conformance | [fixed-point.md](fixed-point.md) §4 |
 | `SCORE_TOLERANCE` | 5 | conformance | [tests.md](tests.md) §4.2 |
 | `SCORE_MEAN_TOLERANCE` | 0.75 | conformance | [tests.md](tests.md) §4.2 |
 

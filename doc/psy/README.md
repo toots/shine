@@ -47,7 +47,7 @@ Read in this order:
 3. [spectral-analysis.md](spectral-analysis.md): MDCT line energies, the
    tonality spectrum, partitions, spreading matrix, band sums, the optional
    FFT path.
-4. [masking.md](masking.md): tonality, spreading with non-linear addition,
+4. [masking.md](masking.md): tonality, spreading,
    pre-echo limit, tonal ceiling, masking lowering.
 5. [ath.md](ath.md): threshold of hearing placement, per partition and per
    band, adaptation to loudness.

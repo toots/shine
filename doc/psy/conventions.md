@@ -113,7 +113,7 @@ interp(x, y, r) = x^r · y^(1−r)     if x > 0 and y > 0
 for `0 ≤ r ≤ 1`. The model only uses `r` in `(0, 1)`. In the log domain this is
 the linear blend `r·log x + (1 − r)·log y`.
 
-## Masking tables `tab` and `delta`
+## Masking table `tab`
 
 Indexed by the tonality index `k` in 0..8 ([masking.md](masking.md) §1).
 **Tuning.**
@@ -122,9 +122,6 @@ Indexed by the tonality index `k` in 0..8 ([masking.md](masking.md) §1).
 |---|---|---|---|---|---|---|---|---|---|
 | `tab[k]` | 1.0 | 0.79433 | 0.63096 | 0.63096 | 0.63096 | 0.63096 | 0.63096 | 0.25119 | 0.11749 |
 | dB | 0 | −1 | −2 | −2 | −2 | −2 | −2 | −6 | −9.3 |
-| `delta[k]` | 2 | 2 | 2 | 1 | 1 | 1 | 0 | 0 | −1 |
 
 `tab` goes from 0 dB for a noise-like masker to −9.3 dB for a tonal one. A
 tonal masker masks noise less than a noise-like masker of the same energy.
-`delta[k]` is the distance, in partitions, over which neighbouring maskers
-add with a boost ([masking.md](masking.md) §2).

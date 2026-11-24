@@ -36,49 +36,28 @@ mean index falls as partitions widen. Whether `TONALITY_SCALE` and the
 smoothing of [spectral-analysis.md](spectral-analysis.md) §1.2 handle this
 well enough is a perceptual judgement ([tests.md](tests.md) §4).
 
-## 2. Spreading with non-linear addition
+## 2. Spreading
 
 For maskee partition `b`, with its spreading row `[lo, hi]`
-([spectral-analysis.md](spectral-analysis.md) §4) and `d = delta[idx[b]]`
-([conventions.md](conventions.md)), contributions MUST be accumulated in
-increasing partition order:
+([spectral-analysis.md](spectral-analysis.md) §4):
 
 ```
-ecb = S[b][lo] · eb[lo] · tab[idx[lo]]
-for p = lo+1 .. hi:
-    x = S[b][p] · eb[p] · tab[idx[p]]
-    ecb = mask_add(ecb, x, p − b, d)
+ecb = Σ_{p=lo..hi} S[b][p] · eb[p] · tab[idx[p]]
 k_avg = (1 + 2·Σ_{p=lo..hi} idx[p]) / (2·(hi − lo + 1))      integer division, rounded mean
 avg_mask = tab[k_avg] · AVG_MASK_FACTOR
 ecb = ecb · avg_mask
 ```
 
 Each masker contribution is attenuated by its own tonality. The sum is then
-attenuated by the mean tonality over the row, and by a further 3 dB. The law
-is not associative, so the order is part of the definition.
+attenuated by the mean tonality over the row, and by a further 3 dB.
 
-`mask_add(m1, m2, dist, d)`, with `m1, m2 ≥ 0`:
-
-```
-if m1 = 0: return m2
-if m2 = 0: return m1
-r = max(m1, m2) / min(m1, m2)
-if |dist| ≤ d:                              (close maskers)
-    if r ≥ ADD_NEAR_LIMIT:  return m1 + m2
-    i = int(16·log10(r))                    (0..8)
-    return (m1 + m2) · T[i]
-else:                                       (distant maskers)
-    if r < ADD_FAR_LIMIT:  return m1 + m2
-    return max(m1, m2)
-```
-
-| i | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
-|---|---|---|---|---|---|---|---|---|---|
-| `T[i]` | 1.33352² | 1.35879² | 1.38454² | 1.39497² | 1.40548² | 1.3537² | 1.30382² | 1.22321² | 1.14758² |
-
-Close maskers of similar level add with a boost of up to about +3 dB. Distant
-maskers more than 15 dB apart do not add: the louder one wins. The result
-always lies between `max(m1, m2)` and `(m1 + m2)·max(T)`.
+Contributions add as energies. The sum does not depend on the order of its
+terms, so it MAY be computed in any order, or as a product of the spreading
+matrix with the vector of attenuated energies. A non-linear law, boosting
+close maskers of similar level by up to 3 dB and keeping only the louder of
+two distant ones, scores lower by the measure of [tests.md](tests.md) §4
+from 96 kbps up. The lower thresholds of the plain sum at low bitrates are
+what `MASK_ADJUST` compensates ([parameters.md](parameters.md) §1).
 
 ## 3. Threshold per partition
 

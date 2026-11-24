@@ -62,8 +62,7 @@ generated tables. Against it, on the synthetic signals and a music corpus:
 - PE MUST agree within 1% in at least `NUMERIC_AGREEMENT` of granules and
   channels.
 
-The model has steps: the tonality index, the branches of `mask_add` and its
-`T` index ([masking.md](masking.md) §1–§2), and the L/R similarity test of
+The model has steps: the tonality index ([masking.md](masking.md) §1), and the L/R similarity test of
 the M/S correction ([stereo.md](stereo.md) §2). Where an operand sits at a
 step, one LSB of difference moves a threshold by several dB, and by more
 than 10 dB for a side threshold, so two correct implementations disagree

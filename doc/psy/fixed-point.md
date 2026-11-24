@@ -35,7 +35,7 @@ multiplications by constants, and integer compares:
 | `x^r` | `r · lx` |
 | `interp(x, y, r)` | `r·lx + (1 − r)·ly` |
 | `10^(dB/10)` factor | add the constant `dB · log2(10)/10` |
-| `log10(r)` (PE, `mask_add` index) | `lr · log10(2)` |
+| `log10(r)` (PE) | `lr · log10(2)` |
 | `athAdjust` | `l_floor + w·(lx − l_floor) + gain` |
 | zero | a reserved minimum value, compared before any arithmetic |
 
@@ -43,9 +43,6 @@ multiplications by constants, and integer compares:
 band sums are additions of many terms. They are accumulated linearly in 64
 bits, then converted to the log domain once. Squares of 32-bit MDCT
 coefficients fit in 64 bits after a shift fixed by the MDCT's headroom.
-`mask_add` is a two-operand addition with a ratio-dependent gain: compute the
-ratio as a log difference, look up `T`, and add in the linear domain, or use
-a log-add table `log2(1 + 2^−d)`.
 
 **Block floating point** is the alternative for the linear sums: one shared
 exponent per granule and channel, 32-bit mantissas. It suits the spreading
@@ -57,7 +54,7 @@ and 513 entries hold the error under 0.0001 dB. The table is generated (§3).
 `2^x` for the return to linear is the same table, inverted.
 
 **Ratios as products.** Comparisons of ratios against a constant (attack
-intensity, `MS_SIMILARITY`, `PERIODIC_RATIO`, `ADD_NEAR_LIMIT`) need no
+intensity, `MS_SIMILARITY`, `PERIODIC_RATIO`) need no
 division: `p/q > k` is `p > k·q` with `k` in a fixed Q-format and 64-bit
 products.
 
@@ -87,7 +84,7 @@ point. Its output is the shared input of the library and of the float oracle
 |---|---|
 | Line energies | `X²` in 64 bits, accumulated linearly per partition, then `log2`. |
 | Tonality index | `(n·m − a)·20 / (a·L)` in 64-bit integers from the linear partition values. The result is a small integer. |
-| Spreading | linear 64-bit or block floating point accumulation in partition order, `mask_add` per step. |
+| Spreading | linear 64-bit or block floating point accumulation, one conversion to the log domain per partition. Rows more than `SPREAD_EXACT_RANGE` = 120 dB below the granule's loudest attenuated partition MAY lose precision, never gain energy: they are far below the threshold of hearing. |
 | Limits, clamps, lowering | log-domain additions and minima. |
 | ATH and adaptation | log domain. `adjust_factor` in Q31, its update in 64-bit products. |
 | M/S correction | log domain, except `m + s`, which is a linear two-term addition. |

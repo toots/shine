@@ -260,11 +260,11 @@ links the rule that handles it now. Every entry is a conformance check
 - **Why it is hard.** The law is order-dependent: low-to-high does not give
   the high-to-low result. It is a fitted heuristic, and small changes move
   tonal thresholds by dB.
-- **How to tell.** `mask_add(x, 0) = x`. The result lies between the larger
-  operand and the boosted sum. A two-tone vector at fixed Bark distance and
-  level ratio matches the law.
-- **Answered by.** [masking.md](masking.md) §2: low to high, single pass,
-  zero cases stated.
+- **How to tell.** Two maskers spread to an energy equal to the sum of
+  their spread energies, within the fixed-point tolerance, in any order.
+  A zero masker adds nothing.
+- **Answered by.** [masking.md](masking.md) §2: a plain sum of energies,
+  with no order, no distance window and no ratio-dependent gain.
 
 ## 14. Spreading function discretisation and normalisation
 
