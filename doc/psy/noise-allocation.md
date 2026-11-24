@@ -7,8 +7,9 @@ allowed distortion `xmin` ([allowed-distortion.md](allowed-distortion.md)
 §2) wherever the bit budget allows, and is spread in proportion to it where
 it does not.
 
-Long blocks only. Short blocks (phase 4) add their own scalefactor layout.
-The bits of a granule come from the reservoir ([reservoir.md](reservoir.md)
+§1 to §5 are written for long blocks; a SHORT granule (phase 4) is
+allocated by the same rules on the bands of §6. START and STOP granules are
+long. The bits of a granule come from the reservoir ([reservoir.md](reservoir.md)
 §3; the frame's mean before phase 3); §3 shares them between its channels.
 
 ## 1. Quantisation
@@ -225,7 +226,40 @@ or other group sizes, are not used.
 
 At fs ≤ 8 kHz, bands 17..20 have no `xmin` and their scalefactors stay 0.
 
-## 6. Determinism
+## 6. Short blocks (phase 4)
+
+A SHORT granule codes three windows of 192 lines. Its 576 coefficients are
+in coded order, by short sfb, then window, then line (ISO 11172-3
+§2.4.3.4.10.1). The allocation works on `3 · 13` bands: band `3·sb + j` is
+short sfb `sb` of window `j`, and carries that window's `xmin` and energy
+([allowed-distortion.md](allowed-distortion.md) §2, §3). The rules of §1 to
+§4 apply unchanged on these bands, in this order.
+
+- **Step of a band:** `q − 2·(1 + scalefac_scale)·sf[sb][j]`, as in §1.
+  `subblock_gain` is 0 for every window: a window's level is set by its
+  scalefactors alone. An encoder MAY use `subblock_gain`; it is not
+  specified here.
+- **Step range.** The short transform keeps more headroom than the long
+  one, which a SHORT granule's `global_gain` gives back as a fixed number
+  of extra steps. Its largest step size is smaller by that number, so that
+  `global_gain` stays within 255.
+- **Bands with an allowed distortion:** short sfbs `0..11` (`0..8` at fs ≤
+  8 kHz), each window. sfb12 has no scalefactor and is never amplified.
+- **Largest scalefactor:** 15 in short sfbs `0..5`, 7 in sfbs `6..11`, in
+  both formats.
+- **Coding.** MPEG-1: sfbs `0..5` on `slen1` bits and `6..11` on `slen2`,
+  each with its three windows, `part2_length = 18·(slen1 + slen2)`, the
+  cheapest `scalefac_compress` among the 16 that code every value. MPEG-2
+  and 2.5 (without intensity stereo, ISO 13818-3 §2.4.3.2): the four
+  groups are sfbs `0..2`, `3..5`, `6..8` and `9..11`, each with its three
+  windows, on `slen1..slen4` bits; `scalefac_compress` is formed as in §5
+  and `part2_length = 9·(slen1 + slen2 + slen3 + slen4)`.
+- **Huffman regions.** Region 0 ends after 3 short sfbs (36 lines); there
+  is no region 2 (ISO 11172-3 §2.4.2.7).
+
+§4.1 applies to a SHORT granule as to a long one.
+
+## 7. Determinism
 
 The allocation is integer arithmetic like the model
 ([fixed-point.md](fixed-point.md) §1). Noise and `xmin` are compared in the

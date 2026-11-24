@@ -43,9 +43,13 @@ P[i] = max(PEAK_FLOOR, max_{n in sub-block i} |h[n]| / FS)      i = 0..8
 scale. Grouped sums per short window:
 
 ```
-Esh[s] = P[3s−3] + P[3s−2] + P[3s−1]        s = 1, 2, 3   (window s−1)
+Esh[s] = P[3s−3] + P[3s−2] + P[3s−1]        s = 1, 2, 3   (slot s)
 Esh[0] = the previous granule's Esh[3]
 ```
+
+`Esh[s]` is the level of slot `s` (§1.4): by the alignment of §1.4, slot
+`s` is short window `s` of the coded granule for `s = 0, 1, 2`, and slot 3
+is window 0 of the next one.
 
 ### 1.3 Attack intensity
 
@@ -105,8 +109,9 @@ pre-echo control (§4) has run.
 ### 1.6 Pulse factor
 
 A short window whose level sits in its first sub-blocks is a pulse, and
-gets lower thresholds. For window `j` with peaks `p0, p1, p2`
-(`P[3j..3j+2]`) and `e = p0 + p1 + p2`:
+gets lower thresholds. For window `j`, `p0, p1, p2` are the three sub-block
+peaks of slot `j` (§1.4): `P[3j−3..3j−1]`, with window 0 taking the last
+three peaks of the previous detector granule. With `e = p0 + p1 + p2`:
 
 ```
 pulse[c][j] = 1
