@@ -126,9 +126,9 @@ quality report before the next one starts.
 - [x] Phase 4: block switching (short blocks) for transients: attack
       detection with a 256-sample look-ahead, start, short and stop windows,
       the short-window model and noise shaping on the short bands.
-- [ ] The float oracle covers long blocks only: extend it to the attack
-      detector and the short-window model, or delete it once the phases are
-      merged (`doc/psy/tests.md` §3).
+- [x] The float oracle served phases 1 to 3 and is deleted, as
+      `doc/psy/tests.md` §3 asks once a phase has its goldens and metric
+      report; formula checks in `tests/psy_model.c` cover phase 4.
 - [ ] `subblock_gain` is always 0 (`doc/psy/noise-allocation.md` §6).
 - [ ] A listening round on transients with the reservoir and short blocks,
       and on the items the metric gate flagged.

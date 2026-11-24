@@ -35,8 +35,7 @@ shineenc_LDADD   = libshine.la
 # One program per concern. A new test needs its program here and its
 # _SOURCES line below.
 TESTS          = tests/config tests/framing tests/flush tests/wave tests/cli \
-                 tests/golden tests/level tests/reservoir tests/psy_model \
-                 tools/psy_oracle
+                 tests/golden tests/level tests/reservoir tests/psy_model
 check_PROGRAMS = $(TESTS)
 TEST_HELPERS   = tests/helpers.c tests/helpers.h
 LDADD          = libshine.la
@@ -55,10 +54,6 @@ tests_reservoir_SOURCES = tests/reservoir.c $(TEST_HELPERS)
 tests_psy_model_SOURCES = tests/psy_model.c $(CORE_SOURCES)
 tests_psy_model_CFLAGS  = $(AM_CFLAGS)
 tests_psy_model_LDADD   = -lm
-# The float oracle of the phase being built (doc/psy/tests.md §3).
-tools_psy_oracle_SOURCES = tools/psy_oracle.c $(libshine_la_SOURCES)
-tools_psy_oracle_CFLAGS  = $(AM_CFLAGS)
-tools_psy_oracle_LDADD   = -lm
 
 AM_TESTS_ENVIRONMENT = SHINEENC='$(abs_top_builddir)/shineenc'; export SHINEENC; \
                        SHINE_GOLDEN='$(abs_top_srcdir)/tests/golden.txt'; export SHINE_GOLDEN;
