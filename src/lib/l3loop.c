@@ -491,40 +491,75 @@ void bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info) {
  * of the Huffman tables as defined in the IS (Table B.7), and will not work
  * with any arbitrary tables.
  */
-/* The bits of [begin, end) in table t, or -1 if t cannot code max. */
-static int table_cost(int ix[GRANULE_SIZE], unsigned int begin,
-                      unsigned int end, unsigned int max, int t) {
-  const struct huffcodetab *h = &shine_huffman_table[t];
+/* The first table of [first, first + 8), which share their codes, with
+ * enough linbits for max. */
+static int escape_table(int first, unsigned int max) {
+  int table = first;
 
-  if (h->linbits ? max > 15 + h->linmax : max >= h->xlen)
-    return -1;
-  return count_bit(ix, begin, end, t);
+  while (max > 15 + shine_huffman_table[table].linmax)
+    table++;
+  return table;
 }
 
-/* The cheapest table that codes [begin, end). Among the tables with
- * linbits, 16..23 share their codes and so do 24..31: in each family the
- * one with the fewest linbits that codes max is the cheapest. */
+/* The cheapest table for a region whose largest value is above 15: the
+ * first one that codes max in each of the two families. */
+static int choose_escape_table(int ix[GRANULE_SIZE], unsigned int begin,
+                               unsigned int end, unsigned int max) {
+  int low = escape_table(16, max), high = escape_table(24, max);
+  uint32_t codes = 0, escapes = 0;
+
+  for (unsigned int i = begin; i < end; i += 2) {
+    unsigned int x = ix[i], y = ix[i + 1];
+
+    if (x > 14) {
+      x = 15;
+      escapes++;
+    }
+    if (y > 14) {
+      y = 15;
+      escapes++;
+    }
+    codes += shine_huffman_escape_cost[16 * x + y];
+  }
+  return (codes >> 16) + escapes * shine_huffman_table[high].linbits <
+                 (codes & 0xffff) + escapes * shine_huffman_table[low].linbits
+             ? high
+             : low;
+}
+
+/* The cheapest table that codes [begin, end), the lowest one on a tie.
+ * Each 16-bit field of a sum holds the bits of one candidate: a region has
+ * at most 288 pairs of at most 27 bits. */
 int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin,
                      unsigned int end) {
   unsigned int max = ix_max(ix, begin, end);
-  int choice = 0, best = -1;
+  const shine_huffman_choice_t *choice = &shine_huffman_choice[max & 15];
+  const uint64_t *cost = shine_huffman_choice_cost + choice->offset;
+  unsigned int stride = choice->stride;
+  uint64_t sums[2] = {0, 0};
+  int best = 0;
 
   if (!max)
     return 0;
-  for (int t = 1; t < 32; t++) {
-    int bits = table_cost(ix, begin, end, max, t);
+  if (max > 15)
+    return choose_escape_table(ix, begin, end, max);
 
-    if (bits < 0)
-      continue;
-    if (best < 0 || bits < best) {
-      best = bits;
-      choice = t;
+  if (choice->count <= 4)
+    for (unsigned int i = begin; i < end; i += 2)
+      sums[0] += cost[ix[i] * stride + ix[i + 1]];
+  else
+    for (unsigned int i = begin; i < end; i += 2) {
+      const uint64_t *pair = cost + 2 * (ix[i] * stride + ix[i + 1]);
+
+      sums[0] += pair[0];
+      sums[1] += pair[1];
     }
-    /* The rest of this family costs more linbits for the same codes. */
-    if (shine_huffman_table[t].linbits)
-      t = t < 24 ? 23 : 31;
-  }
-  return choice;
+
+  for (int i = 1; i < choice->count; i++)
+    if (((sums[i >> 2] >> (16 * (i & 3))) & 0xffff) <
+        ((sums[best >> 2] >> (16 * (best & 3))) & 0xffff))
+      best = i;
+  return choice->tables[best];
 }
 
 /*

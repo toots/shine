@@ -35,4 +35,22 @@ extern const int32_t shine_quant_threshold[QUANT_EXACT_MAX + 2];
 extern const uint8_t shine_quant_base[QUANT_SPLIT_LINES];
 extern const int32_t shine_quant_split[QUANT_SPLIT_LINES];
 
+/* The Huffman tables that can be the cheapest for a big-value region whose
+ * largest value is the index (1..15), in increasing order. The bits of the
+ * pair (x, y) in tables[4 * w + k], sign bits left out, are bits 16k..16k+15
+ * of shine_huffman_choice_cost[offset + words * (x * stride + y) + w], with
+ * one word per pair up to 4 tables and two above. */
+#define HUFFMAN_CHOICES 8
+typedef struct {
+  uint8_t count;
+  uint8_t stride;
+  uint16_t offset;
+  uint8_t tables[HUFFMAN_CHOICES];
+} shine_huffman_choice_t;
+extern const shine_huffman_choice_t shine_huffman_choice[16];
+extern const uint64_t shine_huffman_choice_cost[];
+/* Code lengths of the pair (x, y), each at most 15, at index 16 * x + y:
+ * tables 16..23 in the low half, 24..31 in the high half. */
+extern const uint32_t shine_huffman_escape_cost[256];
+
 #endif
