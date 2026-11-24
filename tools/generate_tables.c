@@ -7,6 +7,7 @@
  * clang-format -i src/lib/precomputed_tables.c
  */
 
+#include "tables.h"
 #include "types.h"
 
 #include <math.h>
@@ -150,6 +151,14 @@ static void quantizer_steps(void) {
   for (int i = 0; i < 10000; i++)
     printf("%s%d", i ? ", " : "    ",
            (int)(sqrt(sqrt((double)i) * (double)i) - 0.0946 + 0.5));
+  printf("};\n\n");
+
+  printf(
+      "/* The smallest x, in Q8, with nint(x**(3/4) - 0.0946) = n, for\n"
+      " * n = 0..QUANT_EXACT_MAX + 1: (n - 0.4054)**(4/3), rounded up. */\n");
+  printf("const int32_t shine_quant_threshold[QUANT_EXACT_MAX + 2] = {\n    0");
+  for (int n = 1; n <= QUANT_EXACT_MAX + 1; n++)
+    printf(", %d", (int32_t)ceil(pow(n - 0.4054, 4.0 / 3) * 256));
   printf("};\n");
 }
 

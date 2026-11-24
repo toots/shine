@@ -25,4 +25,9 @@ extern const int32_t shine_steptabi[128];
 extern const uint32_t shine_steptab_fraction[MAX_STEPSIZE + 1];
 extern const int16_t shine_int2idx[10000];
 
+/* Values of ix up to this are decided exactly, from the coefficient in Q8
+ * (shine_quant_threshold). */
+#define QUANT_EXACT_MAX 64
+extern const int32_t shine_quant_threshold[QUANT_EXACT_MAX + 2];
+
 #endif

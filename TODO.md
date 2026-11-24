@@ -113,10 +113,9 @@ quality report before the next one starts.
       on heavier distortion: withdrawn. Per-item losses of quality 1 under
       0.1 ODG at 16 and 11.025 kHz, once logged here as a defect, are below
       what the score resolves.
-- [ ] The encoder's quantiser rounds the scaled coefficient before taking
-      its 3/4 power, which moves the boundary between 1 and 2 from 1.86 to
-      1.5: more bits and more error there than the textbook rounding. Try
-      the exact rule at quality 1.
+- [x] The quantiser rounded the scaled coefficient before taking its 3/4
+      power, which moved the boundary between 1 and 2 from 1.86 to 1.5.
+      Values up to 64 now follow the exact rule, at both quality levels.
 - [x] Huffman table choice: the search stopped at table 13 for any value
       below 15, so tables 1..12 were never used, and a largest value of 15
       went to the escape tables. Each region now gets the cheapest table

@@ -52,11 +52,12 @@ enum {
   ALLOCATION_SILENCE,       /* noise-allocation §4 */
   ALLOCATION_TIE,           /* noise-allocation §2 */
   NOISE_MEASURE,            /* noise-allocation §1, §2 */
+  QUANTISER,                /* noise-allocation §1 */
+  STUFFING,                 /* reservoir §2 */
   ALLOWED_DISTORTION,       /* allowed-distortion §2 */
   SHORT_ALLOWED_DISTORTION, /* allowed-distortion §2, §3 */
   SHORT_SHAPED,             /* noise-allocation §6 */
   SHORT_PREECHO,            /* block-switching §1.6, §4 */
-  STUFFING,                 /* reservoir §2 */
   HUFFMAN_TABLE,            /* ISO 11172-3 2.4.2.7: cheapest table per region */
   GRANULE_BITS,             /* reservoir §3, KC 21 */
   PE_SMOOTHING,             /* perceptual-entropy §3, KC 21 */
@@ -112,8 +113,9 @@ static const char *check_names[CHECK_COUNT] = {
     [SHORT_ALLOWED_DISTORTION] = "short allowed distortion",
     [SHORT_SHAPED] = "short granules amplified",
     [SHORT_PREECHO] = "short pre-echo control",
-    [STUFFING] = "no stuffing in a granule",
     [HUFFMAN_TABLE] = "cheapest Huffman table",
+    [QUANTISER] = "quantiser rounding",
+    [STUFFING] = "no stuffing in a granule",
     [PE_BOUNDS] = "PE bounds",
     [SHORT_THRESHOLD_BOUNDS] = "short threshold bounds",
     [PE_CAP_CONTINUITY] = "PE cap continuity",
@@ -1794,6 +1796,59 @@ static void band_lines(int rate, int is_short, int b, int *first, int *last) {
 
 /* noise-allocation §1-§2: the noise of each band against the reconstruction
  * of the decoder's formula, in double precision. */
+/* noise-allocation §1: ix = nint(x^(3/4) - 0.0946), x the coefficient
+ * scaled by the step, in floating point. Values far enough from a boundary
+ * for the Q8 scale to decide them must agree; every small value must be
+ * within one. */
+static void check_quantiser(void) {
+  shine_t e = open_encoder(44100, 1, SHINE_MONO, 128);
+  int ix[GRANULE_SIZE], exact = 0, decided = 0;
+  int32_t xr[GRANULE_SIZE];
+
+  e->l3loop.xr = xr;
+  for (int step = -60; step <= 12; step += 3) {
+    for (int k = 0; k < GRANULE_SIZE; k++) {
+      /* Values spread over ix from 0 to about 70. */
+      double target = pow((k % 288) / 4.0, 4.0 / 3) + 0.37 * (k % 7);
+      double scale = step > 0
+                         ? shine_steptab_fraction[step] / 9223372036854775808.0
+                         : shine_steptabi[step + 127] / 4294967296.0;
+
+      xr[k] = (int32_t)fmin(target / scale, 2147483647.0);
+      e->l3loop.xrabs[k] = xr[k];
+    }
+    shine_quantize_band(ix, 0, GRANULE_SIZE, step, e);
+    for (int k = 0; k < GRANULE_SIZE; k++) {
+      double scale = step > 0
+                         ? shine_steptab_fraction[step] / 9223372036854775808.0
+                         : shine_steptabi[step + 127] / 4294967296.0;
+      double x = xr[k] * scale, value = pow(x, 0.75) - 0.0946;
+      int expected = (int)floor(value + 0.5);
+      /* Distance to the nearest boundary, in units of x. */
+      double margin = fabs(x - pow(floor(value + 0.5) + 0.5 + 0.0946, 4.0 / 3));
+
+      if (expected > QUANT_EXACT_MAX)
+        continue;
+      margin = fmin(
+          margin,
+          fabs(x - pow(fmax(floor(value + 0.5) - 0.5 + 0.0946, 0), 4.0 / 3)));
+      if (margin > 2.0 / 256) {
+        decided++;
+        exact += ix[k] == expected;
+        check(QUANTISER, ix[k] == expected,
+              "step %d: x %.4f gives %d, the formula %d", step, x, ix[k],
+              expected);
+      } else
+        check(QUANTISER, abs(ix[k] - expected) <= 1,
+              "step %d: x %.4f gives %d, the formula %d", step, x, ix[k],
+              expected);
+    }
+  }
+  check(QUANTISER, decided > 1000 && exact == decided,
+        "%d of %d values decided by the formula", exact, decided);
+  shine_close(e);
+}
+
 static void check_noise_measure(void) {
   for (int r = 0; r < 18; r += 4) {
     const int is_short = r >= 9;
@@ -2552,6 +2607,7 @@ int main(void) {
   check_noise_measure();
   check_allowed_distortion();
   check_short_preecho();
+  check_quantiser();
   check_reservoir_steady();
   check_reservoir_burst();
   check_pe_smoothing();

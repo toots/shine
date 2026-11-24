@@ -34,9 +34,13 @@ ix[k] = nint(|xr[k] / 2^(q_sb/4)|^(3/4) − 0.0946)
 ```
 
 `xr` is in the encoder's coefficient scale, which `q` and `global_gain`
-relate by a constant offset. The rounding is the encoder's quantiser's: it
-MAY differ from this formula in how it rounds, since the noise of §2 is
-measured on the `ix` it produced, whatever they are. A band MUST NOT be amplified past the range
+relate by a constant offset. The encoder SHOULD round as this formula does.
+Rounding the scaled coefficient to an integer before taking its power moves
+the boundaries of small values (the one between 1 and 2 from 1.86 to 1.5),
+which costs bits and adds error; an encoder MUST decide the values up to
+`QUANT_EXACT_MAX` = 64 by the formula, within the resolution of its scaled
+coefficient. Above that, rounding first moves a boundary by less than 1% of
+the step. The noise of §2 is measured on the `ix` produced. A band MUST NOT be amplified past the range
 where the encoder represents its step exactly: an approximated step would
 be decoded with the exact one, and the band would be reconstructed at the
 wrong level.
