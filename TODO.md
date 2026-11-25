@@ -27,19 +27,18 @@ change does more than it claims. The commit message says which kind it is.
       gain-corrected SNR per item, on synthetic signals plus local music
       (e.g. FATE samples), with LAME at the same bitrate as reference. Not
       run in CI.
-- [x] Perceptual score in the report: the lower ODG of advanced and basic
-      PEAQ, with GstPEAQ, validated on the ODAQ listening test.
+- [x] Perceptual score in the report: the 2f-model, an estimate of the
+      MUSHRA score from basic PEAQ, with GstPEAQ, validated on the ODAQ
+      listening test; the ODG is reported beside it.
 - [x] Gate script (`tools/quality-gate.sh`) on two reports, and
       `tools/quality-corpus.sh` to derive every sample rate family from
       music files.
 - [x] Decode with both FFmpeg and mpg123 in the report, to catch streams
       only one decoder tolerates.
-- [ ] Listening check before release for psychoacoustic changes. To check
-      first, at quality 1 against quality 0: the stereo image of wide mixes
-      at 64 to 96 kbps, since the score hardly sees it and the bits of a
-      granule now follow each channel's PE; castanets at 192 kbps, where the
-      score fell while the SNR rose; and the three items the gate still
-      fails (16 kHz at 64 and 128 kbps, 44.1 kHz at 96 kbps).
+- [ ] Listening check before release for psychoacoustic changes. Round 4
+      tests the retuned cutoffs. Not heard yet: the spreading as a plain
+      sum and MASK_ADJUST +3 to +6 dB at 32 to 64 kbps; the stereo image of
+      wide mixes at 64 to 96 kbps, which the score hardly sees.
 - [x] Confirm the goldens are identical on Linux, macOS and other
       architectures: CI checks x86-64 and arm64 natively, armv7 and s390x
       emulated.
@@ -94,25 +93,29 @@ none now, checked in CI by `tools/check-no-float.sh`.
 Each phase is fixed point, behind the quality setting, and measured with the
 quality report before the next one starts.
 
-- [x] Decide the perceptual metric: PEAQ, the lower ODG of its two versions
-      (`doc/psy/tests.md` §4).
+- [x] Decide the perceptual metric: the 2f-model (`doc/psy/tests.md` §4).
 - [x] Phase 1: masking model in the MDCT domain (band energies, spreading,
       absolute threshold of hearing, tonality), integer `log2`, M/S.
 - [x] Phase 2: noise allocation: outer loop raising scalefactors where noise
       exceeds the threshold (`doc/psy/noise-allocation.md`), with MPEG-1
       `slen` and MPEG-2 LSF `scalefac_compress` coding, and the bits of a
       granule shared between its channels by perceptual entropy.
-- [ ] Retune `MASK_ADJUST`, `ATH_LOWER`, `ATH_CURVE` and `TONALITY_SCALE`
-      once listening tests give enough per-item data: the score alone is too
-      coarse to tune on.
+- [x] Retune the per-bitrate table on the 2f score, on two thirds of the
+      corpus sources with one third held out: cutoffs, `MASK_ADJUST` and
+      `MSFIX`. `ATH_LOWER` and `ATH_CURVE` move no score by more than 0.1.
+- [ ] 96 kbps stereo is the largest gap to LAME (6 points): its row is
+      unchanged, since a cutoff above 14.7 kHz keeps the stream at 44.1 kHz.
+      Retune it, or let 32 kHz take a higher cutoff (`resampling.md`,
+      `bandwidth.md`).
+- [ ] `TONALITY_SCALE` is not tuned.
 - [ ] `scfsi` and `preflag`, to save bits.
-- [ ] `MASK_ADJUST` wants retuning, on means over a wide corpus and on
-      held-out items (`doc/psy/tests.md` §4.2). A first attempt, tuned on 8
-      music excerpts at 44.1 kHz, gained up to 0.4 ODG there and lost up to
-      0.6 at 32 kHz, and its gains came partly from spuriously good grades
-      on heavier distortion: withdrawn. Per-item losses of quality 1 under
-      0.1 ODG at 16 and 11.025 kHz, once logged here as a defect, are below
-      what the score resolves.
+- [ ] Exact search of the Huffman region boundaries, and dropping the
+      count1 values that cost more than they are worth.
+- [ ] A look-ahead bit reservoir aiming at an even noise-to-mask ratio
+      across frames.
+- [x] Masking spread as a plain sum of energies, in the linear domain.
+- [x] The step size search starts where the previous attempt ended.
+- [x] Resampling at low bitrates, in the library (`doc/psy/resampling.md`).
 - [x] The quantiser rounded the scaled coefficient before taking its 3/4
       power, which moved the boundary between 1 and 2 from 1.86 to 1.5.
       Values up to 64 now follow the exact rule, at both quality levels.
@@ -129,15 +132,24 @@ quality report before the next one starts.
 - [x] The float oracle served phases 1 to 3 and is deleted, as
       `doc/psy/tests.md` §3 asks once a phase has its goldens and metric
       report; formula checks in `tests/psy_model.c` cover phase 4.
-- [ ] Phase 5 lowpass (`doc/psy/bandwidth.md`): +0.02 to +0.06 ODG at 64
-      to 128 kbps, none above. Confirm the cutoffs by listening (too low is
-      heard as dullness, which the score grades mildly); drop or retune if
-      they do not hold.
+- [ ] Phase 5 lowpass (`doc/psy/bandwidth.md`): cutoffs retuned on the 2f
+      score, which follows band limitation closely and may favour bandwidth
+      more than listeners do. Round 4 checks them.
 - [ ] `subblock_gain` is always 0 (`doc/psy/noise-allocation.md` §6).
 - [ ] A listening round on transients with the reservoir and short blocks,
       and on the items the metric gate flagged.
 - [ ] A build option to leave the model out of the library, for small
       targets: quality 0 does not use it.
+
+## Speed
+
+- [x] The filter bank built for AVX2 on x86-64, chosen at run time
+      (`src/lib/kernels.c`): baseline x86-64 has no signed widening vector
+      multiply. arm64 compilers vectorize it with NEON already.
+- [ ] GCC builds run 20 to 35% slower than clang builds on x86-64, with or
+      without AVX2: find which loops.
+- [ ] Hand-written AVX2 for the filter and MDCT, still 24% of quality 1 on
+      x86-64 with GCC.
 
 ## Cleanup and formatting
 
@@ -158,8 +170,8 @@ Bit-exact; formatting commits separate from functional ones.
 
 ## Release
 
-- [ ] Run new benchmarks once the changes above are done: native `shineenc`
-      against LAME (`README.md`, last run December 2022), the JavaScript
-      package in Node.js and in browsers through `js/test/browser`
-      (`js/README.md`), and speed against the 3.1.1 release, at each
-      quality setting.
+- [x] Native `shineenc` against LAME, at each quality level (`README.md`,
+      November 2026).
+- [ ] The JavaScript package in Node.js and in browsers through
+      `js/test/browser` (`js/README.md`), and speed against the 3.1.1
+      release.

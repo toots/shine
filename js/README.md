@@ -94,8 +94,9 @@ otherwise. `--enable-wasm` makes a missing toolchain an error.
 How fast is it?
 ---------------
 
-On a macbook pro (`arm64`/M1 pro), Node.js 26, encoding 285 s of stereo music
-at 128 kbps: about 205x realtime, against about 310x for the native `shineenc`.
+On an Apple M5 (`arm64`, November 2026), Node.js 26, encoding 3 minutes of
+44.1 kHz stereo music at 128 kbps: 209x realtime at quality 0 and 105x at
+quality 1, against 667x and 212x for the native `shineenc`.
 
 `test/browser` measures the encoding rate in a browser: run `make` there and
 open `http://localhost:8000/test/browser/`. A rate above `1X` means that the
