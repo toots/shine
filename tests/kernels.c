@@ -1,6 +1,7 @@
 /* The filter bank kernels (src/lib/kernels.h): every set built for this
  * processor gives, bit for bit, the analysis filter and MDCTs written out
- * directly, on random and full-scale input. */
+ * directly, on random and full-scale input, and the MDCTs on the subband
+ * samples the filter makes of them. */
 #include "kernels.h"
 #include "fixed_point.h"
 #include "tables.h"
@@ -51,6 +52,19 @@ static void mdct_reference(const int32_t in[36], const int32_t table[18][36],
     }
 }
 
+/* MDCT input as the filter bank makes it: the tables' headroom bounds the
+ * sums for subband samples, not for any 32-bit values. */
+static void subband_input(int round, int32_t in[36]) {
+  for (int j = 0; j < 36; j++) {
+    int32_t x[512], s[32];
+
+    for (int i = 0; i < 512; i++)
+      x[i] = random_sample(round);
+    filter_reference(x, 0, s);
+    in[j] = s[j % 32];
+  }
+}
+
 static int check(const char *name, const shine_kernels_t *kernels) {
   static const int32_t (*const tables[3])[36] = {
       shine_mdct_cosine, shine_mdct_cosine_start, shine_mdct_cosine_stop};
@@ -63,8 +77,7 @@ static int check(const char *name, const shine_kernels_t *kernels) {
 
     for (int i = 0; i < 512; i++)
       x[i] = random_sample(round);
-    for (int i = 0; i < 36; i++)
-      in[i] = random_sample(round);
+    subband_input(round, in);
     kernels->filter(x, off, s);
     filter_reference(x, off, s_ref);
     failures += memcmp(s, s_ref, sizeof(s)) != 0;
