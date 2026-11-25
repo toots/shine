@@ -51,6 +51,7 @@ const shine = new Shine({
   bitrate: 128,
   channels: 2,
   stereoMode: StereoMode.STEREO,
+  quality: 1,
 });
 
 // All the magic happens here
@@ -67,6 +68,10 @@ const flushed = shine.close();
 ```
 
 `stereoMode` defaults to `MONO` for one channel and `JOINT_STEREO` for two.
+`quality` defaults to 0, which runs no psychoacoustic model: 1 runs it, at
+about a third of the speed. At quality 1 and low bitrates the stream has a
+lower samplerate than the input, and a call to `encode` can return no frame,
+or several.
 
 Building
 --------

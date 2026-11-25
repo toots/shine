@@ -3,7 +3,8 @@
 
 #include "layer3.h"
 
-shine_t shine_js_init(int channels, int samplerate, int mode, int bitrate) {
+shine_t shine_js_init(int channels, int samplerate, int mode, int bitrate,
+                      int quality) {
   shine_config_t config;
 
   shine_set_config_mpeg_defaults(&config.mpeg);
@@ -11,6 +12,7 @@ shine_t shine_js_init(int channels, int samplerate, int mode, int bitrate) {
   config.wave.samplerate = samplerate;
   config.mpeg.mode = mode;
   config.mpeg.bitrate = bitrate;
+  config.mpeg.quality = quality;
 
   return shine_initialise(&config);
 }

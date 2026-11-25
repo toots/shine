@@ -65,13 +65,29 @@ const cases = [
   { samplerate: 32000, bitrate: 64, channels: 2, stereoMode: StereoMode.DUAL_CHANNEL, options: ["-d"] },
   { samplerate: 22050, bitrate: 64, channels: 1, stereoMode: StereoMode.MONO, options: [] },
   { samplerate: 8000, bitrate: 16, channels: 1, stereoMode: StereoMode.MONO, options: [] },
+  {
+    samplerate: 44100,
+    bitrate: 128,
+    channels: 2,
+    stereoMode: StereoMode.JOINT_STEREO,
+    quality: 1,
+    options: ["-j", "-Q", "1"],
+  },
+  {
+    samplerate: 44100,
+    bitrate: 48,
+    channels: 2,
+    stereoMode: StereoMode.JOINT_STEREO,
+    quality: 1,
+    options: ["-j", "-Q", "1"],
+  },
 ];
 
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), "shine-wasm-"));
 let passed = 0;
 
 for (const { options, ...config } of cases) {
-  const name = `${config.samplerate} Hz ${config.bitrate} kbps mode ${config.stereoMode}`;
+  const name = `${config.samplerate} Hz ${config.bitrate} kbps mode ${config.stereoMode} quality ${config.quality ?? 0}`;
   const data = generate(config.channels);
   const wav = path.join(directory, "input.wav");
   const mp3 = path.join(directory, "native.mp3");

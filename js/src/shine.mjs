@@ -53,14 +53,14 @@ export class Shine {
     return wasm.shine_check_config(samplerate, bitrate) >= 0;
   }
 
-  constructor({ samplerate, bitrate, channels, stereoMode }) {
+  constructor({ samplerate, bitrate, channels, stereoMode, quality }) {
     if (!wasm) throw new Error("Await Shine.initialized first");
     if (channels !== 1 && channels !== 2) throw new Error("Invalid number of channels");
     if (!Shine.checkConfig(samplerate, bitrate)) throw new Error("Invalid configuration");
 
     const mode = stereoMode ?? (channels === 1 ? StereoMode.MONO : StereoMode.JOINT_STEREO);
 
-    this._handle = wasm.shine_js_init(channels, samplerate, mode, bitrate);
+    this._handle = wasm.shine_js_init(channels, samplerate, mode, bitrate, quality ?? 0);
     if (!this._handle) throw new Error("Cannot initialise the encoder");
 
     this._channels = channels;
