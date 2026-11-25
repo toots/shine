@@ -10,6 +10,7 @@
 #include "bitstream.h"
 
 #include "fixed_point.h"
+#include "kernels.h"
 
 #define HAN_SIZE 512 /* for loop unrolling, require that HAN_SIZE%8==0 */
 #define SBLIMIT 32
@@ -149,6 +150,7 @@ typedef struct shine_global_flags {
   int ResvMax;
   l3loop_t l3loop;
   subband_t subband;
+  shine_kernels_t kernels;
   struct psy_model *psy; /* NULL at quality 0 */
   /* doc/psy/resampling.md: NULL when the input is at the encoding rate,
    * wave.samplerate. */

@@ -9,7 +9,7 @@ noinst_HEADERS = src/bin/main.h src/bin/wave.h \
                  src/lib/l3loop.h src/lib/l3mdct.h src/lib/l3subband.h \
                  src/lib/fixed_point.h src/lib/reservoir.h src/lib/tables.h \
                  src/lib/types.h src/lib/psy.h src/lib/psy_tables.h \
-                 src/lib/resample.h
+                 src/lib/resample.h src/lib/kernels.h
 
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS  = -I m4
@@ -19,7 +19,7 @@ AM_CFLAGS = -Wall -Wextra -funroll-loops -fsigned-char
 
 lib_LTLIBRARIES      = libshine.la
 # Everything but the model, which tests/psy_model.c includes.
-CORE_SOURCES         = src/lib/bitstream.c src/lib/huffman.c \
+CORE_SOURCES         = src/lib/bitstream.c src/lib/huffman.c src/lib/kernels.c \
                        src/lib/l3bitstream.c src/lib/l3loop.c src/lib/l3mdct.c \
                        src/lib/l3subband.c src/lib/layer3.c src/lib/resample.c \
                        src/lib/reservoir.c \
@@ -38,7 +38,7 @@ shineenc_LDADD   = libshine.la
 # _SOURCES line below.
 TESTS          = tests/config tests/framing tests/flush tests/wave tests/cli \
                  tests/golden tests/level tests/reservoir tests/psy_model \
-                 tests/resample
+                 tests/resample tests/kernels
 check_PROGRAMS = $(TESTS)
 TEST_HELPERS   = tests/helpers.c tests/helpers.h
 LDADD          = libshine.la
@@ -57,6 +57,12 @@ tests_reservoir_SOURCES = tests/reservoir.c $(TEST_HELPERS)
 tests_psy_model_SOURCES = tests/psy_model.c $(CORE_SOURCES)
 tests_psy_model_CFLAGS  = $(AM_CFLAGS)
 tests_psy_model_LDADD   = -lm
+
+# Built from the library's sources, to reach both kernel sets.
+tests_kernels_SOURCES = tests/kernels.c src/lib/kernels.c src/lib/tables.c \
+                        src/lib/precomputed_tables.c
+tests_kernels_CFLAGS  = $(AM_CFLAGS)
+tests_kernels_LDADD   =
 
 # Built from the library's sources, to reach the converter.
 tests_resample_SOURCES = tests/resample.c $(TEST_HELPERS) $(libshine_la_SOURCES)

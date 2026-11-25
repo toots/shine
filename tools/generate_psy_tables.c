@@ -7,7 +7,8 @@
  * built with it:
  *
  * cc -Isrc/lib tools/generate_psy_tables.c src/lib/l3mdct.c \
- *   src/lib/l3subband.c src/lib/tables.c src/lib/precomputed_tables.c \
+ *   src/lib/l3subband.c src/lib/kernels.c src/lib/tables.c \
+ *   src/lib/precomputed_tables.c \
  *   -lm -o generate_psy_tables
  * ./generate_psy_tables > src/lib/psy_tables.h
  * clang-format -i src/lib/psy_tables.h
@@ -121,6 +122,7 @@ static double mdct_sine_energy(int short_blocks) {
     config.wave.channels = 1;
     config.mpeg.granules_per_frame = 1;
     config.psy = &model;
+    shine_kernels_select(&config.kernels);
     config.side_info.gr[0].ch[0].tt.block_type =
         short_blocks ? BLOCK_SHORT : BLOCK_NORM;
     for (int g = 0; g < warmup + granules; g++) {

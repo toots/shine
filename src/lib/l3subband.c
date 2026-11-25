@@ -20,8 +20,7 @@
 void shine_window_filter_subband(const int16_t **buffer, int32_t s[SBLIMIT],
                                  int ch, shine_global_config *config,
                                  int stride) {
-  int32_t y[64];
-  int i, j;
+  int i;
   const int16_t *ptr = *buffer;
 
   /* replace 32 oldest samples with 32 new samples */
@@ -31,25 +30,8 @@ void shine_window_filter_subband(const int16_t **buffer, int32_t s[SBLIMIT],
   }
   *buffer = ptr;
 
-  for (i = 64; i--;) {
-    int32_t sum = 0;
-
-    for (j = 0; j < 8; j++)
-      sum += mul(
-          config->subband
-              .x[ch][(config->subband.off[ch] + i + (j << 6)) & (HAN_SIZE - 1)],
-          shine_enwindow[i + (j << 6)]);
-    y[i] = sum;
-  }
+  config->kernels.filter(config->subband.x[ch], config->subband.off[ch], s);
 
   config->subband.off[ch] = (config->subband.off[ch] + 480) &
                             (HAN_SIZE - 1); /* offset is modulo (HAN_SIZE)*/
-
-  for (i = SBLIMIT; i--;) {
-    int32_t sum = 0;
-
-    for (j = 0; j < 64; j++)
-      sum += mul(shine_subband_filter[i][j], y[j]);
-    s[i] = sum;
-  }
 }

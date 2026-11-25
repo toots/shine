@@ -6,33 +6,6 @@
 #include "tables.h"
 #include "types.h"
 
-/* The 18 coefficients of a long block, with the window in `table`. With the
- * headroom of the tables, the sum of the absolute values of the terms is at
- * most 0.705 * 2**31 for any input. */
-static void mdct_long(const int32_t in[36], const int32_t table[18][36],
-                      int32_t out[18]) {
-  for (int k = 18; k--;) {
-    int32_t sum = 0;
-
-    for (int j = 0; j < 36; j++)
-      sum += mul(in[j], table[k][j]);
-    out[k] = sum;
-  }
-}
-
-/* The 6 coefficients of each of the three short windows of a block, which
- * cover samples 6..17, 12..23 and 18..29. */
-static void mdct_short(const int32_t in[36], int32_t out[3][6]) {
-  for (int window = 0; window < 3; window++)
-    for (int k = 0; k < 6; k++) {
-      int32_t sum = 0;
-
-      for (int j = 0; j < 12; j++)
-        sum += mul(in[6 + 6 * window + j], shine_mdct_cosine_short[k][j]);
-      out[window][k] = sum;
-    }
-}
-
 /* Short coefficients in coded order: by scalefactor band, then window. */
 static void reorder_short(const int32_t lines[3][192], const int *sfb,
                           int32_t *out) {
@@ -92,12 +65,12 @@ void shine_mdct_sub(shine_global_config *config, int stride) {
         if (config->psy) {
           int32_t out[3][6];
 
-          mdct_short(mdct_in, out);
+          config->kernels.mdct(mdct_in, table, long_enc[band], out);
           for (int window = 0; window < 3; window++)
             for (int k = 0; k < 6; k++)
               short_lines[window][6 * band + k] = out[window][k];
-        }
-        mdct_long(mdct_in, table, long_enc[band]);
+        } else
+          config->kernels.mdct(mdct_in, table, long_enc[band], NULL);
 
         /* Perform aliasing reduction butterfly */
         if (band != 0) {
