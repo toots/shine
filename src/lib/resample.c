@@ -23,9 +23,13 @@ struct shine_resampler {
   int remainder;         /* down % up */
   int phase;             /* of the next output sample, 0 to up - 1 */
   int fill;              /* samples held per channel */
-  int16_t *coefficients; /* [up][taps] */
-  int16_t *history[2];   /* [taps + step + MAX_INPUT] */
+  int16_t *coefficients; /* [up][2][padded_half(taps)] */
+  int16_t *history[2];   /* [taps + step + MAX_INPUT + padding] */
 };
+
+/* Each half of a phase, zero-padded to a multiple of 8 so that its dot
+ * product has a trip count that compilers vectorise without an epilogue. */
+static inline int padded_half(int taps) { return (taps / 2 + 7) & ~7; }
 
 /* §1: RESAMPLE_BAND_FRACTION = 0.92, RESAMPLE_MIN_RATIO = 0.8. */
 int shine_resample_rate(int samplerate, int bitrate, int cutoff) {
@@ -110,11 +114,21 @@ static int phase_coefficients(const shine_resampler_t *resampler, int phase,
   return 1;
 }
 
+static void store_padded(const int16_t *coefficients, int taps,
+                         int16_t *padded) {
+  const int half = taps / 2;
+
+  memcpy(padded, coefficients, half * sizeof(*padded));
+  memcpy(padded + padded_half(taps), coefficients + half,
+         half * sizeof(*padded));
+}
+
 shine_resampler_t *shine_resampler_open(int input_rate, int output_rate,
                                         int channels) {
   const int divisor = greatest_common_divisor(input_rate, output_rate);
   shine_resampler_t *resampler = calloc(1, sizeof(*resampler));
-  int lead, before, capacity;
+  int16_t phase_taps[MAX_TAPS];
+  int lead, before, capacity, padded;
 
   if (!resampler)
     return NULL;
@@ -125,10 +139,14 @@ shine_resampler_t *shine_resampler_open(int input_rate, int output_rate,
   resampler->remainder = resampler->down % resampler->up;
   lead = RESAMPLE_ZEROS * resampler->down / resampler->up;
   resampler->taps = 2 * lead + 2;
-  capacity = resampler->taps + resampler->step + 1 + MAX_INPUT;
+  padded = padded_half(resampler->taps);
+  /* The second half's dot product reads padded - taps / 2 samples past the
+   * last tap. */
+  capacity = resampler->taps + resampler->step + 1 + MAX_INPUT + padded -
+             resampler->taps / 2;
 
   resampler->coefficients =
-      malloc((size_t)resampler->up * resampler->taps * sizeof(int16_t));
+      calloc((size_t)resampler->up * 2 * padded, sizeof(int16_t));
   for (int ch = 0; ch < channels; ch++)
     resampler->history[ch] = calloc(capacity, sizeof(int16_t));
   if (!resampler->coefficients || !resampler->history[0] ||
@@ -136,13 +154,14 @@ shine_resampler_t *shine_resampler_open(int input_rate, int output_rate,
     shine_resampler_close(resampler);
     return NULL;
   }
-  for (int phase = 0; phase < resampler->up; phase++)
-    if (!phase_coefficients(resampler, phase,
-                            resampler->coefficients +
-                                phase * resampler->taps)) {
+  for (int phase = 0; phase < resampler->up; phase++) {
+    if (!phase_coefficients(resampler, phase, phase_taps)) {
       shine_resampler_close(resampler);
       return NULL;
     }
+    store_padded(phase_taps, resampler->taps,
+                 resampler->coefficients + phase * 2 * padded);
+  }
 
   /* §4: output sample k is centred RESAMPLE_ZEROS output periods before
    * input sample k * down / up. The history starts with the silence that
@@ -171,14 +190,14 @@ int shine_resample_bound(const shine_resampler_t *resampler, int count) {
 
 static inline int16_t filter(const int16_t *samples,
                              const int16_t *coefficients, int taps) {
-  const int half = taps / 2;
+  const int half = taps / 2, padded = padded_half(taps);
   int32_t first = 0, second = 0;
   int64_t sum;
 
-  for (int j = 0; j < half; j++)
+  for (int j = 0; j < padded; j++)
     first += samples[j] * coefficients[j];
-  for (int j = 0; j < half; j++)
-    second += samples[half + j] * coefficients[half + j];
+  for (int j = 0; j < padded; j++)
+    second += samples[half + j] * coefficients[padded + j];
   sum = ((int64_t)first + second + (1 << (COEFFICIENT_BITS - 1))) >>
         COEFFICIENT_BITS;
   return (int16_t)(sum > 32767 ? 32767 : sum < -32768 ? -32768 : sum);
@@ -200,8 +219,9 @@ int shine_resample(shine_resampler_t *resampler, const int16_t *const *input,
     phase = resampler->phase;
     written = 0;
     while (position + taps <= fill) {
-      output[ch][written++] = filter(
-          history + position, resampler->coefficients + phase * taps, taps);
+      output[ch][written++] =
+          filter(history + position,
+                 resampler->coefficients + phase * 2 * padded_half(taps), taps);
       position += resampler->step;
       phase += resampler->remainder;
       if (phase >= resampler->up) {
