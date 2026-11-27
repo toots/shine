@@ -368,7 +368,9 @@ allowed distortion as the band that needs least, rounded to the nearest
 scalefactor. `scalefac_scale` is 0, unless a scalefactor then passes its
 largest value: they are computed again with 1, and what still passes is
 set to the largest value. A band that cannot be over starts at 0. Attempt
-0 of §4 has these scalefactors.
+0 of §4 has these scalefactors; if the granule does not fit its bits with
+them at any step, or their coding alone exceeds its bits, it starts from
+scalefactors 0 instead.
 
 The loop of §4 raises every band that is over by the same step, and stops
 when all of them have been raised: when the whole granule is over, as
