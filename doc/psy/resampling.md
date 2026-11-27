@@ -43,6 +43,9 @@ and nothing else. For a 44.1 or 48 kHz input:
 |---|---|---|---|---|---|---|
 | `fs` (kHz) | 16 | 16 | 22.05 | 24 | 32 | `fs_in` |
 
+In joint stereo 32 kbps per channel takes 32 kHz
+([bandwidth.md](bandwidth.md) §1, `JOINT_WIDE_KBPS`).
+
 The rule MUST be confirmed by the metric report ([tests.md](tests.md) §4)
 whenever the cutoff table changes: each rate it chooses scored at least as
 well as the rates above it, **as measured** on stereo at 32, 48, 64, 80

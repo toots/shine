@@ -17,6 +17,13 @@ in `kbps_ch` between the rows of this table, **tuning**:
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | `f_c` (kHz) | 3 | 7 | 9.5 | 11 | 11 | 14.5 | 14.5 | 17 | 17.25 | 18 | 19 | 19.5 |
 
+A joint stereo stream with `kbps_ch` from `JOINT_WIDE_KBPS` = 32 up to 40
+takes the cutoff of 40: M/S coding leaves the mid channel enough bits for
+the wider band, where two channels coded apart or one channel at the same
+rate lose from it (**as measured** at 64 kbps from 44.1 kHz: the 32 kHz
+stream against the 24 kHz one gains 2.7 points of the mean in joint
+stereo, loses 1.2 in plain stereo, and 0.8 for one channel at 32 kbps).
+
 Below 8 the cutoff is that of 8. From `LOWPASS_NONE_KBPS` = 128 per
 channel there is no cutoff. Where `f_c ≥ LOWPASS_NYQUIST_FRACTION · fs/2`
 there is none either: the band left above it is too narrow to save bits.
