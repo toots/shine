@@ -9,6 +9,8 @@
 #include "tables.h"
 #include "types.h"
 
+#include <limits.h>
+
 #define SFB_LMAX 22
 
 static int part2_length(int gr, int ch, shine_global_config *config);
@@ -16,7 +18,7 @@ static int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE],
                                gr_info *cod_info, shine_global_config *config);
 static int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin,
                             unsigned int end, int *bits);
-static int bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info);
+static int bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info, int limit);
 static void subdivide(gr_info *cod_info, shine_global_config *config);
 static int count1_bitcount(int ix[GRANULE_SIZE], gr_info *cod_info);
 static void calc_runlen(int ix[GRANULE_SIZE], gr_info *cod_info);
@@ -31,7 +33,7 @@ static int quantize(int ix[GRANULE_SIZE], int stepsize,
  */
 int shine_inner_loop(int ix[GRANULE_SIZE], int max_bits, gr_info *cod_info,
                      shine_global_config *config) {
-  int bits, c1bits, bvbits;
+  int bits;
 
   if (max_bits < 0)
     cod_info->quantizerStepSize--;
@@ -39,10 +41,10 @@ int shine_inner_loop(int ix[GRANULE_SIZE], int max_bits, gr_info *cod_info,
     while (quantize(ix, ++cod_info->quantizerStepSize, config) > 8192)
       ; /* within table range? */
 
-    calc_runlen(ix, cod_info);                      /* rzero,count1,big_values*/
-    bits = c1bits = count1_bitcount(ix, cod_info);  /* count1_table selection*/
-    subdivide(cod_info, config);                    /* bigvalues sfb division */
-    bits += bvbits = bigv_tab_select(ix, cod_info); /* tables, bit count */
+    /* The last step size keeps its count whatever it is. */
+    bits = shine_count_bits_up_to(
+        ix, cod_info, config,
+        cod_info->quantizerStepSize < MAX_STEPSIZE ? max_bits : INT_MAX);
     /* All coefficients quantize to 0 well before MAX_STEPSIZE. */
   } while (bits > max_bits && cod_info->quantizerStepSize < MAX_STEPSIZE);
   return bits;
@@ -550,7 +552,8 @@ void subdivide(gr_info *cod_info, shine_global_config *config) {
  * ----------------
  * Function: Select huffman code tables for bigvalues regions
  */
-int bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info) {
+/* Stops with the bits so far once they are above limit. */
+int bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info, int limit) {
   int bits = 0;
 
   cod_info->table_select[0] = 0;
@@ -561,10 +564,14 @@ int bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info) {
     cod_info->table_select[0] =
         new_choose_table(ix, 0, cod_info->address1, &bits);
 
+  if (bits > limit)
+    return bits;
   if (cod_info->address2 > cod_info->address1)
     cod_info->table_select[1] =
         new_choose_table(ix, cod_info->address1, cod_info->address2, &bits);
 
+  if (bits > limit)
+    return bits;
   if (cod_info->big_values << 1 > cod_info->address2)
     cod_info->table_select[2] = new_choose_table(
         ix, cod_info->address2, cod_info->big_values << 1, &bits);
@@ -679,12 +686,8 @@ int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE],
 
     if (quantize(ix, next + half, config) > 8192)
       bit = 100000; /* fail */
-    else {
-      calc_runlen(ix, cod_info);            /* rzero,count1,big_values */
-      bit = count1_bitcount(ix, cod_info);  /* count1_table selection */
-      subdivide(cod_info, config);          /* bigvalues sfb division */
-      bit += bigv_tab_select(ix, cod_info); /* tables, bit count */
-    }
+    else
+      bit = shine_count_bits_up_to(ix, cod_info, config, desired_rate);
 
     if (bit < desired_rate)
       count = half;
@@ -711,14 +714,21 @@ int shine_quantize_band(int ix[GRANULE_SIZE], int begin, int end, int stepsize,
   return quantize_range(ix, begin, end, stepsize, peak, config);
 }
 
-int shine_count_bits(int ix[GRANULE_SIZE], gr_info *cod_info,
-                     shine_global_config *config) {
+int shine_count_bits_up_to(int ix[GRANULE_SIZE], gr_info *cod_info,
+                           shine_global_config *config, int limit) {
   int bits;
 
   calc_runlen(ix, cod_info);
   bits = count1_bitcount(ix, cod_info);
+  if (bits > limit)
+    return bits;
   subdivide(cod_info, config);
-  return bits + bigv_tab_select(ix, cod_info);
+  return bits + bigv_tab_select(ix, cod_info, limit - bits);
+}
+
+int shine_count_bits(int ix[GRANULE_SIZE], gr_info *cod_info,
+                     shine_global_config *config) {
+  return shine_count_bits_up_to(ix, cod_info, config, INT_MAX);
 }
 
 /* Classes of big-value regions: a region whose largest value is max chooses

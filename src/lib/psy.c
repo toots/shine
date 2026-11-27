@@ -1418,7 +1418,7 @@ static int bits_at(shine_global_config *config, int *ix, gr_info *gi,
 
   if (quantize_granule(config, ix, q, s) > PSY_IX_MAX)
     return -1;
-  bits = shine_count_bits(ix, gi, config);
+  bits = shine_count_bits_up_to(ix, gi, config, budget);
   return bits <= budget ? bits : -1;
 }
 
@@ -1730,7 +1730,7 @@ static int under_at(shine_global_config *config, int *ix, gr_info *gi, int q,
 
   if (quantize_granule(config, ix, q, s) > PSY_IX_MAX)
     return 0;
-  *bits = shine_count_bits(ix, gi, config);
+  *bits = shine_count_bits_up_to(ix, gi, config, ceiling_bits);
   /* A larger step size does not always count fewer bits. */
   if (*bits < floor_bits || *bits > ceiling_bits)
     return 0;
