@@ -861,6 +861,19 @@ static int32_t interp(int32_t x, int32_t y, int32_t r) {
 #define PREECHO_LATE 23593
 #define PREECHO_EARLY 11796
 
+/* §block-switching 4: whether window j takes the late limit from the
+ * window before, the early one from the window before, or the early one
+ * from two windows before, slot2 being slot 2 of the granule before. */
+static int late_limit(const int *attacks, int j) {
+  return attacks[j] >= 2 || attacks[j + 1] == 1;
+}
+
+static int early_limit(const int *attacks, int j) { return attacks[j] == 1; }
+
+static int early_limit_2(const int *attacks, int j, int slot2) {
+  return !early_limit(attacks, j) && (j ? attacks[j - 1] : slot2) == 3;
+}
+
 /* §block-switching 4: the short thresholds of analysis channel c in granule
  * g, against the windows before them. */
 static void short_preecho(psy_model_t *model, int g, int c) {
@@ -877,11 +890,11 @@ static void short_preecho(psy_model_t *model, int g, int c) {
       int32_t prev2 = j == 0 ? last[1] : j == 1 ? last[2] : new[0];
       int32_t t = scale(thm[j][sb], LOG2_PREECHO_ATT0);
 
-      if (attacks[j] >= 2 || attacks[j + 1] == 1)
+      if (late_limit(attacks, j))
         t = min32(t, interp(prev, t, PREECHO_LATE));
-      if (attacks[j] == 1)
+      if (early_limit(attacks, j))
         t = min32(t, interp(prev, t, PREECHO_EARLY));
-      else if (j ? attacks[j - 1] == 3 : model->previous_slot2[c] == 3)
+      else if (early_limit_2(attacks, j, model->previous_slot2[c]))
         t = min32(t, interp(prev2, t, PREECHO_EARLY));
       new[j] = scale(t, -ONE * model->pulse[g][c][j]);
     }
@@ -948,14 +961,17 @@ static void short_history(psy_model_t *model, int g, int stereo) {
 }
 
 /* §block-switching 4: whether the short pre-echo control of granule g reads
- * the thresholds of the granule before, on any analysis channel. */
+ * the thresholds of the granule before, on any analysis channel: the window
+ * before window 0, and two windows before windows 0 and 1, are of that
+ * granule. */
 static int reads_last_short(const psy_model_t *model, int g) {
   for (int c = 0; c < model->channels; c++) {
     const int *attacks = model->attacks[g][c];
     const int slot2 =
         g ? model->attacks[g - 1][c][2] : model->previous_slot2[c];
 
-    if (attacks[0] || attacks[1] == 1 || slot2 == 3)
+    if (late_limit(attacks, 0) || early_limit(attacks, 0) ||
+        early_limit_2(attacks, 0, slot2) || early_limit_2(attacks, 1, slot2))
       return 1;
   }
   return 0;
