@@ -13,8 +13,10 @@
 #endif
 
 /* On arm64 with GCC or clang they are also built on vectors of 4 lanes, each
- * lane one filter step or one subband. */
-#if defined(__aarch64__) && (defined(__clang__) || __GNUC__ >= 9)
+ * lane one filter step or one subband; not where the build has no vector
+ * registers (-mgeneral-regs-only). */
+#if defined(__aarch64__) && defined(__ARM_NEON) &&                             \
+    (defined(__clang__) || __GNUC__ >= 9)
 #define SHINE_KERNELS_NEON 1
 #endif
 
