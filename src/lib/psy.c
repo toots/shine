@@ -191,33 +191,38 @@ static uint64_t linear_energy(int32_t x) {
 static void spread_energy(const psy_layout_t *layout,
                           const psy_partitions_t *parts, int32_t *ecb,
                           int *idx_sum) {
-  uint64_t energy[PSY_NPART_MAX];
+  /* Each energy, at most 2^SPREAD_RANGE, in two halves of SPREAD_SHIFT
+   * bits: energy · row exceeds 64 bits, each half's product does not. */
+  uint32_t energy_high[PSY_NPART_MAX], energy_low[PSY_NPART_MAX];
   int32_t attenuated[PSY_NPART_MAX], loudest = ZERO;
+  int idx_before[PSY_NPART_MAX + 1];
 
+  idx_before[0] = 0;
   for (int p = 0; p < layout->npart; p++) {
     attenuated[p] = scale(parts->eb[p], psy_tab[parts->idx[p]]);
     loudest = max32(loudest, attenuated[p]);
+    idx_before[p + 1] = idx_before[p] + parts->idx[p];
   }
-  for (int p = 0; p < layout->npart; p++)
-    energy[p] =
+  for (int p = 0; p < layout->npart; p++) {
+    uint64_t energy =
         attenuated[p] == ZERO || attenuated[p] - loudest < -SPREAD_RANGE * ONE
             ? 0
             : linear_energy(attenuated[p] - loudest + SPREAD_RANGE * ONE);
+
+    energy_high[p] = (uint32_t)(energy >> SPREAD_SHIFT);
+    energy_low[p] = (uint32_t)energy & ((1u << SPREAD_SHIFT) - 1);
+  }
   for (int b = 0; b < layout->npart; b++) {
     const int lo = layout->spread_lo[b], hi = layout->spread_hi[b];
     const uint32_t *row = &layout->spread[layout->spread_offset[b]];
+    const uint32_t *high = &energy_high[lo], *low = &energy_low[lo];
     uint64_t sum = 0;
-    int indices = 0;
 
-    for (int p = lo; p <= hi; p++) {
-      /* energy · row in two halves: the product exceeds 64 bits. */
-      sum += (energy[p] >> SPREAD_SHIFT) * row[p - lo] +
-             (((energy[p] & ((1u << SPREAD_SHIFT) - 1)) * row[p - lo]) >>
-              SPREAD_SHIFT);
-      indices += parts->idx[p];
-    }
+    for (int j = 0; j <= hi - lo; j++)
+      sum += (uint64_t)high[j] * row[j] +
+             (((uint64_t)low[j] * row[j]) >> SPREAD_SHIFT);
     ecb[b] = sum ? log2_q16(sum) + loudest - SPREAD_RANGE * ONE : ZERO;
-    idx_sum[b] = indices;
+    idx_sum[b] = idx_before[hi + 1] - idx_before[lo];
   }
 }
 
