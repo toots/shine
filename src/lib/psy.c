@@ -192,6 +192,15 @@ static int32_t analyse_in(const psy_layout_t *layout, psy_channel_t *channel,
     uint64_t sum = 0, sum_t = 0, peak_t = 0;
     uint32_t peak = 0;
 
+    if (start[b + 1] - start[b] == 1) {
+      /* The energies of the line. */
+      sum = energy[start[b]];
+      parts->eb_raw[b] = sum;
+      parts->eb[b] = parts->max[b] = scale(shine_psy_log2(sum), parts->unit);
+      max_t[b] = avg_t[b] = energy_t[start[b]];
+      total += sum;
+      continue;
+    }
     for (int k = start[b]; k < start[b + 1]; k++) {
       sum += energy[k];
       peak = magnitude[k] > peak ? magnitude[k] : peak;
