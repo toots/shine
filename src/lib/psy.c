@@ -552,31 +552,61 @@ static int64_t attack_filter(const int16_t *input, int n) {
   return sum;
 }
 
+#define SUB_BLOCK 64
+#define DETECTOR_GRANULE (9 * SUB_BLOCK)
+
+/* §1.1 over the detector granule that starts at input[start]. Each tap
+ * splits into a multiple of 256 and a remainder, so that the products of
+ * either part add up in 32 bits, which vectorises. */
+static void attack_filter_granule(const int16_t *input, int start, int64_t *h) {
+  const int16_t *f = input + start;
+
+  for (int i = 0; i < DETECTOR_GRANULE; i++) {
+    int32_t high = 0, low = 0;
+
+    for (int j = 0; j < 5; j++) {
+      const int32_t pair = f[i - 9 + 2 * j] + f[i + 9 - 2 * j];
+
+      high += psy_attack_taps[j] / 256 * pair;
+      low += psy_attack_taps[j] % 256 * pair;
+    }
+    h[i] = (int64_t)f[i] * 65536 + (int64_t)high * 256 + low;
+  }
+}
+
+/* (L ± R)/√2 of filter outputs, of a sum below 2^35. */
+static int64_t mid_side_filtered(int64_t sum) {
+  return ((int64_t)(int32_t)(sum >> 4) * PSY_INV_SQRT2) >> 27;
+}
+
+static int64_t sub_block_peak(const int64_t *h) {
+  int64_t peak = PSY_PEAK_FLOOR;
+
+  for (int n = 0; n < SUB_BLOCK; n++) {
+    int64_t magnitude = h[n] < 0 ? -h[n] : h[n];
+
+    peak = magnitude > peak ? magnitude : peak;
+  }
+  return peak;
+}
+
 /* §1.2: the nine sub-block peaks of the detector granule that starts at
  * input[start], for each analysis channel. */
 static void sub_block_peaks(const psy_model_t *model, int channels, int start,
                             int64_t peaks[PSY_CHANNELS][9]) {
-  for (int i = 0; i < 9; i++) {
-    for (int c = 0; c < model->channels; c++)
-      peaks[c][i] = PSY_PEAK_FLOOR;
-    for (int n = start + 64 * i; n < start + 64 * (i + 1); n++) {
-      int64_t h[PSY_CHANNELS];
+  int64_t h[PSY_CHANNELS][DETECTOR_GRANULE];
 
-      h[0] = attack_filter(model->input[0], n);
-      h[1] = channels == 2 ? attack_filter(model->input[1], n) : 0;
-      if (model->channels == 4) {
-        /* (L ± R)/√2, of sums below 2^35. */
-        h[2] = (((h[0] + h[1]) >> 4) * PSY_INV_SQRT2) >> 27;
-        h[3] = (((h[0] - h[1]) >> 4) * PSY_INV_SQRT2) >> 27;
-      }
-      for (int c = 0; c < model->channels; c++) {
-        int64_t magnitude = h[c] < 0 ? -h[c] : h[c];
-
-        if (magnitude > peaks[c][i])
-          peaks[c][i] = magnitude;
-      }
+  attack_filter_granule(model->input[0], start, h[0]);
+  if (channels == 2)
+    attack_filter_granule(model->input[1], start, h[1]);
+  if (model->channels == 4)
+    for (int n = 0; n < DETECTOR_GRANULE; n++) {
+      h[2][n] = mid_side_filtered(h[0][n] + h[1][n]);
+      h[3][n] = mid_side_filtered(h[0][n] - h[1][n]);
     }
-  }
+  for (int c = 0; c < model->channels; c++)
+    for (int i = 0; i < 9; i++)
+      peaks[c][i] = sub_block_peak(&h[c][SUB_BLOCK * i]);
 }
 
 /* §1.3 to §1.5 for analysis channel c: the slots of the granule, and whether
