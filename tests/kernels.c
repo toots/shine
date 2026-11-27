@@ -43,9 +43,11 @@ static error_stats_t errors[ERROR_KINDS] = {
 
 static const int long_types[3] = {BLOCK_NORM, BLOCK_START, BLOCK_STOP};
 
-/* Kernel sets to compare, the first one checked against double precision. */
-static const shine_kernels_t *kernel_sets[3];
-static const char *kernel_names[3];
+/* Kernel sets to compare, the first one checked against double precision:
+ * every available one, then the chosen one. */
+#define MAX_KERNEL_SETS 8
+static const shine_kernels_t *kernel_sets[MAX_KERNEL_SETS];
+static const char *kernel_names[MAX_KERNEL_SETS];
 static int kernel_count;
 static long identity_checks, identity_failures;
 
@@ -137,7 +139,7 @@ static int32_t *step_window(int32_t x[SHINE_FILTER_INPUT], int step) {
 }
 
 static void check_filter(const int32_t x[SHINE_FILTER_INPUT]) {
-  static int32_t s[3][18][32];
+  static int32_t s[MAX_KERNEL_SETS][18][32];
 
   for (int set = 0; set < kernel_count; set++) {
     kernel_sets[set]->filter(x, s[set]);
@@ -164,7 +166,8 @@ typedef struct {
 static mdct_queue_t mdct_queues[3];
 
 static void flush_mdct(int type_index) {
-  static int32_t long_out[3][32][18], short_out[3][3][192], long_only[32][18];
+  static int32_t long_out[MAX_KERNEL_SETS][32][18],
+      short_out[MAX_KERNEL_SETS][3][192], long_only[32][18];
   mdct_queue_t *queue = &mdct_queues[type_index];
   const int32_t *window = shine_mdct_window[long_types[type_index]];
 
@@ -438,21 +441,34 @@ static int report(void) {
   return failed || identity_failures || checked == 0 || identity_checks == 0;
 }
 
-int main(void) {
+/* With --list, prints the name of each set the processor runs, one per
+ * line, then those it does not run, each after "missing ". */
+static int list_sets(void) {
+  for (int missing = 0; missing < 2; missing++)
+    for (int i = 0; shine_kernels_name(i); i++)
+      if ((shine_kernels_named(shine_kernels_name(i)) == NULL) == missing)
+        printf("%s%s\n", missing ? "missing " : "", shine_kernels_name(i));
+  return 0;
+}
+
+int main(int argc, char **argv) {
   shine_kernels_t selected;
 
+  if (argc > 1 && !strcmp(argv[1], "--list"))
+    return list_sets();
   add_kernel_set("plain", &shine_kernels_plain);
-#ifdef SHINE_KERNELS_AVX2
-  __builtin_cpu_init();
-  if (__builtin_cpu_supports("avx2"))
-    add_kernel_set("avx2", &shine_kernels_avx2);
-  else
-    printf("avx2 not run: the processor does not have it\n");
-#endif
-#ifdef SHINE_KERNELS_NEON
-  add_kernel_set("neon", &shine_kernels_neon);
-#endif
-  shine_kernels_select(&selected);
+  for (int i = 0; shine_kernels_name(i); i++) {
+    const char *name = shine_kernels_name(i);
+
+    if (!strcmp(name, "plain"))
+      continue;
+    if (shine_kernels_named(name))
+      add_kernel_set(name, shine_kernels_named(name));
+    else
+      printf("%s not run: not available\n", name);
+  }
+  if (shine_kernels_select(&selected) < 0)
+    return 1;
   add_kernel_set("chosen", &selected);
 
   check_filter_random();

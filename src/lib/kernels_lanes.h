@@ -1,5 +1,6 @@
-/* The transforms of kernels.c on LANES independent inputs at once, one per
- * lane of LANE_T. kernels.c includes this once per lane type, with:
+/* The transforms of the filter bank on LANES independent inputs at once, one
+ * per lane of LANE_T. Each kernel file includes this after kernels_body.h,
+ * once for its lane type, with:
  *   LANES       inputs transformed together
  *   LANE_T      one 32-bit value per lane, WIDE_T one 64-bit value per lane
  *   WIDEN(x)    LANE_T to WIDE_T, NARROW(x) the low 32 bits of WIDE_T

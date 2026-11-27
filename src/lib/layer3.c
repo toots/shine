@@ -159,7 +159,10 @@ shine_global_config *shine_initialise_at(const shine_config_t *pub_config,
   config = calloc(1, sizeof(shine_global_config));
   if (config == NULL)
     return config;
-  shine_kernels_select(&config->kernels);
+  if (shine_kernels_select(&config->kernels) < 0) {
+    free(config);
+    return NULL;
+  }
 
   /* Copy public config. */
   config->wave.channels = pub_config->wave.channels;

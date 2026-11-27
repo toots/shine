@@ -3,22 +3,18 @@
 
 #include <stdint.h>
 
-/* The filter bank's inner loops, chosen once per encoder. On x86-64 with
- * GCC or clang they are also built on vectors of 4 lanes for AVX2, whose
- * vpmuldq gives the signed 32x32->64-bit products the baseline instruction
- * set lacks. Every build gives the same output: the sums of products are
- * exact in 64 bits, in any order, and each is rounded once. */
-#if defined(__x86_64__) && (defined(__clang__) || __GNUC__ >= 9)
-#define SHINE_KERNELS_AVX2 1
-#endif
-
-/* On arm64 with GCC or clang they are also built on vectors of 4 lanes, each
- * lane one filter step or one subband; not where the build has no vector
- * registers (-mgeneral-regs-only). */
-#if defined(__aarch64__) && defined(__ARM_NEON) &&                             \
-    (defined(__clang__) || __GNUC__ >= 9)
-#define SHINE_KERNELS_NEON 1
-#endif
+/* The hot array arithmetic of the encoder, in sets of functions, one set
+ * chosen per encoder. The plain set (kernels.c) is the reference: portable
+ * C, which defines the result. The other sets build the same bodies for an
+ * instruction set extension and give the same output, bit for bit:
+ *   avx2  x86-64 with AVX2, built with GCC 9 or later or clang and chosen
+ *         when the processor has AVX2 (kernels_x86.c)
+ *   neon  arm64 with vector registers, built with GCC 9 or later or clang
+ *         (kernels_arm.c)
+ *
+ * The environment variable SHINE_KERNELS, read when an encoder is
+ * initialised, forces a set by name. A set that is unknown, or not built
+ * for or not run by the processor, makes the initialisation fail. */
 
 /* Samples under the analysis windows of the 18 filter steps of a granule. */
 #define SHINE_FILTER_INPUT (512 + 17 * 32)
@@ -37,14 +33,20 @@ typedef struct {
 } shine_kernels_t;
 
 extern const shine_kernels_t shine_kernels_plain;
-#ifdef SHINE_KERNELS_AVX2
-extern const shine_kernels_t shine_kernels_avx2;
-#endif
-#ifdef SHINE_KERNELS_NEON
-extern const shine_kernels_t shine_kernels_neon;
-#endif
 
-/* The fastest kernels the processor runs. */
-void shine_kernels_select(shine_kernels_t *kernels);
+/* Each set of an extension, or NULL when the build or the processor does
+ * not have it. */
+const shine_kernels_t *shine_kernels_avx2(void);
+const shine_kernels_t *shine_kernels_neon(void);
+
+/* The name of set `index`, from the most preferred, NULL past the last. */
+const char *shine_kernels_name(int index);
+
+/* The set of that name, NULL when it is not available. */
+const shine_kernels_t *shine_kernels_named(const char *name);
+
+/* The set SHINE_KERNELS names, otherwise the first available. Returns -1
+ * when SHINE_KERNELS names a set that is not available. */
+int shine_kernels_select(shine_kernels_t *kernels);
 
 #endif
