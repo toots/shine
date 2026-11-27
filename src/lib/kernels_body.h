@@ -51,4 +51,24 @@ KERNEL_INLINE void filter_fold(const int64_t y[64], int32_t a[32]) {
     a[n] = round_half(y[16 + n] - y[80 - n]);
 }
 
+/* The references of the kernels a set may leave NULL, and their calls
+ * through a set. */
+KERNEL_INLINE unsigned ix_max_nonzero(const int *ix, int n, int *nonzero) {
+  unsigned max = 0;
+  int count = 0;
+
+  for (int i = 0; i < n; i++) {
+    max = (unsigned)ix[i] > max ? (unsigned)ix[i] : max;
+    count += ix[i] != 0;
+  }
+  *nonzero = count;
+  return max;
+}
+
+KERNEL_INLINE unsigned call_ix_max_nonzero(const shine_kernels_t *kernels,
+                                           const int *ix, int n, int *nonzero) {
+  return kernels->ix_max_nonzero ? kernels->ix_max_nonzero(ix, n, nonzero)
+                                 : ix_max_nonzero(ix, n, nonzero);
+}
+
 #endif

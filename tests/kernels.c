@@ -4,7 +4,7 @@
  * MDCTs on the subband samples the filter makes. Every kernel set built for
  * this processor must also give the same output as the others, bit for
  * bit. */
-#include "kernels.h"
+#include "kernels_body.h"
 #include "tables.h"
 #include "types.h"
 #include <math.h>
@@ -413,6 +413,37 @@ static void check_mdct_subbands_maximising(void) {
     }
 }
 
+/* Whether every set gives the same result as the first. */
+static void same_in_every_set(int differs) {
+  identity_checks++;
+  identity_failures += differs != 0;
+}
+
+/* Quantised values: mostly small, some escapes, some zeros. */
+static int random_ix(void) {
+  const uint32_t r = next_random() >> 16;
+
+  return r % 4 == 0 ? 0 : r % 61 == 0 ? (int)(r % 8207) : (int)(r % 18);
+}
+
+/* Every length up to a granule, from every alignment. */
+static void check_ix_max_nonzero(void) {
+  for (int round = 0; round < 2000; round++) {
+    int ix[GRANULE_SIZE + 8];
+    const int first = round % 8, n = (int)(next_random() >> 8) % 577;
+    int nonzero[MAX_KERNEL_SETS];
+    unsigned max[MAX_KERNEL_SETS];
+
+    for (int i = 0; i < GRANULE_SIZE + 8; i++)
+      ix[i] = round % 5 ? random_ix() : 0;
+    for (int set = 0; set < kernel_count; set++) {
+      max[set] =
+          call_ix_max_nonzero(kernel_sets[set], &ix[first], n, &nonzero[set]);
+      same_in_every_set(max[set] != max[0] || nonzero[set] != nonzero[0]);
+    }
+  }
+}
+
 static void add_kernel_set(const char *name, const shine_kernels_t *kernels) {
   kernel_names[kernel_count] = name;
   kernel_sets[kernel_count++] = kernels;
@@ -479,5 +510,6 @@ int main(int argc, char **argv) {
   check_mdct_subbands_random();
   check_mdct_subbands_maximising();
   flush_checks();
+  check_ix_max_nonzero();
   return report();
 }

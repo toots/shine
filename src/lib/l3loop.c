@@ -3,6 +3,7 @@
 #include "l3loop.h"
 #include "bitstream.h"
 #include "huffman.h"
+#include "kernels_body.h"
 #include "l3bitstream.h"
 #include "layer3.h"
 #include "reservoir.h"
@@ -24,9 +25,11 @@ static int part2_length(int gr, int ch, shine_global_config *config);
 static int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE],
                                gr_info *cod_info, shine_global_config *config,
                                counted_step_t *counted);
-static int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin,
+static int new_choose_table(const shine_kernels_t *kernels,
+                            int ix[GRANULE_SIZE], unsigned int begin,
                             unsigned int end, int *bits);
-static int bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info, int limit);
+static int bigv_tab_select(const shine_kernels_t *kernels, int ix[GRANULE_SIZE],
+                           gr_info *cod_info, int limit);
 static void subdivide(gr_info *cod_info, shine_global_config *config);
 static int count1_region(int ix[GRANULE_SIZE], int end, gr_info *cod_info);
 static int quantize(int ix[GRANULE_SIZE], int stepsize,
@@ -615,7 +618,8 @@ void subdivide(gr_info *cod_info, shine_global_config *config) {
  * Function: Select huffman code tables for bigvalues regions
  */
 /* Stops with the bits so far once they are above limit. */
-int bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info, int limit) {
+int bigv_tab_select(const shine_kernels_t *kernels, int ix[GRANULE_SIZE],
+                    gr_info *cod_info, int limit) {
   int bits = 0;
 
   cod_info->table_select[0] = 0;
@@ -624,19 +628,19 @@ int bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info, int limit) {
 
   if (cod_info->address1 > 0)
     cod_info->table_select[0] =
-        new_choose_table(ix, 0, cod_info->address1, &bits);
+        new_choose_table(kernels, ix, 0, cod_info->address1, &bits);
 
   if (bits > limit)
     return bits;
   if (cod_info->address2 > cod_info->address1)
-    cod_info->table_select[1] =
-        new_choose_table(ix, cod_info->address1, cod_info->address2, &bits);
+    cod_info->table_select[1] = new_choose_table(
+        kernels, ix, cod_info->address1, cod_info->address2, &bits);
 
   if (bits > limit)
     return bits;
   if (cod_info->big_values << 1 > cod_info->address2)
     cod_info->table_select[2] = new_choose_table(
-        ix, cod_info->address2, cod_info->big_values << 1, &bits);
+        kernels, ix, cod_info->address2, cod_info->big_values << 1, &bits);
   return bits;
 }
 
@@ -688,8 +692,8 @@ static int choose_escape_table(int ix[GRANULE_SIZE], unsigned int begin,
 /* The cheapest table that codes [begin, end), the lowest one on a tie.
  * Each 16-bit field of a sum holds the bits of one candidate: a region has
  * at most 288 pairs of at most 27 bits. */
-int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin, unsigned int end,
-                     int *bits) {
+int new_choose_table(const shine_kernels_t *kernels, int ix[GRANULE_SIZE],
+                     unsigned int begin, unsigned int end, int *bits) {
   unsigned int max = 0;
   int signs = 0;
   const shine_huffman_choice_t *choice;
@@ -699,10 +703,7 @@ int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin, unsigned int end,
   int best = 0;
 
   /* The sign bits, which the costs leave out. */
-  for (unsigned int i = begin; i < end; i++) {
-    max = (unsigned int)ix[i] > max ? (unsigned int)ix[i] : max;
-    signs += ix[i] != 0;
-  }
+  max = call_ix_max_nonzero(kernels, &ix[begin], (int)(end - begin), &signs);
   if (!max)
     return 0;
   *bits += signs;
@@ -805,7 +806,7 @@ int shine_count_bits_up_to(int ix[GRANULE_SIZE], int end, gr_info *cod_info,
   if (bits > limit)
     return bits;
   subdivide(cod_info, config);
-  return bits + bigv_tab_select(ix, cod_info, limit - bits);
+  return bits + bigv_tab_select(&config->kernels, ix, cod_info, limit - bits);
 }
 
 int shine_count_bits(int ix[GRANULE_SIZE], gr_info *cod_info,
@@ -1030,7 +1031,7 @@ int shine_count_bits_split(int ix[GRANULE_SIZE], gr_info *gi,
   bigvalues = (int)gi->big_values << 1;
   if (gi->block_type || !bigvalues) {
     subdivide(gi, config);
-    return bits + bigv_tab_select(ix, gi, INT_MAX);
+    return bits + bigv_tab_select(&config->kernels, ix, gi, INT_MAX);
   }
   classes = all_region_classes();
   bands = big_value_bands(sfb, bigvalues, edge);

@@ -30,7 +30,8 @@ static void mdct_plain(const int32_t previous[18][32],
   mdct_bands_x1(previous, current, window, long_out, short_out);
 }
 
-const shine_kernels_t shine_kernels_plain = {filter_plain, mdct_plain};
+const shine_kernels_t shine_kernels_plain = {.filter = filter_plain,
+                                             .mdct = mdct_plain};
 
 static const shine_kernels_t *plain(void) { return &shine_kernels_plain; }
 

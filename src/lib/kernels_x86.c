@@ -153,7 +153,54 @@ TARGET_AVX2 static void mdct_avx2(const int32_t previous[18][32],
   mdct_bands_avx2(previous, current, window, long_out, short_out);
 }
 
-static const shine_kernels_t kernels_avx2 = {filter_avx2, mdct_avx2};
+typedef uint32_t lines8_t __attribute__((vector_size(32)));
+typedef uint16_t narrow8_t __attribute__((vector_size(16)));
+
+/* 1 in each lane where the comparison c holds, else 0. */
+#define COUNT(c) (-(lines8_t)(c))
+/* a in each lane where c holds, else b. */
+#define SELECT(c, a, b) (((a) & (lines8_t)(c)) | ((b) & ~(lines8_t)(c)))
+
+/* The first `count` of 8 32-bit values from `in`, the others 0: a run
+ * shorter than 8 lines goes through the same operations, its missing lanes
+ * left out of the results. */
+KERNEL_BODY lines8_t load_run_avx2(const void *in, int count) {
+  lines8_t run = {0};
+
+  memcpy(&run, in, (size_t)count * sizeof(uint32_t));
+  return run;
+}
+
+KERNEL_BODY void ix_max_nonzero_run_avx2(const int *ix, int count,
+                                         lines8_t *max, lines8_t *nonzero) {
+  const lines8_t run = load_run_avx2(ix, count);
+
+  *max = SELECT(run > *max, run, *max);
+  *nonzero += COUNT(run != 0);
+}
+
+TARGET_AVX2 static unsigned ix_max_nonzero_avx2(const int *ix, int n,
+                                                int *nonzero) {
+  lines8_t max = {0}, nonzero_lanes = {0};
+  uint32_t largest = 0, count = 0;
+  int i = 0;
+
+  for (; i + 8 <= n; i += 8)
+    ix_max_nonzero_run_avx2(&ix[i], 8, &max, &nonzero_lanes);
+  if (i < n)
+    ix_max_nonzero_run_avx2(&ix[i], n - i, &max, &nonzero_lanes);
+  for (int l = 0; l < 8; l++) {
+    largest = max[l] > largest ? max[l] : largest;
+    count += nonzero_lanes[l];
+  }
+  *nonzero = (int)count;
+  return largest;
+}
+
+static const shine_kernels_t kernels_avx2 = {
+    .filter = filter_avx2,
+    .mdct = mdct_avx2,
+    .ix_max_nonzero = ix_max_nonzero_avx2};
 
 const shine_kernels_t *shine_kernels_avx2(void) {
   __builtin_cpu_init();

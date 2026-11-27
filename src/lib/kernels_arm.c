@@ -27,7 +27,10 @@ static void mdct_neon(const int32_t previous[18][32],
   mdct_bands_x4(previous, current, window, long_out, short_out);
 }
 
-static const shine_kernels_t kernels_neon = {filter_neon, mdct_neon};
+/* The references of the other kernels, which the compiler vectorises for
+ * NEON, are as quick. */
+static const shine_kernels_t kernels_neon = {.filter = filter_neon,
+                                             .mdct = mdct_neon};
 
 const shine_kernels_t *shine_kernels_neon(void) { return &kernels_neon; }
 #else
