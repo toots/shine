@@ -574,9 +574,16 @@ static void attack_filter_granule(const int16_t *input, int start, int64_t *h) {
   }
 }
 
-/* (L ± R)/√2 of filter outputs, of a sum below 2^35. */
-static int64_t mid_side_filtered(int64_t sum) {
-  return ((int64_t)(int32_t)(sum >> 4) * PSY_INV_SQRT2) >> 27;
+/* (L ± R)/√2 of filter outputs, whose sums are below 2^35: sign is 1 for
+ * the mid channel, -1 for the side. */
+static void mid_side_filtered(const int64_t *left, const int64_t *right,
+                              int64_t sign, int64_t *h) {
+  int32_t sum[DETECTOR_GRANULE];
+
+  for (int n = 0; n < DETECTOR_GRANULE; n++)
+    sum[n] = (int32_t)((left[n] + sign * right[n]) >> 4);
+  for (int n = 0; n < DETECTOR_GRANULE; n++)
+    h[n] = ((int64_t)sum[n] * PSY_INV_SQRT2) >> 27;
 }
 
 static int64_t sub_block_peak(const int64_t *h) {
@@ -599,11 +606,10 @@ static void sub_block_peaks(const psy_model_t *model, int channels, int start,
   attack_filter_granule(model->input[0], start, h[0]);
   if (channels == 2)
     attack_filter_granule(model->input[1], start, h[1]);
-  if (model->channels == 4)
-    for (int n = 0; n < DETECTOR_GRANULE; n++) {
-      h[2][n] = mid_side_filtered(h[0][n] + h[1][n]);
-      h[3][n] = mid_side_filtered(h[0][n] - h[1][n]);
-    }
+  if (model->channels == 4) {
+    mid_side_filtered(h[0], h[1], 1, h[2]);
+    mid_side_filtered(h[0], h[1], -1, h[3]);
+  }
   for (int c = 0; c < model->channels; c++)
     for (int i = 0; i < 9; i++)
       peaks[c][i] = sub_block_peak(&h[c][SUB_BLOCK * i]);
