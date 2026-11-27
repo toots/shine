@@ -1,5 +1,28 @@
 4.0.0 ()
 =====
+* A psychoacoustic model, specified in `doc/psy/`, behind a new quality
+  setting: `mpeg.quality`, 0 to `SHINE_QUALITY_MAX` (1), default 0;
+  `shineenc -Q`; `quality` in the JavaScript package. Quality 1 adds
+  masking thresholds, noise allocation by scalefactors, the bit reservoir,
+  short blocks, M/S per frame, a lowpass and resampling at low bitrates.
+  Quality 0 runs none of it.
+* At quality 1, `shine_encode_buffer()` returns whole frames, none or
+  several per call; `shine_encoder_delay()` is 784 samples; the stream may
+  be at a lower rate than the input at low bitrates: `shine_samplerate()`
+  gives it, and `shine_initialise_at()` fixes it.
+* The filter bank and MDCT run as fast transforms, and on x86-64 the filter
+  bank is also built for AVX2, chosen at run time. Quality 0 output changes
+  by rounding.
+* Fix the Huffman table choice: tables 1 to 12 were never used, and a
+  granule with no big values wrote the region addresses of the previous
+  granule.
+* Fix stuffing bits counted in a granule's `part2_3_length`, which
+  decoders read as coefficients: they are ancillary data.
+* Fix the quantizer rounding before its 3/4 power, which moved the boundary
+  between 1 and 2 from 1.86 to 1.5.
+* Fix band 18 of the 24 kHz long scalefactor band table (332, not 330).
+* shineenc: two channels are coded as joint stereo by default; `-s` asks for
+  plain stereo.
 * API: public names are prefixed, and config fields spelled out:
   - `MONO`, `STEREO`, `JOINT_STEREO`, `DUAL_CHANNEL`: `SHINE_MONO`,
     `SHINE_STEREO`, `SHINE_JOINT_STEREO`, `SHINE_DUAL_CHANNEL`
