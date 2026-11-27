@@ -18,18 +18,24 @@ A decoder reconstructs line `k` of long band `sb` as
 
 ```
 xr'[k] = sign(ix[k]) · |ix[k]|^(4/3) · 2^((global_gain − 210)/4)
-                     · 2^(−(1 + scalefac_scale)/2 · sf[sb])
+                     · 2^(−(1 + scalefac_scale)/2 · (sf[sb] + preflag · pretab[sb]))
 ```
 
-(ISO 11172-3 §2.4.3.4, 13818-3 §2.4.3.4, with `preflag` 0). `sf[sb]` is the
-band's scalefactor and `scalefac_scale` ∈ {0, 1} the granule's scalefactor
-step: a scalefactor amplifies its band by 1.5 dB, or 3 dB.
+(ISO 11172-3 §2.4.3.4, 13818-3 §2.4.3.4). `sf[sb]` is the band's
+scalefactor and `scalefac_scale` ∈ {0, 1} the granule's scalefactor step: a
+scalefactor amplifies its band by 1.5 dB, or 3 dB. `preflag` ∈ {0, 1} adds
+the table `pretab` of ISO 11172-3 (table B.6) to the scalefactors of a
+long granule, at the cost of its one bit (§5.1):
+
+| long sfb | 0–10 | 11–14 | 15–16 | 17–19 | 20 | 21 |
+|---|---|---|---|---|---|---|
+| `pretab` | 0 | 1 | 2 | 3 | 2 | 0 |
 
 The encoder quantises each band with the step that reconstruction implies,
 the granule's step size `q` lowered by the band's amplification:
 
 ```
-q_sb = q − 2 · (1 + scalefac_scale) · sf[sb]        in quarter steps
+q_sb = q − 2 · (1 + scalefac_scale) · (sf[sb] + preflag · pretab[sb])        in quarter steps
 ix[k] = nint(|xr[k] / 2^(q_sb/4)|^(3/4) − 0.0946)
 ```
 
@@ -237,9 +243,10 @@ as when the loop also refits its step size to it.
 
 ## 5. Scalefactor coding
 
-`scfsi` is 0 in every band: each granule sends its own scalefactors.
-`preflag` is 0. Both MAY be used later, to save bits; they do not change
-what this section asks of the scalefactors.
+`scfsi` is 0 in every band: each granule sends its own scalefactors. It
+MAY be used later, to save bits; it does not change what this section asks
+of the scalefactors. `preflag` is chosen by §5.1, and the scalefactors
+coded are those of §4, without `pretab`.
 
 The encoder MUST choose the scalefactor coding with the fewest bits that
 codes every scalefactor of the granule. Its bits are `part2_length`.
@@ -271,6 +278,27 @@ MPEG-1. The forms of `scalefac_compress` from 400 up, which carry `preflag`
 or other group sizes, are not used.
 
 At fs ≤ 8 kHz, bands 17..20 have no `xmin` and their scalefactors stay 0.
+
+### 5.1 `preflag`
+
+A long granule of an MPEG-1 stream is coded with `preflag` = 1 when, of
+its bands from 11 up that have an allowed distortion, at least
+`PREFLAG_SHARE` = 0.8 can be over (§2: `xmin[sb] < en0[sb]`), and with 0
+otherwise. It is chosen before the outer loop, which then runs from
+scalefactors 0 with the steps of §1.
+
+`pretab` amplifies the upper half of the spectrum by 1 to 3 scalefactor
+steps for one bit. The loop reaches the same steps by raising ten
+scalefactors, which it only does for bands that are over, and pays for in
+`part2_length`. Starting from them leaves less noise in the upper bands of
+every granule, those the allowed distortion already covers included, and
+on the score that is worth 0.5 to 0.9 on stereo from 80 to 160 kbps and
+0.9 to 1.5 on mono from 48 to 64 kbps. A granule whose upper bands are
+under the threshold of hearing or fully masked has nothing to gain there:
+with `preflag` on every granule, two such items lost 8 points.
+
+SHORT granules have no `preflag`. In MPEG-2 and 2.5 it is carried by
+`scalefac_compress` (§5) and stays 0; an encoder MAY use it there later.
 
 ## 6. Short blocks (phase 4)
 
