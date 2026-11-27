@@ -10,9 +10,11 @@
   several per call; `shine_encoder_delay()` is 784 samples; the stream may
   be at a lower rate than the input at low bitrates: `shine_samplerate()`
   gives it, and `shine_initialise_at()` fixes it.
-* The filter bank and MDCT run as fast transforms, and on x86-64 the filter
-  bank is also built for AVX2, chosen at run time. Quality 0 output changes
-  by rounding.
+* The filter bank and MDCT run as fast transforms. Quality 0 output changes
+  by rounding. They are built on vectors for arm64 and, with three loops of
+  the quantiser and the model, for AVX2 on x86-64, chosen at run time, with
+  the same output. The environment variable `SHINE_KERNELS` forces a set:
+  `plain`, `neon` or `avx2`.
 * Fix the Huffman table choice: tables 1 to 12 were never used, and a
   granule with no big values wrote the region addresses of the previous
   granule.

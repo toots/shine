@@ -75,10 +75,10 @@ attempts, band tilt).
 
 ## Speed
 
-- [ ] GCC builds ran 20 to 35% slower than clang builds on x86-64, with or
-      without AVX2, and hand-written AVX2 for the filter and MDCT was
-      considered: both measured before the fast transforms, to measure
-      again.
+- [ ] GCC 13 builds run 24% slower than clang 18 builds at quality 0 on
+      x86-64, and 7% slower at quality 1. At `-O2` GCC's cost model leaves
+      loops scalar that clang vectorises; `-fvect-cost-model=dynamic`
+      vectorises them.
 
 ## Release
 
