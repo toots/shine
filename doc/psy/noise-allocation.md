@@ -349,6 +349,37 @@ short sfb `sb` of window `j`, and carries that window's `xmin` and energy
 
 §4.1 applies to a SHORT granule as to a long one.
 
+### 6.1 The scalefactors a SHORT granule starts from
+
+The outer loop of a SHORT granule does not start from scalefactors 0. For
+each band that can be over (§2), `need[b]` is the largest step at which
+the band alone, quantised at that step, keeps its noise within its allowed
+distortion, found by bisection over the encoder's range of steps: the
+lowest step counts as keeping it, a step past the largest as not, and a
+step too small for `IX_MAX` as keeping it. With `reference` the largest
+`need` of the granule and `u = 2·(1 + scalefac_scale)`:
+
+```
+sf[b] = (reference − need[b] + u) / (2·u)        integer division
+```
+
+`SHORT_START` = 1/2 of the amplification that would put every band as far from its
+allowed distortion as the band that needs least, rounded to the nearest
+scalefactor. `scalefac_scale` is 0, unless a scalefactor then passes its
+largest value: they are computed again with 1, and what still passes is
+set to the largest value. A band that cannot be over starts at 0. Attempt
+0 of §4 has these scalefactors.
+
+The loop of §4 raises every band that is over by the same step, and stops
+when all of them have been raised: when the whole granule is over, as
+around an attack, it leaves the noise as flat as the quantiser makes it,
+well under the spectrum's peak and too high where the signal is weak.
+Starting half way to an even noise-to-mask ratio leaves the mean score of
+every bitrate where it was, within 0.1, and gains 3 to 4 points on the
+items that trailed most, castanets and claves at 128 kbps. The whole of
+that amplification, and the same start on long granules, both score
+lower.
+
 ## 7. Determinism
 
 The allocation is integer arithmetic like the model
