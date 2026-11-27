@@ -89,11 +89,13 @@ the total excess of noise over the allowed distortion, in octaves of energy.
 
 A granule of two coded channels shares its bits between them by their
 perceptual entropy ([perceptual-entropy.md](perceptual-entropy.md)), the
-model's estimate of the bits each one needs, raised to `PE_SPLIT_POWER`, a
-parameter of the bitrate ([parameters.md](parameters.md) §1):
+model's estimate of the bits each one needs, raised to a power `p`: in an
+M/S frame `PE_SPLIT_POWER`, a parameter of the bitrate
+([parameters.md](parameters.md) §1), and 1 in a frame coded as left and
+right:
 
 ```
-w[c] = pe[c]^PE_SPLIT_POWER
+w[c] = pe[c]^p
 max_bits[0] = int(granule_bits · w[0] / (w[0] + w[1]))
 max_bits[1] = granule_bits − max_bits[0]
 ```
@@ -112,7 +114,10 @@ below its base, so no channel gets nothing.
 A power of 1 shares the bits in proportion to PE, and an encoder MUST then
 compute the share exactly. A power above 1 gives the channel that needs
 more a larger share than its PE: when bits are short, PE underestimates
-how much more the fuller channel gains from a bit than the other. With
+how much more the mid channel gains from a bit than the side. Left and
+right have no such imbalance: with the power of the bitrate, a stream
+without M/S scored 0.1 to 0.4 lower than with 1, and the left and right
+frames of a joint stereo stream slightly lower too. With
 another power the weights come from the model's `log2` and its inverse
 ([fixed-point.md](fixed-point.md)), and the share MUST be within 2 bits of
 the formula.
