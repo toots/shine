@@ -1431,7 +1431,8 @@ int shine_psy_initialise(shine_global_config *config) {
 /* Inner loops per granule: bounds the encoding time (parameters.md §2). */
 #define OUTER_ATTEMPTS 8
 
-/* The lowest step size the quantizer represents exactly. */
+/* The lowest step size the quantizer takes. shine_steptabi saturates from
+ * there down: its 2**31 at -120 is 0x7fffffff, one unit short. */
 #define STEP_MIN -120
 
 typedef struct {

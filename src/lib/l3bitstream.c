@@ -40,7 +40,8 @@ void shine_format_bitstream(shine_global_config *config) {
 /* MPEG-2 and 2.5 long block scalefactors without intensity stereo
  * (ISO 13818-3 2.4.3.2): four groups of 6, 5, 5 and 5 bands for a
  * scalefac_compress below 400, two of 11 and 10 from 500 up, which also
- * means preflag. */
+ * means preflag. The form from 400 to 499, three groups of 11, 10 and 0
+ * bands without preflag, is not coded here: the model never chooses it. */
 static void encodeScalefactorsLSF(shine_global_config *config, gr_info *gi,
                                   const int32_t *scalefactors) {
   static const int group_bands[2][4] = {{6, 5, 5, 5}, {11, 10, 0, 0}};
