@@ -52,7 +52,7 @@ be retuned together with the allocator of phase 2.
 | Name | Value | Kind | Where |
 |---|---|---|---|
 | `DELBARK` | 0.34 Bark | essential | partition width, [spectral-analysis.md](spectral-analysis.md) §3 |
-| `TONALITY_SCALE` | 20 | tuning | [masking.md](masking.md) §1 |
+| `TONALITY_SCALE` | 15 | tuning | [masking.md](masking.md) §1 |
 | `TONALITY_SMOOTHING` | 2 granules | tuning | [spectral-analysis.md](spectral-analysis.md) §1.2 |
 | `tab`, `delta` | table | tuning | [conventions.md](conventions.md) |
 | `T` | table | tuning | [masking.md](masking.md) §2 |

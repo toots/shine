@@ -34,7 +34,9 @@ white noise, MDCT line energies spread widely, and a neighbourhood of a few
 lines reads as tonal: three one-line partitions give an index near 8. The
 mean index falls as partitions widen. Whether `TONALITY_SCALE` and the
 smoothing of [spectral-analysis.md](spectral-analysis.md) §1.2 handle this
-well enough is a perceptual judgement ([tests.md](tests.md) §4).
+well enough is a perceptual judgement ([tests.md](tests.md) §4): on the
+score, a scale of 15 is the best of 10, 12, 13, 15, 17, 20, 26 and 34, by
+0.4 on the mean of the held-out sources over the value of 20 it replaces.
 
 ## 2. Spreading
 
