@@ -351,7 +351,8 @@ short sfb `sb` of window `j`, and carries that window's `xmin` and energy
 
 ### 6.1 The scalefactors a SHORT granule starts from
 
-The outer loop of a SHORT granule does not start from scalefactors 0. For
+In an MPEG-1 stream, the outer loop of a SHORT granule does not start from
+scalefactors 0. For
 each band that can be over (§2), `need[b]` is the largest step at which
 the band alone, quantised at that step, keeps its noise within its allowed
 distortion, found by bisection over the encoder's range of steps: the
@@ -380,7 +381,8 @@ Starting half way to an even noise-to-mask ratio leaves the mean score of
 every bitrate where it was, within 0.1, and gains 3 to 4 points on the
 items that trailed most, castanets and claves at 128 kbps. The whole of
 that amplification, and the same start on long granules, both score
-lower.
+lower. In MPEG-2 and 2.5 streams it gains nothing, and loses 0.2 to 0.4
+at 8 and 16 kbps: they start from 0.
 
 ## 7. Determinism
 
