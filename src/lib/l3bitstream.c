@@ -124,7 +124,7 @@ static void encodeMainData(shine_global_config *config) {
     }
   }
 
-  /* Stuffing that did not fit in any part2_3_length, as ancillary data. */
+  /* Stuffing, as ancillary data after the last granule. */
   for (int bits = si.resvDrain; bits > 0; bits -= 32)
     shine_putbits(&config->bs, 0, bits < 32 ? bits : 32);
 }

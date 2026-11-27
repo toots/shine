@@ -36,15 +36,9 @@ void shine_ResvAdjust(gr_info *gi, shine_global_config *config) {
       (config->mean_bits / config->wave.channels) - gi->part2_3_length;
 }
 
-/*
- * shine_ResvFrameEnd:
- * -------------
- * Called after all granules in a frame have been allocated. Makes sure
- * that the reservoir size is within limits, possibly by adding stuffing
- * bits. Note that stuffing bits are added by increasing a granule's
- * part2_3_length. The bitstream formatter will detect this and write the
- * appropriate stuffing bits to the bitstream.
- */
+/* Called after all granules of a frame are allocated: keeps the reservoir
+ * within its limit and in whole bytes, and leaves the excess as stuffing in
+ * resvDrain. */
 void shine_ResvFrameEnd(shine_global_config *config) {
   int over_bits;
 
