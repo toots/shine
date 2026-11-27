@@ -42,6 +42,25 @@ stereo, and the mono values up to 3 higher on mono. From 48 to 112 kbps
 the values without M/S score 0.3 to 2.7 higher on such streams than the
 joint stereo ones do.
 
+A one-channel stream at a rate `fs` up to `MASK_ADJUST_LOW_RATE` = 24 kHz
+does not take `MASK_ADJUST` from the table but from its bits per sample,
+`b = bitrate / fs`, linearly between these points and constant outside
+them, **tuning**:
+
+| `b` | ≤ 1.5 | 2.0 | 2.2 | ≥ 2.6 |
+|---|---|---|---|---|
+| `MASK_ADJUST` (dB) | 6 | 3.5 | 1.2 | 0.75 |
+
+The table's column is tuned on 44.1 kHz inputs, whose stream rate follows
+the bitrate. A 16 or 22.05 kHz input keeps its rate at every bitrate: at
+48 kbps it has the bits per sample of a 44.1 kHz stream at 96 to 128 kbps,
+at 16 kbps those of one at 32 to 44, and the row of its bitrate fits
+neither. Over the corpus in mono, the rule gains 0.2 to 2.8 at 16 kHz from
+8 to 48 kbps and 0.5 to 2.8 at 22.05 kHz from 16 to 64 kbps, with no
+item down by more than 4.7, and 1.5 to 1.7 on the held-out sources. A
+44.1 kHz mono input reaches these rates only at 32 kbps, where the rule
+gives the table's 6 dB.
+
 `PE_SPLIT_POWER` ([noise-allocation.md](noise-allocation.md) §3.1) was
 chosen on the score among 1, 1.4, 1.8, 2.4 and 3.2 at each bitrate, and
 capped at 2.4.
