@@ -406,6 +406,8 @@ static void bitrate_rows(void) {
          "  int32_t pe_split_power;  /* PE_SPLIT_POWER, Q16 */\n"
          "  int32_t log2_mask_adjust_2ch; /* MASK_ADJUST, 2 channels */\n"
          "  int32_t log2_mask_adjust_short_2ch;\n"
+         "  int32_t log2_mask_adjust_apart; /* 2 channels, no M/S */\n"
+         "  int32_t log2_mask_adjust_short_apart;\n"
          "} psy_bitrate_row_t;\n");
   printf("#define PSY_BITRATE_ROWS %d\n", count);
   printf("static const psy_bitrate_row_t psy_bitrate_rows[PSY_BITRATE_ROWS] = "
@@ -431,17 +433,28 @@ static void bitrate_rows(void) {
                      : k == 48 || k == 64          ? 3.5
                                                    : rows[i].mask_adjust;
 
+    /* MASK_ADJUST of two channels coded without M/S, where it differs. */
+    double adjust3 = k == 48    ? 6.5
+                     : k == 56  ? 7.5
+                     : k == 64  ? 4.25
+                     : k == 80  ? 5
+                     : k == 96  ? 4.5
+                     : k == 112 ? 1.5
+                                : adjust2;
+
     double adjust = rows[i].mask_adjust;
 
-    printf(
-        "{%d, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld},\n",
-        rows[i].kbps, log_q16(2 * rows[i].msfix), db_q16(rows[i].mask_adjust),
-        db_q16(-rows[i].ath_lower), fixed(c, LOG_ONE),
-        db_q16(ath_min - ATH_FS_SPL - rows[i].ath_lower),
-        fixed(5.0 * rows[i].kbps / 320, LOG_ONE),
-        db_q16(adjust > 0 ? 0.9 * adjust : 1.1 * adjust),
-        fixed(attack, LOG_ONE), fixed(side, LOG_ONE), fixed(split, LOG_ONE),
-        db_q16(adjust2), db_q16(adjust2 > 0 ? 0.9 * adjust2 : 1.1 * adjust2));
+    printf("{%d, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, "
+           "%ld, %ld},\n",
+           rows[i].kbps, log_q16(2 * rows[i].msfix),
+           db_q16(rows[i].mask_adjust), db_q16(-rows[i].ath_lower),
+           fixed(c, LOG_ONE), db_q16(ath_min - ATH_FS_SPL - rows[i].ath_lower),
+           fixed(5.0 * rows[i].kbps / 320, LOG_ONE),
+           db_q16(adjust > 0 ? 0.9 * adjust : 1.1 * adjust),
+           fixed(attack, LOG_ONE), fixed(side, LOG_ONE), fixed(split, LOG_ONE),
+           db_q16(adjust2), db_q16(adjust2 > 0 ? 0.9 * adjust2 : 1.1 * adjust2),
+           db_q16(adjust3),
+           db_q16(adjust3 > 0 ? 0.9 * adjust3 : 1.1 * adjust3));
   }
   printf("};\n\n");
 }

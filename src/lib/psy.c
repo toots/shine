@@ -221,14 +221,17 @@ static void spread_energy(const psy_layout_t *layout,
   }
 }
 
-/* parameters §1: MASK_ADJUST of the stream, by its channel count, or
- * MASK_ADJUST_SHORT. */
+/* parameters §1: MASK_ADJUST of the stream, by how its channels are coded,
+ * or MASK_ADJUST_SHORT. The model has 4 analysis channels in joint stereo. */
 static int32_t mask_adjust(const psy_model_t *model, int is_long) {
   const psy_bitrate_row_t *row = model->row;
 
-  if (model->channels > 1)
+  if (model->channels == 4)
     return is_long ? row->log2_mask_adjust_2ch
                    : row->log2_mask_adjust_short_2ch;
+  if (model->channels == 2)
+    return is_long ? row->log2_mask_adjust_apart
+                   : row->log2_mask_adjust_short_apart;
   return is_long ? row->log2_mask_adjust : row->log2_mask_adjust_short;
 }
 

@@ -771,6 +771,7 @@ static void check_limit_order(void) {
     memset(&parts, 0, sizeof(parts));
     row.log2_mask_adjust = raise ? 20 * ONE : 0;
     row.log2_mask_adjust_2ch = row.log2_mask_adjust;
+    row.log2_mask_adjust_apart = row.log2_mask_adjust;
     m->row = &row;
     for (int p = 0; p < m->npart; p++) {
       parts.eb[p] = parts.max[p] = p == b ? -40 * ONE : 0;
@@ -825,6 +826,7 @@ static void check_preecho(void) {
 
     row.log2_mask_adjust = 0;
     row.log2_mask_adjust_2ch = 0;
+    row.log2_mask_adjust_apart = 0;
     m->row = &row;
 
     for (int frame = 0; frame < 10; frame++) {
