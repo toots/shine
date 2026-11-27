@@ -396,12 +396,21 @@ static inline int ix_max(int ix[GRANULE_SIZE], unsigned int begin,
  * Function: Calculation of rzero, count1, big_values
  * (Partitions ix into big values, quadruples and zeros).
  */
-void calc_runlen(int ix[GRANULE_SIZE], gr_info *cod_info) {
-  int i;
+/* The end of ix without its trailing pairs of zeros. The values are not
+ * negative: a group is zero when its bitwise or is. */
+static int nonzero_end(const int ix[GRANULE_SIZE]) {
+  int i = GRANULE_SIZE;
 
-  /* Skip the trailing pairs of zeros. */
-  for (i = GRANULE_SIZE; i > 1 && !ix[i - 1] && !ix[i - 2]; i -= 2)
-    ;
+  while (i >= 8 && !(ix[i - 1] | ix[i - 2] | ix[i - 3] | ix[i - 4] | ix[i - 5] |
+                     ix[i - 6] | ix[i - 7] | ix[i - 8]))
+    i -= 8;
+  while (i > 1 && !(ix[i - 1] | ix[i - 2]))
+    i -= 2;
+  return i;
+}
+
+void calc_runlen(int ix[GRANULE_SIZE], gr_info *cod_info) {
+  int i = nonzero_end(ix);
 
   cod_info->count1 = 0;
   for (; i > 3; i -= 4)
@@ -418,38 +427,28 @@ void calc_runlen(int ix[GRANULE_SIZE], gr_info *cod_info) {
  * ----------------
  * Determines the number of bits to encode the quadruples.
  */
+/* The bits of quadruple p = v + 2w + 4x + 8y, its sign bits included: table
+ * 32 (shine_huffman_table[32].hlen) in the low half, table 33, whose codes
+ * all have 4 bits, in the high half. A granule has at most 144 quadruples
+ * of at most 10 bits. */
+#define COUNT1_COST(hlen32, signs)                                             \
+  ((uint32_t)((hlen32) + (signs)) | (uint32_t)(4 + (signs)) << 16)
+static const uint32_t count1_cost[16] = {
+    COUNT1_COST(1, 0), COUNT1_COST(4, 1), COUNT1_COST(4, 1), COUNT1_COST(5, 2),
+    COUNT1_COST(4, 1), COUNT1_COST(6, 2), COUNT1_COST(5, 2), COUNT1_COST(6, 3),
+    COUNT1_COST(4, 1), COUNT1_COST(5, 2), COUNT1_COST(5, 2), COUNT1_COST(6, 3),
+    COUNT1_COST(5, 2), COUNT1_COST(6, 3), COUNT1_COST(6, 3), COUNT1_COST(6, 4)};
+
 int count1_bitcount(int ix[GRANULE_SIZE], gr_info *cod_info) {
-  int p, i;
-  unsigned int k;
-  int v, w, x, y, signbits;
-  int sum0 = 0, sum1 = 0;
+  const int *quad = ix + (cod_info->big_values << 1);
+  uint32_t sums = 0;
+  int sum0, sum1;
 
-  for (i = cod_info->big_values << 1, k = 0; k < cod_info->count1;
-       i += 4, k++) {
-    v = ix[i];
-    w = ix[i + 1];
-    x = ix[i + 2];
-    y = ix[i + 3];
-
-    p = v + (w << 1) + (x << 2) + (y << 3);
-
-    signbits = 0;
-    if (v != 0)
-      signbits++;
-    if (w != 0)
-      signbits++;
-    if (x != 0)
-      signbits++;
-    if (y != 0)
-      signbits++;
-
-    sum0 += signbits;
-    sum1 += signbits;
-
-    sum0 += shine_huffman_table[32].hlen[p];
-    sum1 += shine_huffman_table[33].hlen[p];
-  }
-
+  for (unsigned int k = 0; k < cod_info->count1; k++, quad += 4)
+    sums +=
+        count1_cost[quad[0] + (quad[1] << 1) + (quad[2] << 2) + (quad[3] << 3)];
+  sum0 = (int)(sums & 0xffff);
+  sum1 = (int)(sums >> 16);
   if (sum0 < sum1) {
     cod_info->count1table_select = 0;
     return sum0;
@@ -628,18 +627,25 @@ static int choose_escape_table(int ix[GRANULE_SIZE], unsigned int begin,
  * at most 288 pairs of at most 27 bits. */
 int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin, unsigned int end,
                      int *bits) {
-  unsigned int max = ix_max(ix, begin, end);
-  const shine_huffman_choice_t *choice = &shine_huffman_choice[max & 15];
-  const uint64_t *cost = shine_huffman_choice_cost + choice->offset;
-  unsigned int stride = choice->stride;
+  unsigned int max = 0;
+  int signs = 0;
+  const shine_huffman_choice_t *choice;
+  const uint64_t *cost;
+  unsigned int stride;
   uint64_t sums[2] = {0, 0};
   int best = 0;
 
+  /* The sign bits, which the costs leave out. */
+  for (unsigned int i = begin; i < end; i++) {
+    max = (unsigned int)ix[i] > max ? (unsigned int)ix[i] : max;
+    signs += ix[i] != 0;
+  }
   if (!max)
     return 0;
-  /* The sign bits, which the costs leave out. */
-  for (unsigned int i = begin; i < end; i++)
-    *bits += ix[i] != 0;
+  *bits += signs;
+  choice = &shine_huffman_choice[max & 15];
+  cost = shine_huffman_choice_cost + choice->offset;
+  stride = choice->stride;
   if (max > 15)
     return choose_escape_table(ix, begin, end, max, bits);
 
@@ -746,6 +752,23 @@ static int region_class(int max) {
   return max;
 }
 
+/* The class of every max up to ESCAPE_CLASS, which stands for all above. */
+typedef struct {
+  uint8_t of[ESCAPE_CLASS + 1];
+} region_classes_t;
+
+static region_classes_t all_region_classes(void) {
+  region_classes_t classes;
+
+  for (int max = 0; max <= ESCAPE_CLASS; max++)
+    classes.of[max] = (uint8_t)region_class(max);
+  return classes;
+}
+
+static int class_of(const region_classes_t *classes, int max) {
+  return classes->of[max > ESCAPE_CLASS ? ESCAPE_CLASS : max];
+}
+
 /* The bits of the pairs of [begin, end) in every table of a class, added
  * to sum. Each 16-bit field holds one table, as in new_choose_table: a
  * granule has at most 288 pairs of at most 27 bits. */
@@ -824,19 +847,21 @@ static int big_value_bands(const int *sfb, int bigvalues, int edge[23]) {
  * to a class too small for it, which no region holding it has; a band of
  * zeros has bits in every class. */
 static void sum_class_bits(const int *ix, const int *edge, int bands,
-                           const int *band_max,
+                           const int *band_max, const region_classes_t *classes,
                            shine_region_bits_t (*sums)[23]) {
-  int present[ESCAPE_CLASS + 1] = {0};
+  int present[ESCAPE_CLASS + 1] = {0}, band_class[22];
 
-  for (int band = 0; band < bands; band++)
-    present[region_class(band_max[band])] = 1;
+  for (int band = 0; band < bands; band++) {
+    band_class[band] = class_of(classes, band_max[band]);
+    present[band_class[band]] = 1;
+  }
   for (int class = 1; class <= ESCAPE_CLASS; class++) {
     if (!present[class])
       continue;
     memset(&sums[class][0], 0, sizeof(sums[class][0]));
     for (int band = 0; band < bands; band++) {
       sums[class][band + 1] = sums[class][band];
-      if (region_class(band_max[band]) <= class)
+      if (band_class[band] <= class)
         add_class_bits(ix, edge[band], edge[band + 1], class,
                        &sums[class][band + 1]);
     }
@@ -845,13 +870,15 @@ static void sum_class_bits(const int *ix, const int *edge, int bands,
 
 /* The cheapest table for bands [first, last), whose largest value is max,
  * and its bits without the signs; table 0 and no bits for zeros. */
-static int region_table(const shine_region_bits_t (*sums)[23], int max,
-                        int first, int last, int *bits) {
+static int region_table(const shine_region_bits_t (*sums)[23],
+                        const region_classes_t *classes, int max, int first,
+                        int last, int *bits) {
+  const int class = class_of(classes, max);
+
   *bits = 0;
   if (!max)
     return 0;
-  return cheapest_in_class(&sums[region_class(max)][first],
-                           &sums[region_class(max)][last], max, bits);
+  return cheapest_in_class(&sums[class][first], &sums[class][last], max, bits);
 }
 
 /* A split of the big-value bands into [0, first), [first, second) and the
@@ -865,6 +892,7 @@ typedef struct {
  * found on a tie. Each distinct region is evaluated once: region 0 depends
  * on `first` alone, region 2 on `second` alone. */
 static region_split_t cheapest_split(const shine_region_bits_t (*sums)[23],
+                                     const region_classes_t *classes,
                                      const int *band_max, int bands,
                                      unsigned *count0_out,
                                      unsigned *count1_out) {
@@ -873,13 +901,14 @@ static region_split_t cheapest_split(const shine_region_bits_t (*sums)[23],
 
   for (int last = 1, max = 0; last <= bands; last++) {
     max = band_max[last - 1] > max ? band_max[last - 1] : max;
-    head_table[last] = region_table(sums, max, 0, last, &head_bits[last]);
+    head_table[last] =
+        region_table(sums, classes, max, 0, last, &head_bits[last]);
   }
   tail_table[bands] = tail_bits[bands] = 0;
   for (int first = bands - 1, max = 0; first >= 0; first--) {
     max = band_max[first] > max ? band_max[first] : max;
     tail_table[first] =
-        region_table(sums, max, first, bands, &tail_bits[first]);
+        region_table(sums, classes, max, first, bands, &tail_bits[first]);
   }
 
   for (int count0 = 0; count0 < 16; count0++) {
@@ -893,7 +922,8 @@ static region_split_t cheapest_split(const shine_region_bits_t (*sums)[23],
 
       for (; reached < second; reached++)
         max = band_max[reached] > max ? band_max[reached] : max;
-      middle_table = region_table(sums, max, first, second, &middle_bits);
+      middle_table =
+          region_table(sums, classes, max, first, second, &middle_bits);
       bits = head_bits[first] + middle_bits + tail_bits[second];
       if (best.bits >= 0 && bits >= best.bits)
         continue;
@@ -918,20 +948,24 @@ int shine_count_bits_split(int ix[GRANULE_SIZE], gr_info *gi,
   const int *sfb = shine_scale_fact_band_index[config->mpeg.samplerate_index];
   int edge[23], band_max[22], bands, bigvalues, bits, signs = 0;
   region_split_t split;
+  region_classes_t classes;
 
-  bits = shine_count_bits(ix, gi, config);
-  bigvalues = (int)gi->big_values << 1;
-  if (gi->block_type || !bigvalues)
-    return bits;
+  calc_runlen(ix, gi);
   bits = count1_bitcount(ix, gi);
+  bigvalues = (int)gi->big_values << 1;
+  if (gi->block_type || !bigvalues) {
+    subdivide(gi, config);
+    return bits + bigv_tab_select(ix, gi, INT_MAX);
+  }
+  classes = all_region_classes();
   bands = big_value_bands(sfb, bigvalues, edge);
   for (int band = 0; band < bands; band++)
     band_max[band] = ix_max(ix, edge[band], edge[band + 1]);
   for (int i = 0; i < bigvalues; i++)
     signs += ix[i] != 0;
-  sum_class_bits(ix, edge, bands, band_max, sums);
+  sum_class_bits(ix, edge, bands, band_max, &classes, sums);
 
-  split = cheapest_split(sums, band_max, bands, &gi->region0_count,
+  split = cheapest_split(sums, &classes, band_max, bands, &gi->region0_count,
                          &gi->region1_count);
   gi->address1 = edge[split.first];
   gi->address2 = edge[split.second];
