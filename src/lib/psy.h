@@ -64,7 +64,8 @@ typedef struct {
   const uint8_t *spread_lo, *spread_hi;
   const uint32_t (*spread)[PSY_SPREAD_ROW]; /* row b from spread_lo[b] */
   const uint32_t *spread_inverse;           /* of the width of each row */
-  const int *band_part; /* first partition of each band, then npart */
+  const int *band_part;       /* first partition of each band, then npart */
+  const int16_t *tonal_lines; /* lines of partitions b - 1..b + 1, less 1 */
   const int32_t *minval, *ath_part;
 } psy_layout_t;
 
@@ -116,6 +117,7 @@ typedef struct psy_model {
   int lowpass;
   int32_t lowpass_long[GRANULE_SIZE], lowpass_short[192];
   int band_part[PSY_LONG_BANDS + 1]; /* first partition of each band */
+  int16_t tonal_lines[PSY_NPART_MAX], tonal_lines_s[PSY_NPART_S_MAX];
   int32_t minval[PSY_NPART_MAX];
   int32_t ath_part[PSY_NPART_MAX];
   int32_t ath_band[PSY_LONG_BANDS];

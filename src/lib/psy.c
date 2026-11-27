@@ -124,10 +124,15 @@ static void tonality(const psy_layout_t *layout, const uint64_t *max_t,
   }
   parts->idx[0] = tonality_index(start, 0, 1, avg_t[0] + avg_t[1],
                                  max64(max_t[0], max_t[1]));
-  for (int b = 1; b < last; b++)
-    parts->idx[b] = tonality_index(
-        start, b - 1, b + 1, avg_t[b - 1] + avg_t[b] + avg_t[b + 1],
-        max64(max64(max_t[b - 1], max_t[b]), max_t[b + 1]));
+  for (int b = 1; b < last; b++) {
+    /* Three partitions span at least 3 lines: only a can be 0. */
+    const uint64_t a = avg_t[b - 1] + avg_t[b] + avg_t[b + 1];
+    const uint64_t m = max64(max64(max_t[b - 1], max_t[b]), max_t[b + 1]);
+    const uint64_t idx =
+        a ? 15 * (3 * m - a) / (a * (uint64_t)layout->tonal_lines[b]) : 0;
+
+    parts->idx[b] = idx > 8 ? 8 : (int)idx;
+  }
   parts->idx[last] =
       tonality_index(start, last - 1, last, avg_t[last - 1] + avg_t[last],
                      max64(max_t[last - 1], max_t[last]));
@@ -1150,6 +1155,12 @@ static void spread_inverses(int npart, const uint8_t *lo, const uint8_t *hi,
   }
 }
 
+/* The lines of each partition's tonality neighbourhood, less 1. */
+static void tonal_lines(int npart, const int16_t *start, int16_t *lines) {
+  for (int b = 1; b + 1 < npart; b++)
+    lines[b] = (int16_t)(start[b + 2] - start[b - 1] - 1);
+}
+
 /* The spreading rows of a layout, from the first partition each spans,
  * padded with zeros. */
 static void pad_spreading(int npart, const uint8_t *lo, const uint8_t *hi,
@@ -1301,6 +1312,8 @@ int shine_psy_initialise(shine_global_config *config) {
                 psy_spread_offset_s[rate], psy_spread_s[rate], model->spread_s);
   pad_spreading(model->npart, psy_spread_lo[rate], psy_spread_hi[rate],
                 psy_spread_offset[rate], psy_spread[rate], model->spread);
+  tonal_lines(psy_npart_s[rate], psy_part_start_s[rate], model->tonal_lines_s);
+  tonal_lines(model->npart, psy_part_start[rate], model->tonal_lines);
   spread_inverses(psy_npart_s[rate], psy_spread_lo_s[rate],
                   psy_spread_hi_s[rate], model->spread_inverse_s);
   spread_inverses(model->npart, psy_spread_lo[rate], psy_spread_hi[rate],
@@ -1318,6 +1331,7 @@ int shine_psy_initialise(shine_global_config *config) {
       .spread = model->spread_s,
       .spread_inverse = model->spread_inverse_s,
       .band_part = model->band_part_s,
+      .tonal_lines = model->tonal_lines_s,
       .minval = model->minval_s,
       .ath_part = model->ath_part_s,
   };
@@ -1335,6 +1349,7 @@ int shine_psy_initialise(shine_global_config *config) {
       .spread = model->spread,
       .spread_inverse = model->spread_inverse,
       .band_part = model->band_part,
+      .tonal_lines = model->tonal_lines,
       .minval = model->minval,
       .ath_part = model->ath_part,
   };
