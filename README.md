@@ -147,7 +147,7 @@ test: differences under 5 points on one item say little.
 | | 44.1 kHz stereo 64 kbps | 96 kbps | 128 kbps | 192 kbps | 44.1 kHz mono 64 kbps |
 |---|---|---|---|---|---|
 | `shineenc -Q 0` | 39.9 | 56.0 | 70.9 | 92.2 | 72.8 |
-| `shineenc -Q 1` | 57.9 | 77.0 | 89.6 | 99.7 | 89.1 |
+| `shineenc -Q 1` | 57.9 | 78.0 | 90.1 | 100.0 | 89.1 |
 | LAME 4.0, default | 56.6 | 77.5 | 90.2 | 99.9 | 88.4 |
 
 From 192 kbps in stereo and 128 kbps in mono, every encoder scores within a
@@ -156,8 +156,8 @@ point of 100.
 Limitations
 -----------
 
-Level 1 scores within a point of LAME from 96 to 128 kbps in stereo, and
-above it at 64 kbps and under. The score is a model: the choices it led to
+Level 1 scores level with LAME from 96 kbps up in stereo, and above it at
+64 kbps and under. The score is a model: the choices it led to
 that listeners have not confirmed yet, the bandwidth of the lowest
 bitrates first, are in [TODO.md](TODO.md) with the work under way. Level 0 output is frozen: it
 only changes to fix a bug.
