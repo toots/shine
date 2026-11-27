@@ -355,13 +355,25 @@ static int quantize_direct(int ix[GRANULE_SIZE], int begin, int end,
   return max;
 }
 
+/* The quantised value of a magnitude at the step size whose scale is
+ * scalei, at most 8192. */
+static int scaled_index(int32_t xrabs, int32_t scalei) {
+  /* The multiply must round its result: truncating it moves the boundaries
+   * between quantised values. */
+  int64_t x_q8 = ((int64_t)xrabs * scalei + (1LL << 23)) >> 24;
+
+  /* The table covers about all values; the quick check of quantize_range
+   * bounds the rest by 165140. */
+  return exact_index((int)((x_q8 + 128) >> 8), x_q8);
+}
+
 /* Quantizes lines begin..end - 1 with one step size, whose largest
- * coefficient is xrmax. Returns the largest ix, above 8192 when the step is
- * too small for the table range. */
+ * coefficient is xrmax: the quantiser does not decrease with the magnitude,
+ * so the largest ix is that of xrmax. Returns the largest ix, above 8192 when
+ * the step is too small for the table range. */
 static int quantize_range(int ix[GRANULE_SIZE], int begin, int end,
                           int stepsize, int32_t xrmax,
                           shine_global_config *config) {
-  int max = 0;
   int32_t scalei;
   const uint32_t *threshold;
 
@@ -389,27 +401,13 @@ static int quantize_range(int ix[GRANULE_SIZE], int begin, int end,
       int ln = (int)((x_q8 + 128) >> 8);
 
       ix[i] = shine_quant_base[ln] + (x_q8 >= shine_quant_split[ln]);
-      if (max < ix[i])
-        max = ix[i];
     }
-    return max;
+    return scaled_index(xrmax, scalei);
   }
 
-  for (int i = begin; i < end; i++) {
-    /* The multiply must round its result: truncating it moves the
-     * boundaries between quantised values. */
-    int64_t x_q8 =
-        ((int64_t)config->l3loop.xrabs[i] * scalei + (1LL << 23)) >> 24;
-    int ln = (int)((x_q8 + 128) >> 8);
-
-    /* The table covers about all values; the quick check above bounds the
-     * rest by 165140. */
-    ix[i] = exact_index(ln, x_q8);
-    if (max < ix[i])
-      max = ix[i];
-  }
-
-  return max;
+  for (int i = begin; i < end; i++)
+    ix[i] = scaled_index(config->l3loop.xrabs[i], scalei);
+  return scaled_index(xrmax, scalei);
 }
 
 /* Also sets end past the last run that is not all zeros. */
