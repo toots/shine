@@ -97,6 +97,7 @@ be retuned together with the allocator of phase 2.
 | `PART2_3_MAX` | 4095 | essential | [noise-allocation.md](noise-allocation.md) §3.1 |
 | `OUTER_ATTEMPTS` | 8 per granule, per quality level | tuning | [noise-allocation.md](noise-allocation.md) §4 |
 | `PREFLAG_SHARE` | 0.8 | tuning | [noise-allocation.md](noise-allocation.md) §5.1 |
+| `PREFLAG_LSF_KBPS` | 40 | tuning | [noise-allocation.md](noise-allocation.md) §5.1 |
 | lowpass cutoffs, `LOWPASS_*` | table | tuning | [bandwidth.md](bandwidth.md) |
 | `BUFFER_BITS` | 7680 | essential | [reservoir.md](reservoir.md) §2 |
 | `MAIN_DATA_BEGIN_MAX` | 511 (MPEG-1), 255 (MPEG-2, 2.5) | essential | [reservoir.md](reservoir.md) §2 |

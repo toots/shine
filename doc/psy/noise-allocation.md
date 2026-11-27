@@ -263,8 +263,8 @@ each of bands 0..10, `slen2` bits for each of bands 11..20
 `part2_length = 11·slen1 + 10·slen2`. The largest scalefactors are 15 in
 bands 0..10 and 7 in bands 11..20.
 
-**MPEG-2 and 2.5** (ISO 13818-3 §2.4.3.2, without intensity stereo, `preflag`
-0). The 21 bands form four groups of 6, 5, 5 and 5 bands, sent with
+**MPEG-2 and 2.5** (ISO 13818-3 §2.4.3.2, without intensity stereo). With
+`preflag` 0, the 21 bands form four groups of 6, 5, 5 and 5 bands, sent with
 `slen1..slen4` bits each, where `slen1, slen2` ∈ 0..4 and `slen3, slen4` ∈
 0..3:
 
@@ -274,18 +274,29 @@ part2_length = 6·slen1 + 5·slen2 + 5·slen3 + 5·slen4
 ```
 
 The largest scalefactors are 15 in bands 0..10 and 7 in bands 11..20, as for
-MPEG-1. The forms of `scalefac_compress` from 400 up, which carry `preflag`
-or other group sizes, are not used.
+MPEG-1.
+
+With `preflag` (§5.1), the form from 500 up: bands 0..10 are sent with
+`slen1` ∈ 0..3 bits and bands 11..20 with `slen2` ∈ 0..2:
+
+```
+scalefac_compress = 500 + 3·slen1 + slen2
+part2_length = 11·slen1 + 10·slen2
+```
+
+and the largest scalefactors are 7 in bands 0..10 and 3 in bands 11..20.
+The forms from 400 to 499, with other group sizes, are not used.
 
 At fs ≤ 8 kHz, bands 17..20 have no `xmin` and their scalefactors stay 0.
 
 ### 5.1 `preflag`
 
-A long granule of an MPEG-1 stream is coded with `preflag` = 1 when, of
-its bands from 11 up that have an allowed distortion, at least
-`PREFLAG_SHARE` = 0.8 can be over (§2: `xmin[sb] < en0[sb]`), and with 0
-otherwise. It is chosen before the outer loop, which then runs from
-scalefactors 0 with the steps of §1.
+A long granule is coded with `preflag` = 1 when, of its bands from 11 up
+that have an allowed distortion, at least `PREFLAG_SHARE` = 0.8 can be
+over (§2: `xmin[sb] < en0[sb]`), and with 0 otherwise; in an MPEG-2 or 2.5
+stream, only at a bitrate up to `PREFLAG_LSF_KBPS` = 40. It is chosen
+before the outer loop, which then runs from scalefactors 0 with the steps
+of §1.
 
 `pretab` amplifies the upper half of the spectrum by 1 to 3 scalefactor
 steps for one bit. The loop reaches the same steps by raising ten
@@ -297,8 +308,13 @@ on the score that is worth 0.5 to 0.9 on stereo from 80 to 160 kbps and
 under the threshold of hearing or fully masked has nothing to gain there:
 with `preflag` on every granule, two such items lost 8 points.
 
-SHORT granules have no `preflag`. In MPEG-2 and 2.5 it is carried by
-`scalefac_compress` (§5) and stays 0; an encoder MAY use it there later.
+SHORT granules have no `preflag`.
+
+In MPEG-2 and 2.5 `preflag` is carried by `scalefac_compress` (§5), in a
+form that codes smaller scalefactors: the loop has less room to shape the
+noise. Up to 40 kbps it gains 0.2 to 2.4 on the score at every rate, where
+few bands can be raised anyway. From 48 kbps up it loses up to 0.5, and
+one item more than the tolerance.
 
 ## 6. Short blocks (phase 4)
 
