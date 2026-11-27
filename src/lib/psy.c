@@ -38,7 +38,7 @@ static inline int32_t log2_q16(uint64_t x) {
     return ZERO;
   n = highest_bit(x);
   /* The bits below the highest one, as a 31-bit fraction. */
-  mantissa = (uint32_t)(n > 31 ? x >> (n - 31) : x << (31 - n)) & 0x7fffffff;
+  mantissa = (uint32_t)((x << (63 - n)) >> 32) & 0x7fffffff;
   index = mantissa >> 22;
   rest = mantissa & 0x3fffff;
   return n * ONE + psy_log2_table[index] +
