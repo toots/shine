@@ -594,16 +594,6 @@ static int forced_short(const psy_model_t *model, long granule) {
          granule % model->forced_short_period == 0;
 }
 
-/* §1.1: the attack filter at input[n], Q16 of a sample. */
-static int64_t attack_filter(const int16_t *input, int n) {
-  int64_t sum = (int64_t)input[n] * 65536;
-
-  for (int j = 0; j < 5; j++)
-    sum += (int64_t)psy_attack_taps[j] *
-           (input[n - 9 + 2 * j] + input[n + 9 - 2 * j]);
-  return sum;
-}
-
 #define SUB_BLOCK 64
 #define DETECTOR_GRANULE (9 * SUB_BLOCK)
 
