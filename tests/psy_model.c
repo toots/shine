@@ -1682,7 +1682,8 @@ static double granule_budget(shine_t e, int gr) {
   return fmin(bits, channels * 4095);
 }
 
-/* noise-allocation §2: noise per band of the granule as quantize_granule left it in ix. */
+/* noise-allocation §2: noise per band of the granule as quantize_granule left
+ * it in ix. */
 static void band_noise(shine_global_config *config, psy_model_t *model,
                        const int *ix, int q, const scalefactors_t *s,
                        int32_t *noise) {
