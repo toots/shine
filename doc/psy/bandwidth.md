@@ -21,6 +21,17 @@ Below 8 the cutoff is that of 8. From `LOWPASS_NONE_KBPS` = 128 per
 channel there is no cutoff. Where `f_c ≥ LOWPASS_NYQUIST_FRACTION · fs/2`
 there is none either: the band left above it is too narrow to save bits.
 
+A stream whose rate `fs` is at most `LOWPASS_FREE_RATE` = 32 kHz has no
+cutoff: the whole band of the stream is coded, and `f_c` only chooses its
+rate ([resampling.md](resampling.md) §1). That rate is the lowest one that
+holds `f_c`, so the band between `f_c` and `fs/2` is a small part of the
+stream, and removing it costs more on the score than its lines cost in
+bits: over the corpus, coding it gains 0.8 to 3.2 points of the mean at
+44.1 kHz stereo from 32 to 96 kbps, 2.3 to 4.1 at 16 and 22.05 kHz from 16
+to 48 kbps, and loses 0.2 at mono 40 kbps, with no item down by more than
+2.4 ([tests.md](tests.md) §4). A stream above that rate keeps its cutoff:
+the band it removes is wide, and its top has no scalefactor of its own.
+
 ## 2. The filter
 
 The filter acts on the MDCT coefficients of every granule, long and short,
@@ -51,9 +62,15 @@ The lowest quality level does not filter.
 | cutoff table | §1 | tuning |
 | `LOWPASS_NONE_KBPS` | 128 | tuning |
 | `LOWPASS_NYQUIST_FRACTION` | 0.95 | tuning |
+| `LOWPASS_FREE_RATE` | 32 kHz | tuning |
 | `LOWPASS_PASS_FRACTION` | 0.9 | tuning |
 
 The cutoffs follow the bandwidth that is commonly traded against bitrate
 by perceptual coders. They MUST be confirmed by the metric report and by
 listening ([tests.md](tests.md) §4): a cutoff that is too low is heard as
 dullness, which the score grades mildly.
+
+`LOWPASS_FREE_RATE` is set on the score alone, which rewards bandwidth,
+and under 32 kbps the score is below the range it was compared with
+listeners in: the full band at those bitrates MUST be confirmed by
+listening before it is relied on.

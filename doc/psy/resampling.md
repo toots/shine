@@ -34,8 +34,10 @@ at one of them is encoded at its own rate.
 The second condition leaves out the conversions between neighbouring rates
 (48 to 44.1 kHz, 24 to 22.05 kHz, 12 to 11.025 kHz), which save few lines.
 
-Everything else in the encoder, the lowpass and its Nyquist rule included,
-runs at `fs` and knows nothing of `fs_in`. For a 44.1 or 48 kHz input:
+Everything else in the encoder, the lowpass and its rules included, runs
+at `fs` and knows nothing of `fs_in`. A stream at 32 kHz or below is not
+lowpassed ([bandwidth.md](bandwidth.md) §1): there `f_c` chooses the rate
+and nothing else. For a 44.1 or 48 kHz input:
 
 | bitrate per channel (kbps) | 16 | 20 | 24, 28 | 32 | 40, 48 | ≥ 56 |
 |---|---|---|---|---|---|---|
