@@ -1145,9 +1145,14 @@ typedef struct {
 } scalefactors_t;
 
 /* §5, §6: both formats code up to 15 in long bands 0..10 and 7 in bands
- * 11..20, up to 15 in short bands 0..5 and 7 in bands 6..11. */
+ * 11..20, up to 15 in short bands 0..5 and 7 in bands 6..11. With preflag,
+ * MPEG-2 and 2.5 code up to 7 and 3 in the long bands. */
 static int largest_scalefactor(const psy_bands_t *bands, int sb) {
-  return bands->is_short ? (sb < 18 ? 15 : 7) : (sb <= 10 ? 15 : 7);
+  if (bands->is_short)
+    return sb < 18 ? 15 : 7;
+  if (bands->lsf && bands->preflag)
+    return sb <= 10 ? 7 : 3;
+  return sb <= 10 ? 15 : 7;
 }
 
 /* The bands of coded channel ch of granule gr, for the allocation: the
@@ -1188,6 +1193,22 @@ static void select_band_layout(shine_global_config *config, int gr, int ch) {
   bands->edge[3 * PSY_SHORT_BANDS] = GRANULE_SIZE;
 }
 
+/* §5.1: PREFLAG_SHARE = 4/5 of the bands from this one up can be over. */
+#define PREFLAG_FIRST_BAND 11
+
+/* §5.1: the highest bitrate with preflag in MPEG-2 and 2.5. */
+#define PREFLAG_LSF_KBPS 40
+
+static int uses_preflag(const psy_bands_t *bands) {
+  int audible = 0;
+
+  if (bands->is_short || bands->shaped <= PREFLAG_FIRST_BAND)
+    return 0;
+  for (int sb = PREFLAG_FIRST_BAND; sb < bands->shaped; sb++)
+    audible += bands->xmin[sb] < bands->en[sb];
+  return 5 * audible >= 4 * (bands->shaped - PREFLAG_FIRST_BAND);
+}
+
 /* Also empties the step cache, which holds the bands of one channel. */
 static void select_bands(shine_global_config *config, int gr, int ch) {
   psy_bands_t *bands = &config->psy->bands;
@@ -1195,6 +1216,9 @@ static void select_bands(shine_global_config *config, int gr, int ch) {
   memset(config->psy->steps.state, PSY_STEP_EMPTY,
          sizeof(config->psy->steps.state));
   select_band_layout(config, gr, ch);
+  bands->lsf = config->mpeg.version != SHINE_MPEG_I;
+  bands->preflag = uses_preflag(bands) &&
+                   (!bands->lsf || config->mpeg.bitrate <= PREFLAG_LSF_KBPS);
   for (int sb = 0; sb < bands->count; sb++)
     bands->peak[sb] =
         shine_band_peak(bands->edge[sb], bands->edge[sb + 1], config);
@@ -1258,6 +1282,13 @@ static int scalefactor_coding(const psy_bands_t *bands, const scalefactors_t *s,
         }
       }
     return best;
+  } else if (s->pre) {
+    /* The form from 500 up: bands 0..10 and 11..20, with preflag. */
+    int slen1 = bits_for(group_max(s->sf, 0, 10)),
+        slen2 = bits_for(group_max(s->sf, 11, 20));
+
+    *compress = (unsigned)(500 + 3 * slen1 + slen2);
+    return 11 * slen1 + 10 * slen2;
   } else {
     int slen[4] = {
         bits_for(group_max(s->sf, 0, 5)), bits_for(group_max(s->sf, 6, 10)),
@@ -1283,21 +1314,6 @@ static const uint8_t pretab[PSY_LONG_BANDS] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 
 static int band_step(int q, const scalefactors_t *s, int sb) {
   return q - 2 * (1 + s->scale) * (s->sf[sb] + (s->pre ? pretab[sb] : 0));
-}
-
-/* §5.1: PREFLAG_SHARE = 4/5 of the bands from this one up can be over. */
-#define PREFLAG_FIRST_BAND 11
-
-static int uses_preflag(const shine_global_config *config,
-                        const psy_bands_t *bands) {
-  int audible = 0;
-
-  if (bands->is_short || config->mpeg.version != SHINE_MPEG_I ||
-      bands->shaped <= PREFLAG_FIRST_BAND)
-    return 0;
-  for (int sb = PREFLAG_FIRST_BAND; sb < bands->shaped; sb++)
-    audible += bands->xmin[sb] < bands->en[sb];
-  return 5 * audible >= 4 * (bands->shaped - PREFLAG_FIRST_BAND);
 }
 
 static int step_slot(int step) { return step & (PSY_STEP_SLOTS - 1); }
@@ -1618,7 +1634,7 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
   int64_t best_distortion = -1;
 
   memset(&s, 0, sizeof(s));
-  s.pre = uses_preflag(config, map);
+  s.pre = map->preflag;
   best_s = s;
   best_gi = *gi;
   /* Kept only if no attempt can be made: silence at the largest step. */

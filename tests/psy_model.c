@@ -1399,6 +1399,10 @@ static int coding_bits(int mpeg1, unsigned compress, const int32_t *sf,
   if (mpeg1) {
     slen[0] = slen[1] = shine_slen1_tab[compress];
     slen[2] = slen[3] = shine_slen2_tab[compress];
+  } else if (compress >= 500) {
+    /* With preflag: bands 0..10 on slen1 and 11..20 on slen2. */
+    slen[0] = slen[1] = (compress - 500) / 3;
+    slen[2] = slen[3] = (compress - 500) % 3;
   } else {
     slen[0] = (compress >> 4) / 5;
     slen[1] = (compress >> 4) % 5;
@@ -1510,8 +1514,8 @@ static void check_preflag(shine_t e, int gr, int ch, const char *name) {
 
   if (!e->l3loop.xrmax)
     return;
-  if (!bands->is_short && e->mpeg.version == SHINE_MPEG_I &&
-      bands->shaped > 11) {
+  if (!bands->is_short && bands->shaped > 11 &&
+      (e->mpeg.version == SHINE_MPEG_I || e->mpeg.bitrate <= 40)) {
     for (int b = 11; b < bands->shaped; b++)
       audible += bands->xmin[b] < bands->en[b];
     expected = audible >= 0.8 * (bands->shaped - 11);
@@ -1590,6 +1594,12 @@ static void check_scalefactors(shine_t e, int gr, int ch, const char *name) {
   const int is_short = gi->block_type == BLOCK_SHORT;
   const int32_t *sf = e->scalefactor.l[gr][ch];
   const int32_t (*sf_s)[3] = (const int32_t (*)[3])e->scalefactor.s[gr][ch];
+  /* §5: with preflag, MPEG-2 and 2.5 use the forms from 500 up, which code
+   * up to 7 and 3. */
+  const int lsf_preflag = !mpeg1 && gi->preflag;
+  const unsigned first = lsf_preflag ? 500u : 0u, forms = mpeg1         ? 16u
+                                                          : lsf_preflag ? 512u
+                                                                        : 400u;
   int in_range = 1, codes, cheapest = -1, chosen, amplified = 0;
 
   if (is_short)
@@ -1603,9 +1613,11 @@ static void check_scalefactors(shine_t e, int gr, int ch, const char *name) {
       }
   else
     for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
-      in_range &= sf[sb] >= 0 && sf[sb] <= (sb <= 10 ? 15 : 7) &&
-                  (sb < xmin_bands(e) || sf[sb] == 0);
-  for (unsigned c = 0; c < (mpeg1 ? 16u : 400u); c++) {
+      in_range &=
+          sf[sb] >= 0 &&
+          sf[sb] <= (lsf_preflag ? (sb <= 10 ? 7 : 3) : (sb <= 10 ? 15 : 7)) &&
+          (sb < xmin_bands(e) || sf[sb] == 0);
+  for (unsigned c = first; c < forms; c++) {
     int bits = is_short ? short_coding_bits(mpeg1, c, sf_s, &codes)
                         : coding_bits(mpeg1, c, sf, &codes);
     if (codes && (cheapest < 0 || bits < cheapest))
@@ -1997,7 +2009,7 @@ static void check_allocation_best(void) {
 
             prepare(e, gr, ch);
             memset(&zero, 0, sizeof(zero));
-            zero.pre = uses_preflag(e, &e->psy->bands);
+            zero.pre = e->psy->bands.preflag;
             max_bits = shine_psy_channel_bits(e, gr, ch);
             if (fit(e, e->l3_enc[ch][gr], gi, max_bits, &zero, largest_step(gi),
                     &q0) < 0)

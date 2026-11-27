@@ -69,7 +69,9 @@ typedef struct {
  * band of each window in coded order, band 3 sb + window. */
 typedef struct {
   int is_short, count;
-  int shaped; /* the first bands, which have an allowed distortion */
+  int shaped;  /* the first bands, which have an allowed distortion */
+  int lsf;     /* an MPEG-2 or 2.5 stream */
+  int preflag; /* noise-allocation.md §5.1 */
   int32_t log2_k;
   int edge[PSY_ALLOCATION_BANDS + 1]; /* first line of each band, then 576 */
   int32_t xmin[PSY_ALLOCATION_BANDS], en[PSY_ALLOCATION_BANDS];
