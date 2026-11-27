@@ -502,7 +502,8 @@ void subdivide(gr_info *cod_info, shine_global_config *config) {
      * bands, or 8 long ones. */
     unsigned boundary =
         cod_info->block_type == BLOCK_SHORT
-            ? 36
+            ? 3 * (unsigned)shine_scale_fact_band_index_short
+                      [config->mpeg.samplerate_index][3]
             : (unsigned)
                   shine_scale_fact_band_index[config->mpeg.samplerate_index][8];
     unsigned bigvalues_region = 2 * cod_info->big_values;

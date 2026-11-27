@@ -21,6 +21,7 @@
 * Fix the quantizer rounding before its 3/4 power, which moved the boundary
   between 1 and 2 from 1.86 to 1.5.
 * Fix band 18 of the 24 kHz long scalefactor band table (332, not 330).
+* Fix the end of region 0 in short granules at 8 kHz: 72 lines, not 36.
 * shineenc: two channels are coded as joint stereo by default; `-s` asks for
   plain stereo.
 * API: public names are prefixed, and config fields spelled out:

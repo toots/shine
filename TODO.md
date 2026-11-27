@@ -58,9 +58,6 @@ yet:
       channel scores 0.4 to 0.7 higher with `MASK_ADJUST` 1.5 to 2 dB lower
       (11.025 kHz at 32 kbps, 16 kHz at 48, 22.05 kHz at 64 and 96), but
       16 kHz at 64 kbps then loses 9 on one item: no rule fits yet.
-- [ ] At 8 kHz, quality 1 streams at 24 kbps mono and 32 kbps stereo decode
-      differently in FFmpeg and mpg123 (19 to 37 dB apart, against 104 dB
-      at other bitrates): a field is probably out of spec.
 - [ ] Dropping the count1 values that cost more than they are worth.
 - [ ] `subblock_gain` is always 0 (`noise-allocation.md` §6).
 - [ ] A build option to leave the model out of the library, for small

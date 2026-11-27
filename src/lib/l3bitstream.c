@@ -225,7 +225,11 @@ static void Huffmancodebits(shine_global_config *config, int *ix, gr_info *gi) {
   if (gi->block_type) {
     /* ISO 11172-3 2.4.2.7: region 0 ends after 3 short bands or 8 long
      * ones, and there is no region 2. */
-    region1Start = gi->block_type == BLOCK_SHORT ? 36 : scalefac[8];
+    region1Start =
+        gi->block_type == BLOCK_SHORT
+            ? 3 * shine_scale_fact_band_index_short[config->mpeg
+                                                        .samplerate_index][3]
+            : scalefac[8];
     region2Start = GRANULE_SIZE;
   } else {
     scalefac_index = gi->region0_count + 1;
