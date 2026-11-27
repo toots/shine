@@ -127,12 +127,13 @@ quality report before the next one starts.
       112 kbps on a 32 kHz stream, with an item or two past the tolerance
       (a violin, down 6.5 at 64 kbps; clapping and claves, down 6 to 6.7 at
       112): for a listening round. Mono keeps its rates.
-- [ ] Castanets and claves at 128 kbps trail LAME by 10 and 13 points.
-      The noise is flatter than the signal when every band is over: 14 dB
-      of SNR under 1 kHz against LAME's 24, more than LAME at 2 to 6 kHz.
-      Amplifying only the worst bands gains 8 on castanets and loses 0.5
-      to 3 on most other items; the allocation's own distortion measure
-      prefers shapes the score rates lower.
+- [ ] Castanets and claves at 128 kbps trail LAME by 6 and 12 points
+      (84.9 against 90.6, 84.6 against 96.8), after the start of SHORT
+      granules half way to an even noise-to-mask ratio
+      (`noise-allocation.md` §6.1) gained 4 and 3. LAME also gives its
+      attack frames more bits: a reservoir filled by a tax on steady
+      granules gains 3 more on these items and costs every other 0.2 to
+      0.7.
 - [ ] Dropping the count1 values that cost more than they are worth.
 - [x] Masking spread as a plain sum of energies, in the linear domain.
 - [x] The step size search starts where the previous attempt ended.
