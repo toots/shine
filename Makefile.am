@@ -62,7 +62,7 @@ tests_psy_model_LDADD   = -lm
 tests_kernels_SOURCES = tests/kernels.c src/lib/kernels.c src/lib/tables.c \
                         src/lib/precomputed_tables.c
 tests_kernels_CFLAGS  = $(AM_CFLAGS)
-tests_kernels_LDADD   =
+tests_kernels_LDADD   = -lm
 
 # Built from the library's sources, to reach the converter.
 tests_resample_SOURCES = tests/resample.c $(TEST_HELPERS) $(libshine_la_SOURCES)
