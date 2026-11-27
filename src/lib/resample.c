@@ -189,8 +189,8 @@ int shine_resample_bound(const shine_resampler_t *resampler, int count) {
 }
 
 static inline int16_t filter(const int16_t *samples,
-                             const int16_t *coefficients, int taps) {
-  const int half = taps / 2, padded = padded_half(taps);
+                             const int16_t *coefficients, int half,
+                             int padded) {
   int32_t first = 0, second = 0;
   int64_t sum;
 
@@ -206,6 +206,8 @@ static inline int16_t filter(const int16_t *samples,
 int shine_resample(shine_resampler_t *resampler, const int16_t *const *input,
                    int stride, int count, int16_t *const *output) {
   const int taps = resampler->taps;
+  /* Hoisted out of filter: GCC -O2 vectorises its loops only then. */
+  const int padded = padded_half(taps);
   const int fill = resampler->fill + count;
   int position = 0, phase = resampler->phase, written = 0;
 
@@ -219,9 +221,9 @@ int shine_resample(shine_resampler_t *resampler, const int16_t *const *input,
     phase = resampler->phase;
     written = 0;
     while (position + taps <= fill) {
-      output[ch][written++] =
-          filter(history + position,
-                 resampler->coefficients + phase * 2 * padded_half(taps), taps);
+      output[ch][written++] = filter(
+          history + position, resampler->coefficients + phase * 2 * padded,
+          taps / 2, padded);
       position += resampler->step;
       phase += resampler->remainder;
       if (phase >= resampler->up) {
