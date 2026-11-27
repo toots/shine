@@ -13,9 +13,17 @@
 
 #define SFB_LMAX 22
 
+/* A step size whose ix and bits the step search counted in full, with the
+ * code tables they chose; step is INT_MIN for none. */
+typedef struct {
+  int step, bits;
+  gr_info tables;
+} counted_step_t;
+
 static int part2_length(int gr, int ch, shine_global_config *config);
 static int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE],
-                               gr_info *cod_info, shine_global_config *config);
+                               gr_info *cod_info, shine_global_config *config,
+                               counted_step_t *counted);
 static int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin,
                             unsigned int end, int *bits);
 static int bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info, int limit);
@@ -24,26 +32,59 @@ static int count1_region(int ix[GRANULE_SIZE], int end, gr_info *cod_info);
 static int quantize(int ix[GRANULE_SIZE], int stepsize,
                     shine_global_config *config, int *end);
 
+/* The fields of cod_info that counting the bits sets. */
+static void copy_code_tables(gr_info *to, const gr_info *from) {
+  to->big_values = from->big_values;
+  to->count1 = from->count1;
+  to->count1table_select = from->count1table_select;
+  for (int region = 0; region < 3; region++)
+    to->table_select[region] = from->table_select[region];
+  to->region0_count = from->region0_count;
+  to->region1_count = from->region1_count;
+  to->address1 = from->address1;
+  to->address2 = from->address2;
+  to->address3 = from->address3;
+}
+
+/* The bits of ix quantised at the step size of cod_info, at most limit or
+ * above it, from `counted` when it holds that step: ix already holds it, and
+ * a count in full is the same under any limit. */
+static int step_bits(int ix[GRANULE_SIZE], gr_info *cod_info,
+                     shine_global_config *config, int limit,
+                     const counted_step_t *counted) {
+  int end;
+
+  if (cod_info->quantizerStepSize == counted->step) {
+    copy_code_tables(cod_info, &counted->tables);
+    return counted->bits;
+  }
+  if (quantize(ix, cod_info->quantizerStepSize, config, &end) > 8192)
+    return -1;
+  return shine_count_bits_up_to(ix, end, cod_info, config, limit);
+}
+
 /*
  * shine_inner_loop:
  * ----------
  * The code selects the best quantizerStepSize for a particular set
  * of scalefacs.
  */
-int shine_inner_loop(int ix[GRANULE_SIZE], int max_bits, gr_info *cod_info,
-                     shine_global_config *config) {
-  int bits, end;
+static int shine_inner_loop(int ix[GRANULE_SIZE], int max_bits,
+                            gr_info *cod_info, shine_global_config *config,
+                            const counted_step_t *counted) {
+  int bits;
 
   if (max_bits < 0)
     cod_info->quantizerStepSize--;
   do {
-    while (quantize(ix, ++cod_info->quantizerStepSize, config, &end) > 8192)
-      ; /* within table range? */
+    int limit;
 
-    /* The last step size keeps its count whatever it is. */
-    bits = shine_count_bits_up_to(
-        ix, end, cod_info, config,
-        cod_info->quantizerStepSize < MAX_STEPSIZE ? max_bits : INT_MAX);
+    /* Step sizes too small for the table range are skipped. */
+    do {
+      cod_info->quantizerStepSize++;
+      /* The last step size keeps its count whatever it is. */
+      limit = cod_info->quantizerStepSize < MAX_STEPSIZE ? max_bits : INT_MAX;
+    } while ((bits = step_bits(ix, cod_info, config, limit, counted)) < 0);
     /* All coefficients quantize to 0 well before MAX_STEPSIZE. */
   } while (bits > max_bits && cod_info->quantizerStepSize < MAX_STEPSIZE);
   return bits;
@@ -63,14 +104,15 @@ int shine_outer_loop(int max_bits,
   int bits, huff_bits;
   shine_side_info_t *side_info = &config->side_info;
   gr_info *cod_info = &side_info->gr[gr].ch[ch].tt;
+  counted_step_t counted;
 
   cod_info->quantizerStepSize =
-      bin_search_StepSize(max_bits, ix, cod_info, config);
+      bin_search_StepSize(max_bits, ix, cod_info, config, &counted);
 
   cod_info->part2_length = part2_length(gr, ch, config);
   huff_bits = max_bits - cod_info->part2_length;
 
-  bits = shine_inner_loop(ix, huff_bits, cod_info, config);
+  bits = shine_inner_loop(ix, huff_bits, cod_info, config, &counted);
   cod_info->part2_3_length = cod_info->part2_length + bits;
 
   return cod_info->part2_3_length;
@@ -680,29 +722,43 @@ int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin, unsigned int end,
  * with a call to bin_search gain defined below, which
  * returns a good starting quantizerStepSize.
  */
+/* Also leaves in `counted` the last step size whose bits were below
+ * desired_rate, which ix holds. */
 int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE],
-                        gr_info *cod_info, shine_global_config *config) {
+                        gr_info *cod_info, shine_global_config *config,
+                        counted_step_t *counted) {
   int bit, next, count, end;
+  int scratch[GRANULE_SIZE], *trial = scratch, *kept = ix;
 
   next = -120;
   count = 120;
+  counted->step = INT_MIN;
 
   do {
     int half = count / 2;
 
-    if (quantize(ix, next + half, config, &end) > 8192)
+    if (quantize(trial, next + half, config, &end) > 8192)
       bit = 100000; /* fail */
     else
-      bit = shine_count_bits_up_to(ix, end, cod_info, config, desired_rate);
+      bit = shine_count_bits_up_to(trial, end, cod_info, config, desired_rate);
 
-    if (bit < desired_rate)
+    if (bit < desired_rate) {
+      int *spare = kept;
+
       count = half;
-    else {
+      counted->step = next + half;
+      counted->bits = bit;
+      copy_code_tables(&counted->tables, cod_info);
+      kept = trial;
+      trial = spare;
+    } else {
       next += half;
       count -= half;
     }
   } while (count > 1);
 
+  if (counted->step != INT_MIN && kept != ix)
+    memcpy(ix, kept, sizeof(scratch));
   return next;
 }
 
