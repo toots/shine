@@ -2,9 +2,8 @@
 
 This specifies shine's psychoacoustic model: the masking thresholds,
 perceptual entropy and block-switching decisions that the noise allocation,
-the bit reservoir and short blocks are built on. It is the spec for the
-Psychoacoustics section of `TODO.md`. It is detailed enough to implement and
-test the model without any other source.
+the bit reservoir and short blocks are built on. It is detailed enough to
+implement and test the model without any other source.
 
 MUST, SHOULD and MAY are used as in RFC 2119. Each rule lives in one file,
 and the others link to it.
@@ -17,23 +16,7 @@ and the others link to it.
 
 Nothing the model produces is frozen. Output at the other quality levels is
 bit-exact on every host ([fixed-point.md](fixed-point.md) §1) and pinned by
-its own golden hashes once each phase lands.
-
-## Phases
-
-Each phase is fixed point, behind the quality setting, and lands with its
-metric report before the next one starts.
-
-| Phase | Parts |
-|---|---|
-| 1. Model | long analysis, partitions, spreading, tonality, threshold limits, ATH and its adaptation, M/S thresholds and decision, the PE formula |
-| 2. Noise allocation | allowed distortion per band, band offsets, band ATH, the outer loop and scalefactor coding |
-| 3. Reservoir | PE smoothing, the bit reservoir, the bits of a granule from its PE |
-| 4. Short blocks | attack detection, block types, short analysis and thresholds, short pre-echo control, temporal masking between short windows |
-| 5. Bandwidth | the lowpass cutoff by bitrate per channel, applied to the MDCT before the model |
-| 6. Resampling | the encoding rate by bitrate per channel, the sample rate converter |
-
-Every file and section names its phase.
+its own golden hashes.
 
 ## Documents
 

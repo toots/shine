@@ -36,11 +36,7 @@ higher one. All columns are **tuning**.
 stereo and one for two channels coded without M/S (the stereo and dual
 channel modes): at one bitrate, a mono stream has twice the bits per
 channel of a stereo one, and joint stereo codes two channels in fewer
-bits than two channels apart. From 32 to 64 kbps the joint stereo values
-score 0.2 to 1.2 higher over the corpus than the mono ones do on joint
-stereo, and the mono values up to 3 higher on mono. From 48 to 112 kbps
-the values without M/S score 0.3 to 2.7 higher on such streams than the
-joint stereo ones do.
+bits than two channels apart.
 
 A one-channel stream at a rate `fs` up to `MASK_ADJUST_LOW_RATE` = 24 kHz
 does not take `MASK_ADJUST` from the table but from its bits per sample,
@@ -55,15 +51,11 @@ The table's column is tuned on 44.1 kHz inputs, whose stream rate follows
 the bitrate. A 16 or 22.05 kHz input keeps its rate at every bitrate: at
 48 kbps it has the bits per sample of a 44.1 kHz stream at 96 to 128 kbps,
 at 16 kbps those of one at 32 to 44, and the row of its bitrate fits
-neither. Over the corpus in mono, the rule gains 0.2 to 2.8 at 16 kHz from
-8 to 48 kbps and 0.5 to 2.8 at 22.05 kHz from 16 to 64 kbps, with no
-item down by more than 4.7, and 1.5 to 1.7 on the held-out sources. A
-44.1 kHz mono input reaches these rates only at 32 kbps, where the rule
-gives the table's 6 dB.
+neither. A 44.1 kHz mono input reaches these rates only at 32 kbps, where
+the rule gives the table's 6 dB.
 
-`PE_SPLIT_POWER` ([noise-allocation.md](noise-allocation.md) §3.1) was
-chosen on the score among 1, 1.4, 1.8, 2.4 and 3.2 at each bitrate, and
-capped at 2.4.
+`PE_SPLIT_POWER` is bounded by [noise-allocation.md](noise-allocation.md)
+§3.1.
 
 Derived per stream:
 
@@ -78,7 +70,7 @@ does not depend on the quality setting or the bitrate.
 The ATH values in this table (`ATH_LOWER`, `ATH_CURVE`) were set against a
 band ATH with no width factor, so they MUST be retuned together with the band
 ATH rule of [ath.md](ath.md) §2. The allocator offsets (`MASK_ADJUST`) MUST
-be retuned together with the allocator of phase 2.
+be retuned together with the allocator ([noise-allocation.md](noise-allocation.md)).
 
 ## 2. Model constants
 
@@ -122,7 +114,7 @@ be retuned together with the allocator of phase 2.
 | `PREFLAG_SHARE` | 0.8 | tuning | [noise-allocation.md](noise-allocation.md) §5.1 |
 | `PREFLAG_LSF_KBPS` | 40 | tuning | [noise-allocation.md](noise-allocation.md) §5.1 |
 | `SHORT_START` | 1/2 | tuning | [noise-allocation.md](noise-allocation.md) §6.1 |
-| lowpass cutoffs, `LOWPASS_*` | table | tuning | [bandwidth.md](bandwidth.md) |
+| lowpass cutoffs, `LOWPASS_*`, `JOINT_WIDE_KBPS` | table | tuning | [bandwidth.md](bandwidth.md) |
 | `BUFFER_BITS` | 7680 | essential | [reservoir.md](reservoir.md) §2 |
 | `MAIN_DATA_BEGIN_MAX` | 511 (MPEG-1), 255 (MPEG-2, 2.5) | essential | [reservoir.md](reservoir.md) §2 |
 | `PE_STEADY` | 670 · 5 / (1 + 2 · Σ k) ≈ 739.4 | essential | [reservoir.md](reservoir.md) §3 |

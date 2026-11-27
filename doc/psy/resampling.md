@@ -1,6 +1,6 @@
 # Resampling
 
-Phase 6. At a low bitrate per channel the lowpass
+At a low bitrate per channel the lowpass
 ([bandwidth.md](bandwidth.md)) leaves the top of the spectrum empty. A
 stream at a lower sample rate codes the same band with narrower lines and
 scalefactor bands, shorter frames in time per bit of side information, and

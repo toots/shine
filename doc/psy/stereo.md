@@ -1,6 +1,6 @@
 # Stereo: mid/side thresholds and the M/S decision
 
-Phase 1. It applies to joint stereo, the default for two channels. In other
+It applies to joint stereo, the default for two channels. In other
 channel modes only analysis channels 0 and 1 exist, and no rule of this file
 applies.
 
@@ -24,7 +24,7 @@ can mask.
 
 It runs per partition on partition thresholds, after masking
 ([masking.md](masking.md) §3) and before the band sums: on the long layout
-every granule, and in phase 4 on the short layout every granule and window,
+every granule, and on the short layout every granule and window,
 whatever the block type. The short thresholds of a long granule are history
 for the next granule's pre-echo control
 ([block-switching.md](block-switching.md) §4), so they are corrected like

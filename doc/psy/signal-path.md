@@ -8,13 +8,12 @@ existing golden hashes ([README.md](README.md), frozen surface).
 
 Per frame, in this order:
 
-1. **Block types** (phase 4): attack detection on the time-domain input
-   through the look-ahead (§2), then the final block type of every granule
-   of the frame ([block-switching.md](block-switching.md)). Before phase 4,
-   every granule is NORM.
+1. **Block types**: attack detection on the time-domain input through the
+   look-ahead (§2), then the final block type of every granule of the frame
+   ([block-switching.md](block-switching.md)).
 2. **Filterbank and MDCT** of every granule of the frame, with the window of
-   its block type, then the **lowpass** (phase 5, [bandwidth.md](bandwidth.md))
-   on every spectrum it produced. In phase 4, also the short analysis spectra of every
+   its block type, then the **lowpass** ([bandwidth.md](bandwidth.md))
+   on every spectrum it produced; also the short analysis spectra of every
    granule, whatever its block type ([spectral-analysis.md](spectral-analysis.md) §2).
 3. **Loudness** of every granule, then the **adaptive ATH update**, once
    ([ath.md](ath.md) §4). The updated factor is the only one used anywhere in
@@ -22,19 +21,19 @@ Per frame, in this order:
 4. **Model**, per granule, per analysis channel
    ([spectral-analysis.md](spectral-analysis.md), [masking.md](masking.md)),
    then the M/S threshold correction ([stereo.md](stereo.md) §2), then the
-   short pre-echo control (phase 4, [block-switching.md](block-switching.md) §4),
+   short pre-echo control ([block-switching.md](block-switching.md) §4),
    then PE
    ([perceptual-entropy.md](perceptual-entropy.md)).
 5. **M/S decision** for the frame ([stereo.md](stereo.md) §3).
-6. **PE smoothing** (phase 3, [perceptual-entropy.md](perceptual-entropy.md) §3),
-   then per granule its **bits** (phase 3, [reservoir.md](reservoir.md) §3)
-   and the **noise allocation** (phase 2, [allowed-distortion.md](allowed-distortion.md),
+6. **PE smoothing** ([perceptual-entropy.md](perceptual-entropy.md) §3),
+   then per granule its **bits** ([reservoir.md](reservoir.md) §3)
+   and the **noise allocation** ([allowed-distortion.md](allowed-distortion.md),
    [noise-allocation.md](noise-allocation.md)).
 
 Thresholds describe the granule whose MDCT they were computed from, so they
 are used in the same frame without delay. Only the block type needs look-ahead.
 
-## 2. Look-ahead (phase 4)
+## 2. Look-ahead
 
 The final type of granule `g` depends on whether granule `g + 1` is short
 (START must precede SHORT). That depends on the attack slots of `g + 1`,
@@ -55,8 +54,8 @@ the filterbank delay are generated constants, checked by the click test of
 
 ### 3.1 Inputs per granule
 
-- The MDCT coefficients of each coded channel (§1 step 2) and, in phase 4,
-  its short analysis spectra.
+- The MDCT coefficients of each coded channel (§1 step 2) and its short
+  analysis spectra.
 - The final block type of each coded channel.
 - The adaptive ATH factor `adjust_factor` of the frame.
 - Persistent state (§4), and the per-stream parameters
@@ -67,7 +66,7 @@ the filterbank delay are generated constants, checked by the click test of
 For each analysis channel `c`:
 
 - `en.l[0..21]`, `thm.l[0..21]`: energy and masking threshold per long sfb.
-- In phase 4, `en.s[0..12][0..2]`, `thm.s[0..12][0..2]`: the same per short
+- `en.s[0..12][0..2]`, `thm.s[0..12][0..2]`: the same per short
   sfb and short window.
 - `pe[c]` for `c` ∈ {0, 1}. With M/S, `pe_MS[0]` (mid) and `pe_MS[1]`
   (side).
@@ -87,13 +86,13 @@ before.
 
 Per analysis channel `c`:
 
-| State | Meaning | Initial value | Phase |
-|---|---|---|---|
-| `nb_1[b]`, `nb_2[b]` | long spread threshold of the last two granules, before limiting | none | 1 |
-| tonality history | the previous granule's long line energies, and in phase 4 its window 2 short line energies, for the smoothing of [spectral-analysis.md](spectral-analysis.md) §1.2, §2 | none | 1 |
-| `blocktype_prev[c]`, c ∈ {0, 1} | final type of the previous granule | NORM | 4 |
-| `last_thm.s[sb][j]` | processed short thresholds of the previous granule | none | 4 |
-| attack history | the last two sub-block peaks of the previous granule, its `Esh[3]`, its slot 3 before suppression, and its final slot 2 (`last_attacks`) | peaks `PEAK_FLOOR`, `Esh` `3·PEAK_FLOOR`, slots 0 | 4 |
+| State | Meaning | Initial value |
+|---|---|---|
+| `nb_1[b]`, `nb_2[b]` | long spread threshold of the last two granules, before limiting | none | |
+| tonality history | the previous granule's long line energies, and its window 2 short line energies, for the smoothing of [spectral-analysis.md](spectral-analysis.md) §1.2, §2 | none | |
+| `blocktype_prev[c]`, c ∈ {0, 1} | final type of the previous granule | NORM | |
+| `last_thm.s[sb][j]` | processed short thresholds of the previous granule | none | |
+| attack history | the last two sub-block peaks of the previous granule, its `Esh[3]`, its slot 3 before suppression, and its final slot 2 (`last_attacks`) | peaks `PEAK_FLOOR`, `Esh` `3·PEAK_FLOOR`, slots 0 | |
 
 "None" means no history: a rule that reads it MUST behave as stated for that
 case, and MUST NOT read a placeholder value. With no history:

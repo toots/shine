@@ -1,7 +1,6 @@
 # Masking thresholds per partition
 
-Phase 1 for the long layout, phase 4 for the short layout. Long and short
-windows share one procedure (§1–§3). Their differences are in §4. Inputs per
+Long and short windows share one procedure (§1–§3). Their differences are in §4. Inputs per
 analysis channel: `eb`, `max`, `max_t`, `avg_t` per partition
 ([spectral-analysis.md](spectral-analysis.md) §3).
 
@@ -90,7 +89,7 @@ although the onset was handled by the short granule. A history of 0 (silence)
 imposes no limit. An onset after silence is the attack detector's case
 ([block-switching.md](block-switching.md)).
 
-Before phase 4 every granule is NORM. Both limits apply throughout.
+Both limits apply to every block type.
 
 ### 3.2 Short windows
 
@@ -159,7 +158,7 @@ The threshold is lowered by 7.4 dB at the lowest partition, falling linearly
 in partition index to nearly 0 dB at the top. The short layout uses the same
 law with its own `npart`.
 
-## 4. Short windows (phase 4)
+## 4. Short windows
 
 The procedure of §1–§3 per short window `j`, with:
 

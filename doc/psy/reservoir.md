@@ -1,6 +1,6 @@
 # Bit reservoir
 
-Phase 3. A frame's bits are fixed by the bitrate, but its granules do not
+A frame's bits are fixed by the bitrate, but its granules do not
 need the same number. The reservoir lets a granule that does not need all
 its bits leave some for a later one that needs more: an attack, a dense
 passage. A granule leaves bits when its noise is already under its allowed

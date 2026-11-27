@@ -1,8 +1,8 @@
 # Perceptual entropy
 
-PE estimates how many bits a granule needs. The formula is phase 1, since
-the M/S decision uses it ([stereo.md](stereo.md) §3). The smoothing (§3) is
-phase 3, with the reservoir it feeds ([reservoir.md](reservoir.md) §3).
+PE estimates how many bits a granule needs. The M/S decision uses it
+([stereo.md](stereo.md) §3), and its smoothing (§3) feeds the reservoir
+([reservoir.md](reservoir.md) §3).
 
 ## 1. Which formula
 
@@ -43,7 +43,7 @@ rate. Whether they fit the other rates is a perceptual judgement
 ([tests.md](tests.md) §4). PE depends only on energy ratios, so it does not
 depend on the energy unit or the transform.
 
-## 3. Smoothing (phase 3)
+## 3. Smoothing
 
 Per frame, before allocation. `PEsum` is the sum of the PE in use, L/R or M/S
 ([stereo.md](stereo.md) §3), over the frame's granules and channels. `B` is

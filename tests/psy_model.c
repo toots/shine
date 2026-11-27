@@ -1,4 +1,4 @@
-/* Conformance checks of the psychoacoustic model, phase 1: the invariants of
+/* Conformance checks of the psychoacoustic model: the invariants of
  * doc/psy/tests.md §1-§2 and the checks of doc/psy/known-complexity.md
  * (KC n below). Each check reports how many times it ran, and the suite fails
  * if any ran zero times.
@@ -1380,7 +1380,7 @@ static void check_independent_encoders(void) {
       const unsigned char *model = (const unsigned char *)e[i]->psy->thm;
 
       encode_frame(e[i], music, &gain, &position[i], hash);
-      /* The model's outputs too: phase 1 streams hardly depend on them. */
+      /* The model's outputs too: a stream does not depend on all of them. */
       for (size_t k = 0; k < sizeof(e[i]->psy->thm); k++)
         *hash = (*hash ^ model[k]) * 0x100000001b3ULL;
     }

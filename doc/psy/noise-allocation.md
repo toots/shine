@@ -1,16 +1,16 @@
 # Noise allocation
 
-Phase 2. For each granule and coded channel, in the stereo mode chosen for
+For each granule and coded channel, in the stereo mode chosen for
 the frame, the allocation chooses the quantiser step size and the
 scalefactors so that the quantisation noise of each band stays under its
 allowed distortion `xmin` ([allowed-distortion.md](allowed-distortion.md)
 §2) wherever the bit budget allows, and is spread in proportion to it where
 it does not.
 
-§1 to §5 are written for long blocks; a SHORT granule (phase 4) is
+§1 to §5 are written for long blocks; a SHORT granule is
 allocated by the same rules on the bands of §6. START and STOP granules are
 long. The bits of a granule come from the reservoir ([reservoir.md](reservoir.md)
-§3; the frame's mean before phase 3); §3 shares them between its channels.
+§3); §3 shares them between its channels.
 
 ## 1. Quantisation
 
@@ -111,21 +111,20 @@ one lacks. In an M/S frame the side channel often needs a fraction of what
 the mid does, and the bits it leaves unused are stuffing. PE never falls
 below its base, so no channel gets nothing.
 
-A power of 1 shares the bits in proportion to PE, and an encoder MUST then
-compute the share exactly. A power above 1 gives the channel that needs
-more a larger share than its PE: when bits are short, PE underestimates
-how much more the mid channel gains from a bit than the side. Left and
-right have no such imbalance: with the power of the bitrate, a stream
-without M/S scored 0.1 to 0.4 lower than with 1, and the left and right
-frames of a joint stereo stream slightly lower too. With
-another power the weights come from the model's `log2` and its inverse
+A power above 1 gives the channel that needs more a larger share than its
+PE: when bits are short, PE underestimates how much more the mid channel
+gains from a bit than the side. Left and right have no such imbalance, and
+share in proportion to PE.
+
+With a power of 1 an encoder MUST compute the share exactly. With another
+power the weights come from the model's `log2` and its inverse
 ([fixed-point.md](fixed-point.md)), and the share MUST be within 2 bits of
 the formula.
 
-A larger power takes bits from the side channel of an M/S frame, and the
-score, which rates each channel by itself, does not hear the stereo image
-([tests.md](tests.md) §4): the power is capped at 2.4, below what the
-score alone asks for under 64 kbps, until it is judged by ear.
+`PE_SPLIT_POWER` is at most 2.4. A larger power takes more bits from the
+side channel, and the score, which rates each channel by itself, does not
+hear the stereo image ([tests.md](tests.md) §4): a larger value MUST be
+confirmed by listening.
 
 ### 3.2 The step size
 
@@ -196,7 +195,7 @@ every attempt raises a scalefactor and scalefactors are bounded.
 A granule whose coefficients are all 0 skips the allocation: its step size
 and scalefactors are 0.
 
-### 4.1 Bits a channel does not need (phase 3)
+### 4.1 Bits a channel does not need
 
 When the best attempt leaves no band over, its noise is under the allowed
 distortion everywhere, and the bits that would push it further under are
@@ -216,11 +215,10 @@ Neither condition is monotonic in `q`, so it is not always the largest such
 step size.
 
 A channel leaves at most what the reservoir lacked before the granule drew
-on it. Counting from the channel's mean instead, so that a channel given
-more than its mean gives all of it back, scored worse
-([tests.md](tests.md) §4): the bound is the measured one. A channel with a
-band over leaves nothing: the reservoir is filled only with bits whose
-absence the model cannot tell.
+on it, **as measured**: a bound counted from the channel's mean, which
+gives back all of a share above the mean, scores lower
+([tests.md](tests.md) §4). A channel with a band over leaves nothing: the
+reservoir is filled only with bits whose absence the model cannot tell.
 
 ### 4.2 Huffman regions of the chosen quantisation
 
@@ -242,9 +240,8 @@ loop stay in the reservoir.
 START, STOP and SHORT granules have fixed boundaries (§6): nothing to
 choose.
 
-The search is made once per channel, not in the loop: on the corpus it
-saves 1.1 to 1.7% of the bits from 64 to 192 kbps, as much when made once
-as when the loop also refits its step size to it.
+The search is made once per channel, not in the loop: refitting the step
+size to the split inside the loop saves no more bits.
 
 ## 5. Scalefactor coding
 
@@ -307,21 +304,19 @@ of §1.
 steps for one bit. The loop reaches the same steps by raising ten
 scalefactors, which it only does for bands that are over, and pays for in
 `part2_length`. Starting from them leaves less noise in the upper bands of
-every granule, those the allowed distortion already covers included, and
-on the score that is worth 0.5 to 0.9 on stereo from 80 to 160 kbps and
-0.9 to 1.5 on mono from 48 to 64 kbps. A granule whose upper bands are
-under the threshold of hearing or fully masked has nothing to gain there:
-with `preflag` on every granule, two such items lost 8 points.
+every granule, those the allowed distortion already covers included. A
+granule whose upper bands are under the threshold of hearing or fully
+masked has nothing to gain there, and loses the bits: hence the share of
+bands that can be over.
 
 SHORT granules have no `preflag`.
 
 In MPEG-2 and 2.5 `preflag` is carried by `scalefac_compress` (§5), in a
 form that codes smaller scalefactors: the loop has less room to shape the
-noise. Up to 40 kbps it gains 0.2 to 2.4 on the score at every rate, where
-few bands can be raised anyway. From 48 kbps up it loses up to 0.5, and
-one item more than the tolerance.
+noise. That only pays at low bitrates, where few bands can be raised
+anyway (`PREFLAG_LSF_KBPS`).
 
-## 6. Short blocks (phase 4)
+## 6. Short blocks
 
 A SHORT granule codes three windows of 192 lines. Its 576 coefficients are
 in coded order, by short sfb, then window, then line (ISO 11172-3
@@ -382,12 +377,12 @@ The loop of §4 raises every band that is over by the same step, and stops
 when all of them have been raised: when the whole granule is over, as
 around an attack, it leaves the noise as flat as the quantiser makes it,
 well under the spectrum's peak and too high where the signal is weak.
-Starting half way to an even noise-to-mask ratio leaves the mean score of
-every bitrate where it was, within 0.1, and gains 3 to 4 points on the
-items that trailed most, castanets and claves at 128 kbps. The whole of
-that amplification, and the same start on long granules, both score
-lower. In MPEG-2 and 2.5 streams it gains nothing, and loses 0.2 to 0.4
-at 8 and 16 kbps: they start from 0.
+Starting half way to an even noise-to-mask ratio moves noise from the bands
+where the signal is weak to those where it is strong, which the loop
+cannot do. **As measured**, it helps attacks (castanets, claves) and
+leaves the rest where it was; the whole of that amplification, or the same
+start on long granules, scores lower, and MPEG-2 and 2.5 streams gain
+nothing from it, so they start from 0.
 
 ## 7. Determinism
 

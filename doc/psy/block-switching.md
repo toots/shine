@@ -1,7 +1,5 @@
 # Attack detection, block types, short-block pre-echo
 
-Phase 4. Before phase 4 every granule is NORM and nothing in this file runs.
-
 ## 1. Attack detection
 
 The detector runs in the time domain on the input samples, ahead of the MDCT

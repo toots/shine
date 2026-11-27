@@ -1,5 +1,6 @@
-/* Psychoacoustic model, long blocks (doc/psy/). Phase 1: masking thresholds,
- * adaptive ATH, perceptual entropy and the mid/side decision.
+/* Psychoacoustic model (doc/psy/): masking thresholds, adaptive ATH,
+ * perceptual entropy, the mid/side decision, block types, noise allocation
+ * and the bit reservoir.
  *
  * Energies and thresholds are log2 in Q16 of the energy unit of
  * doc/psy/conventions.md, PSY_LOG_ZERO for 0. */

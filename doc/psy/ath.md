@@ -1,8 +1,5 @@
 # Absolute threshold of hearing
 
-Phase 1 (partition ATH, adaptive ATH), phase 2 (band ATH in the allowed
-distortion), phase 4 (short layout).
-
 The curve `ATH(f)` is defined in [conventions.md](conventions.md). This file
 places it on the energy scale, gives it per partition and per band, and
 adapts it to programme loudness.

@@ -1,6 +1,6 @@
 # Bandwidth
 
-Phase 5. At a low bitrate per channel, the bits that code the top of the
+At a low bitrate per channel, the bits that code the top of the
 spectrum are taken from the bands below it. Above a cutoff that falls with
 the bitrate, the content is quieter, more masked, and barely audible to
 many listeners, while every line coded there costs as much as one below.
@@ -20,9 +20,7 @@ in `kbps_ch` between the rows of this table, **tuning**:
 A joint stereo stream with `kbps_ch` from `JOINT_WIDE_KBPS` = 32 up to 40
 takes the cutoff of 40: M/S coding leaves the mid channel enough bits for
 the wider band, where two channels coded apart or one channel at the same
-rate lose from it (**as measured** at 64 kbps from 44.1 kHz: the 32 kHz
-stream against the 24 kHz one gains 2.7 points of the mean in joint
-stereo, loses 1.2 in plain stereo, and 0.8 for one channel at 32 kbps).
+rate lose from it (**as measured**).
 
 Below 8 the cutoff is that of 8. From `LOWPASS_NONE_KBPS` = 128 per
 channel there is no cutoff. Where `f_c ≥ LOWPASS_NYQUIST_FRACTION · fs/2`
@@ -33,10 +31,7 @@ cutoff: the whole band of the stream is coded, and `f_c` only chooses its
 rate ([resampling.md](resampling.md) §1). That rate is the lowest one that
 holds `f_c`, so the band between `f_c` and `fs/2` is a small part of the
 stream, and removing it costs more on the score than its lines cost in
-bits: over the corpus, coding it gains 0.8 to 3.2 points of the mean at
-44.1 kHz stereo from 32 to 96 kbps, 2.3 to 4.1 at 16 and 22.05 kHz from 16
-to 48 kbps, and loses 0.2 at mono 40 kbps, with no item down by more than
-2.4 ([tests.md](tests.md) §4). A stream above that rate keeps its cutoff:
+bits (**as measured**, [tests.md](tests.md) §4). A stream above that rate keeps its cutoff:
 the band it removes is wide, and its top has no scalefactor of its own.
 
 ## 2. The filter
@@ -70,6 +65,7 @@ The lowest quality level does not filter.
 | `LOWPASS_NONE_KBPS` | 128 | tuning |
 | `LOWPASS_NYQUIST_FRACTION` | 0.95 | tuning |
 | `LOWPASS_FREE_RATE` | 32 kHz | tuning |
+| `JOINT_WIDE_KBPS` | 32 | tuning |
 | `LOWPASS_PASS_FRACTION` | 0.9 | tuning |
 
 The cutoffs follow the bandwidth that is commonly traded against bitrate

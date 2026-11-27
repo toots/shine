@@ -1,7 +1,5 @@
 # Spectral analysis and partitions
 
-Phase 1, except the short layout, which is phase 4.
-
 The model works on line energies of the MDCT, the transform the encoder
 already codes. An FFT analysis path MAY be used instead (§6). Both feed the
 same partition procedure, and their energies are in the same unit
@@ -24,7 +22,7 @@ Line `k` covers `[k, k + 1)·fs/1152` Hz.
 - Left and right use their own coefficients. Mid and side use the
   coefficients `(X_L ± X_R)/√2`, which are the ones an M/S frame codes.
 - The long spectrum of a NORM, START or STOP granule is its coded MDCT. The
-  long spectrum of a SHORT granule (phase 4) is an analysis-side long MDCT of
+  long spectrum of a SHORT granule is an analysis-side long MDCT of
   the same input, with the NORM window. The long state then stays continuous
   across short granules.
 
@@ -45,7 +43,7 @@ With no previous granule (stream start), `E_t = E_g`. Only the tonality
 index ([masking.md](masking.md) §1) reads `E_t`. Whether this smoothing is
 enough is a perceptual judgement ([tests.md](tests.md) §4).
 
-## 2. Short spectra (phase 4)
+## 2. Short spectra
 
 Three windows `j = 0, 1, 2` per granule. `X_s[j][k]`, `k = 0..191`, are the
 short MDCT coefficients of window `j`, and line `k` covers

@@ -1,8 +1,5 @@
 # From model output to allowed distortion per band
 
-Phase 2, except temporal masking between short windows (§3), which is
-phase 4.
-
 This is the boundary with the noise allocation loop. For each granule and
 coded channel, in the stereo mode chosen for the frame, the loop gets the
 model's band energies `en_psy` and thresholds `thm_psy`, and the channel's
@@ -60,7 +57,7 @@ xmin = max(x, XMIN_FLOOR)
 The loop also gets, per granule, the number of bands with `en0 > A`, and per
 band whether `en0 > xmin`.
 
-## 3. Temporal masking between short windows (phase 4)
+## 3. Temporal masking between short windows
 
 After the three windows of a short sfb are computed:
 
