@@ -9,7 +9,8 @@
 #include "tables.h"
 #include "types.h"
 
-static void shine_HuffmanCode(bitstream_t *bs, int table_select, int x, int y);
+static void encodeBigValues(bitstream_t *bs, unsigned table_select,
+                            const int *ix, int start, int end);
 static void shine_huffman_coder_count1(bitstream_t *bs,
                                        const struct huffcodetab *h, int v,
                                        int w, int x, int y);
@@ -212,7 +213,7 @@ static void Huffmancodebits(shine_global_config *config, int *ix, gr_info *gi) {
       &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
   unsigned scalefac_index;
   int region1Start, region2Start;
-  int i, bigvalues, count1End;
+  int i, bigvalues, count1End, region, regionEnd[3];
   int v, w, x, y;
   const struct huffcodetab *h;
   int bits;
@@ -238,16 +239,17 @@ static void Huffmancodebits(shine_global_config *config, int *ix, gr_info *gi) {
     region2Start = scalefac[scalefac_index];
   }
 
-  for (i = 0; i < bigvalues; i += 2) {
-    /* get table pointer */
-    int idx = (i >= region1Start) + (i >= region2Start);
-    unsigned tableindex = gi->table_select[idx];
-    /* get huffman code */
-    if (tableindex) {
-      x = ix[i];
-      y = ix[i + 1];
-      shine_HuffmanCode(&config->bs, tableindex, x, y);
-    }
+  regionEnd[0] = MIN(region1Start, bigvalues);
+  regionEnd[1] = MIN(region2Start, bigvalues);
+  regionEnd[2] = bigvalues;
+  for (i = 0, region = 0; region < 3; region++) {
+    unsigned tableindex = gi->table_select[region];
+
+    if (i >= regionEnd[region])
+      continue;
+    if (tableindex)
+      encodeBigValues(&config->bs, tableindex, ix, i, regionEnd[region]);
+    i = regionEnd[region];
   }
 
   /* 2: Write count1 area */
@@ -275,112 +277,88 @@ static void Huffmancodebits(shine_global_config *config, int *ix, gr_info *gi) {
   }
 }
 
-static inline int shine_abs_and_sign(int *x) {
-  if (*x > 0)
-    return 0;
-  *x *= -1;
-  return 1;
+/* A pair or quadruple codeword is followed by, for each of its values in
+ * order, the escape linbits when the value is at least 15 on an ESC table,
+ * then the sign bit when the value is not 0. l3_enc carries the signs. */
+static inline unsigned magnitude(int value) {
+  return value < 0 ? -value : value;
 }
+
+static inline unsigned sign_bit(int value) { return value < 0; }
+
+static inline unsigned is_nonzero(int value) { return value != 0; }
 
 static void shine_huffman_coder_count1(bitstream_t *bs,
                                        const struct huffcodetab *h, int v,
                                        int w, int x, int y) {
-  unsigned int signv, signw, signx, signy;
-  unsigned int code = 0;
-  int p, cbits = 0;
+  unsigned p = magnitude(v) + (magnitude(w) << 1) + (magnitude(x) << 2) +
+               (magnitude(y) << 3);
+  unsigned code = h->table[p];
+  unsigned length = h->hlen[p];
 
-  signv = shine_abs_and_sign(&v);
-  signw = shine_abs_and_sign(&w);
-  signx = shine_abs_and_sign(&x);
-  signy = shine_abs_and_sign(&y);
-
-  p = v + (w << 1) + (x << 2) + (y << 3);
-  shine_putbits(bs, h->table[p], h->hlen[p]);
-
-  if (v) {
-    code = signv;
-    cbits = 1;
-  }
-  if (w) {
-    code = (code << 1) | signw;
-    cbits++;
-  }
-  if (x) {
-    code = (code << 1) | signx;
-    cbits++;
-  }
-  if (y) {
-    code = (code << 1) | signy;
-    cbits++;
-  }
-  shine_putbits(bs, code, cbits);
+  code = code << is_nonzero(v) | sign_bit(v);
+  code = code << is_nonzero(w) | sign_bit(w);
+  code = code << is_nonzero(x) | sign_bit(x);
+  code = code << is_nonzero(y) | sign_bit(y);
+  length += is_nonzero(v) + is_nonzero(w) + is_nonzero(x) + is_nonzero(y);
+  shine_putbits(bs, code, length);
 }
 
-/* Implements the pseudocode of page 98 of the IS */
-static void shine_HuffmanCode(bitstream_t *bs, int table_select, int x, int y) {
-  int cbits = 0, xbits = 0;
-  unsigned int code = 0, ext = 0;
-  unsigned signx, signy, ylen, idx;
-  const struct huffcodetab *h;
+/* Pairs [start, end) of a region coded with a table without linbits. */
+static void encodePairs(bitstream_t *bs, const struct huffcodetab *h,
+                        const int *ix, int start, int end) {
+  const unsigned ylen = h->ylen;
 
-  signx = shine_abs_and_sign(&x);
-  signy = shine_abs_and_sign(&y);
+  for (int i = start; i < end; i += 2) {
+    int x = ix[i], y = ix[i + 1];
+    unsigned idx = magnitude(x) * ylen + magnitude(y);
+    unsigned code = h->table[idx];
+    unsigned length = h->hlen[idx] + is_nonzero(x) + is_nonzero(y);
 
-  h = &(shine_huffman_table[table_select]);
-  ylen = h->ylen;
-
-  if (table_select > 15) { /* ESC-table is used */
-    unsigned linbitsx = 0, linbitsy = 0, linbits = h->linbits;
-
-    if (x > 14) {
-      linbitsx = x - 15;
-      x = 15;
-    }
-    if (y > 14) {
-      linbitsy = y - 15;
-      y = 15;
-    }
-
-    idx = (x * ylen) + y;
-    code = h->table[idx];
-    cbits = h->hlen[idx];
-    if (x > 14) {
-      ext |= linbitsx;
-      xbits += linbits;
-    }
-    if (x != 0) {
-      ext <<= 1;
-      ext |= signx;
-      xbits += 1;
-    }
-    if (y > 14) {
-      ext <<= linbits;
-      ext |= linbitsy;
-      xbits += linbits;
-    }
-    if (y != 0) {
-      ext <<= 1;
-      ext |= signy;
-      xbits += 1;
-    }
-
-    shine_putbits(bs, code, cbits);
-    shine_putbits(bs, ext, xbits);
-  } else { /* No ESC-words */
-    idx = (x * ylen) + y;
-    code = h->table[idx];
-    cbits = h->hlen[idx];
-    if (x != 0) {
-      code <<= 1;
-      code |= signx;
-      cbits += 1;
-    }
-    if (y != 0) {
-      code <<= 1;
-      code |= signy;
-      cbits += 1;
-    }
-
-    shine_putbits(bs, code, cbits);
+    code = code << is_nonzero(x) | sign_bit(x);
+    code = code << is_nonzero(y) | sign_bit(y);
+    shine_putbits(bs, code, length);
   }
+}
+
+/* Appends a value's linbits and sign to an ESC pair's codeword; values from
+ * 15 up are coded as 15 in the codeword. */
+static inline uint64_t append_escape(uint64_t code, unsigned *length, int value,
+                                     unsigned linbits) {
+  unsigned m = magnitude(value);
+
+  if (m > 14) {
+    code = code << linbits | (m - 15);
+    *length += linbits;
+  }
+  *length += is_nonzero(value);
+  return code << is_nonzero(value) | sign_bit(value);
+}
+
+/* Pairs [start, end) of a region coded with an ESC table: tables 16 and up
+ * are all 16 by 16. */
+static void encodeEscapePairs(bitstream_t *bs, const struct huffcodetab *h,
+                              const int *ix, int start, int end) {
+  const unsigned linbits = h->linbits;
+
+  for (int i = start; i < end; i += 2) {
+    int x = ix[i], y = ix[i + 1];
+    unsigned idx = MIN(magnitude(x), 15) * 16 + MIN(magnitude(y), 15);
+    unsigned length = h->hlen[idx];
+    uint64_t code = h->table[idx];
+
+    code = append_escape(code, &length, x, linbits);
+    code = append_escape(code, &length, y, linbits);
+    shine_putbits(bs, code, length);
+  }
+}
+
+static void encodeBigValues(bitstream_t *bs, unsigned table_select,
+                            const int *ix, int start, int end) {
+  const struct huffcodetab *h = &shine_huffman_table[table_select];
+
+  if (table_select > 15)
+    encodeEscapePairs(bs, h, ix, start, end);
+  else
+    encodePairs(bs, h, ix, start, end);
 }
