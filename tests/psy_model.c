@@ -683,7 +683,7 @@ static void check_tonality(void) {
     for (int pass = 0; pass < 2; pass++) {
       psy_channel_t channel;
       psy_partitions_t smoothed;
-      int64_t x[GRANULE_SIZE];
+      int32_t x[GRANULE_SIZE];
 
       memset(&channel, 0, sizeof(channel));
       for (int k = 0; k < GRANULE_SIZE; k++)

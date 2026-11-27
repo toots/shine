@@ -141,11 +141,11 @@ static int energy_shift(uint64_t peak) {
 
 /* The magnitudes of coefficients below 2^31 in magnitude, and the largest:
  * the largest energy of a range is the square of its largest magnitude. */
-static uint32_t magnitudes(const int64_t *x, int lines, uint32_t *magnitude) {
+static uint32_t magnitudes(const int32_t *x, int lines, uint32_t *magnitude) {
   uint32_t largest = 0;
 
   for (int k = 0; k < lines; k++) {
-    magnitude[k] = (uint32_t)(x[k] < 0 ? -x[k] : x[k]);
+    magnitude[k] = x[k] < 0 ? 0u - (uint32_t)x[k] : (uint32_t)x[k];
     largest = magnitude[k] > largest ? magnitude[k] : largest;
   }
   return largest;
@@ -180,7 +180,7 @@ static void first_line_energies(const uint32_t *magnitude, int lines, int shift,
 /* §spectral-analysis 1, 3: line energies, partition sums and tonality.
  * Returns the log2 total energy. */
 static int32_t analyse_in(const psy_layout_t *layout, psy_channel_t *channel,
-                          const int64_t *x, psy_partitions_t *parts) {
+                          const int32_t *x, psy_partitions_t *parts) {
   const int16_t *start = layout->start;
   uint64_t max_t[PSY_NPART_MAX], avg_t[PSY_NPART_MAX], total = 0;
   uint64_t *energy = channel->last_energy, energy_t[GRANULE_SIZE];
@@ -235,7 +235,7 @@ static int32_t analyse_in(const psy_layout_t *layout, psy_channel_t *channel,
 }
 
 static int32_t analyse(psy_model_t *model, psy_channel_t *channel,
-                       const int64_t *x, psy_partitions_t *parts) {
+                       const int32_t *x, psy_partitions_t *parts) {
   return analyse_in(&model->layout[0], channel, x, parts);
 }
 
@@ -562,21 +562,16 @@ static int64_t mid_side(int64_t sum) {
   return (sum * PSY_INV_SQRT2 + (1LL << 30)) >> 31;
 }
 
-/* The spectra of the analysis channels from those of the coded ones,
- * right NULL for mono. */
-static void analysis_spectra(const psy_model_t *model, const int32_t *left,
-                             const int32_t *right, int lines,
-                             int64_t *x[PSY_CHANNELS]) {
-  for (int k = 0; k < lines; k++)
-    x[0][k] = left[k];
-  if (right)
-    for (int k = 0; k < lines; k++)
-      x[1][k] = right[k];
-  if (model->channels == 4)
-    for (int k = 0; k < lines; k++) {
-      x[2][k] = mid_side((int64_t)left[k] + right[k]);
-      x[3][k] = mid_side((int64_t)left[k] - right[k]);
-    }
+/* The mid and side spectra of a left and right one, which they may
+ * replace. */
+static void mid_side_spectra(const int32_t *left, const int32_t *right,
+                             int lines, int32_t *mid, int32_t *side) {
+  for (int k = 0; k < lines; k++) {
+    const int64_t l = left[k], r = right[k];
+
+    mid[k] = (int32_t)mid_side(l + r);
+    side[k] = (int32_t)mid_side(l - r);
+  }
 }
 
 /* §perceptual-entropy 3: k[i], Q16. The centre tap is 1. */
@@ -869,13 +864,15 @@ static void short_model(shine_global_config *config, int g, int32_t weight) {
   const psy_layout_t *layout = &model->layout[1];
   const int stereo = config->wave.channels == 2;
   psy_partitions_t parts[PSY_CHANNELS];
-  int64_t x[PSY_CHANNELS][192];
+  int32_t mid[192], side[192];
 
   for (int j = 0; j < 3; j++) {
-    int64_t *spectra[PSY_CHANNELS] = {x[0], x[1], x[2], x[3]};
+    const int32_t *x[PSY_CHANNELS] = {
+        model->short_lines[0][g][j],
+        stereo ? model->short_lines[1][g][j] : NULL, mid, side};
 
-    analysis_spectra(model, model->short_lines[0][g][j],
-                     stereo ? model->short_lines[1][g][j] : NULL, 192, spectra);
+    if (model->channels == 4)
+      mid_side_spectra(x[0], x[1], 192, mid, side);
     for (int c = 0; c < model->channels; c++) {
       analyse_in(layout, &model->channel_s[c], x[c], &parts[c]);
       threshold_in(model, layout, &model->channel_s[c], &parts[c]);
@@ -1016,6 +1013,20 @@ static int32_t lowpass_gain(int k, int lines, int samplerate, int cutoff) {
   return (int32_t)(((stop - f) << 15) / (stop - pass));
 }
 
+/* Codes granule g as mid and side, which the model has as its analysis
+ * spectra unless the granule is short. */
+static void code_mid_side(shine_global_config *config, int g) {
+  const psy_model_t *model = config->psy;
+  int32_t *left = config->mdct_freq[0][g], *right = config->mdct_freq[1][g];
+
+  if (config->side_info.gr[g].ch[0].tt.block_type == BLOCK_SHORT)
+    mid_side_spectra(left, right, GRANULE_SIZE, left, right);
+  else {
+    memcpy(left, model->mid_side[g][0], sizeof(model->mid_side[g][0]));
+    memcpy(right, model->mid_side[g][1], sizeof(model->mid_side[g][1]));
+  }
+}
+
 void shine_psy_frame(shine_global_config *config) {
   psy_model_t *model = config->psy;
   const int granules = config->mpeg.granules_per_frame;
@@ -1043,7 +1054,6 @@ void shine_psy_frame(shine_global_config *config) {
   weight = ath_weight(model);
 
   for (int g = 0; g < granules; g++) {
-    int64_t (*x)[GRANULE_SIZE] = model->coefficients;
     psy_partitions_t *parts = model->parts;
 
     const unsigned type = config->side_info.gr[g].ch[0].tt.block_type;
@@ -1051,11 +1061,13 @@ void shine_psy_frame(shine_global_config *config) {
      * granule. */
     const int32_t (*spectrum)[MAX_GRANULES][GRANULE_SIZE] =
         type == BLOCK_SHORT ? model->analysis_long : config->mdct_freq;
+    const int32_t *x[PSY_CHANNELS] = {
+        spectrum[0][g], stereo ? spectrum[1][g] : NULL, model->mid_side[g][0],
+        model->mid_side[g][1]};
 
-    int64_t *spectra[PSY_CHANNELS] = {x[0], x[1], x[2], x[3]};
-
-    analysis_spectra(model, spectrum[0][g], stereo ? spectrum[1][g] : NULL,
-                     GRANULE_SIZE, spectra);
+    if (model->channels == 4)
+      mid_side_spectra(x[0], x[1], GRANULE_SIZE, model->mid_side[g][0],
+                       model->mid_side[g][1]);
     for (int c = 0; c < model->channels; c++) {
       model->energy[g][c] = analyse(model, &model->channel[c], x[c], &parts[c]);
       threshold(model, &model->channel[c], &parts[c]);
@@ -1085,12 +1097,7 @@ void shine_psy_frame(shine_global_config *config) {
   config->mpeg.mode_ext = model->ms ? 2 : 0;
   if (model->ms)
     for (int g = 0; g < granules; g++)
-      for (int k = 0; k < GRANULE_SIZE; k++) {
-        int64_t l = config->mdct_freq[0][g][k], r = config->mdct_freq[1][g][k];
-
-        config->mdct_freq[0][g][k] = (int32_t)mid_side(l + r);
-        config->mdct_freq[1][g][k] = (int32_t)mid_side(l - r);
-      }
+      code_mid_side(config, g);
 
   for (int g = 0; g < granules; g++)
     for (int ch = 0; ch < config->wave.channels; ch++) {

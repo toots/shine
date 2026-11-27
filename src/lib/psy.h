@@ -126,8 +126,9 @@ typedef struct psy_model {
 
   int64_t adjust_factor, adjust_limit; /* Q31 */
   psy_channel_t channel[PSY_CHANNELS];
+  /* The mid and side spectra of the frame's granules, as analysed. */
+  int32_t mid_side[MAX_GRANULES][2][GRANULE_SIZE];
   /* Scratch, holding the frame's last granule. */
-  int64_t coefficients[PSY_CHANNELS][GRANULE_SIZE];
   psy_partitions_t parts[PSY_CHANNELS];
 
   /* Outputs of the last frame (doc/psy/signal-path.md §3.2). */
