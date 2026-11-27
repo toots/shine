@@ -4571,8 +4571,8 @@ static const int32_t psy_part_minval_x_s[9][PSY_NPART_S_MAX] = {
 };
 
 /* Masking table (doc/psy/conventions.md, masking.md §2). */
-static const int32_t psy_tab[9] = {0,      -21770, -43541,  -43541, -43541,
-                                   -43541, -43541, -130623, -202466};
+static const int32_t psy_tab[9] = {0,      -21770, -43541, -43541, -43541,
+                                   -43541, -43541, -65311, -137156};
 #define PSY_LOG2_AVG_MASK_FACTOR -65536
 #define PSY_LOG2_PREECHO_RATIO_1 65536
 #define PSY_LOG2_PREECHO_RATIO_2 262144

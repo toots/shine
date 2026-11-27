@@ -866,7 +866,7 @@ static double short_norm_db(double bval) {
 }
 
 static void check_spreading_rates(void) {
-  const double integral = 20 * log10(0.11749) + 10 * log10(0.5);
+  const double integral = 20 * log10(0.23442) + 10 * log10(0.5);
 
   for (int r = 0; r < 9; r++)
     for (int is_short = 0; is_short < 2; is_short++) {

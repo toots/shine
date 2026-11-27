@@ -491,7 +491,7 @@ static void short_minval(void) {
 
 static void masking_tables(void) {
   static const double tab[9] = {1.0,     0.79433, 0.63096, 0.63096, 0.63096,
-                                0.63096, 0.63096, 0.25119, 0.11749};
+                                0.63096, 0.63096, 0.50119, 0.23442};
   long values[9];
 
   printf("/* Masking table (doc/psy/conventions.md, masking.md §2). */\n");
