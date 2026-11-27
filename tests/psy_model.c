@@ -530,6 +530,9 @@ static void check_sfb_edge(void) {
 }
 
 /* Every output finite, within its stated bounds. */
+/* Granules whose short thresholds were left out, and were computed. */
+static long short_checked[2];
+
 static void check_outputs(const psy_model_t *m, int granules,
                           const char *name) {
   /* The base, plus 10 C per band at the ratio cap: the short formula has
@@ -555,7 +558,11 @@ static void check_outputs(const psy_model_t *m, int granules,
                 m->pe[g][c] <=
                     (m->pe[g][c] >= PSY_PE_SHORT_BASE ? pe_max_short : pe_max),
             "%s gr %d ch %d: PE %d", name, g, c, m->pe[g][c]);
-      /* Short thresholds exist for every granule, at most their energy. */
+      /* Short thresholds, where masking §4 has them computed, are at most
+       * their energy. */
+      short_checked[m->short_used[g]]++;
+      if (!m->short_used[g])
+        continue;
       ok = 1;
       for (int j = 0; j < 3; j++)
         for (int sb = 0; sb < PSY_SHORT_BANDS; sb++) {
@@ -3108,6 +3115,9 @@ int main(void) {
     if (failures[i] || !runs[i])
       status = 1;
   }
+  check(SHORT_THRESHOLD_BOUNDS, short_checked[0] > 0 && short_checked[1] > 0,
+        "short thresholds left out on %ld granules, computed on %ld",
+        short_checked[0], short_checked[1]);
   check(ALLOCATION_BOUNDS, preflag_granules[0] > 0 && preflag_granules[1] > 0,
         "preflag checked on %ld granules without and %ld with",
         preflag_granules[0], preflag_granules[1]);

@@ -1139,7 +1139,7 @@ void shine_psy_frame(shine_global_config *config) {
   const int stereo = config->wave.channels == 2;
   int32_t frame_loudness[MAX_GRANULES];
   int32_t pe_lr = 0, pe_ms = 0, weight;
-  int short_used[MAX_GRANULES];
+  int *short_used = model->short_used;
   int64_t pe_frame = 0;
 
   /* §signal-path 1 step 3: loudness and the ATH update, before the model. */

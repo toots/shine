@@ -185,6 +185,9 @@ typedef struct psy_model {
    * of the next granule's first window; slot 2 of the granule before. */
   int pulse[MAX_GRANULES + 1][PSY_CHANNELS][3], next_pulse0[PSY_CHANNELS];
   int previous_slot2[PSY_CHANNELS];
+  /* §masking 4: the granules of the frame whose short thresholds were
+   * computed. */
+  int short_used[MAX_GRANULES];
   /* Allowed distortion of a short granule, per coded channel, window and
    * band (doc/psy/allowed-distortion.md §2, §3). */
   int32_t xmin_s[MAX_GRANULES][MAX_CHANNELS][3][PSY_SHORT_BANDS];
