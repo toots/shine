@@ -82,11 +82,11 @@ static double filter_coefficient(int band, int tap) {
          cos((2 * band + 1) * (16 - tap % 64) * M_PI / 64) / 2;
 }
 
-static void filter_exact(const int32_t x[512], int off, double s[32]) {
+static void filter_exact(const int32_t x[512], double s[32]) {
   for (int band = 0; band < 32; band++) {
     s[band] = 0;
     for (int tap = 0; tap < 512; tap++)
-      s[band] += x[(off + tap) & 511] * filter_coefficient(band, tap);
+      s[band] += x[tap] * filter_coefficient(band, tap);
   }
 }
 
@@ -131,47 +131,27 @@ static void mdct_exact(const int32_t in[36], int type, double long_out[18],
     }
 }
 
-/* Filter inputs waiting for a granule of 18 steps to be full. */
-static struct {
-  int32_t x[18][512];
-  int off[18];
-  int count;
-} filter_queue;
-
-static void run_filter(const shine_kernels_t *kernels, int32_t s[18][32]) {
-  int32_t folded[32][SHINE_FOLDED_STEPS] = {{0}};
-
-  for (int step = 0; step < filter_queue.count; step++)
-    kernels->filter_fold(filter_queue.x[step], filter_queue.off[step], step,
-                         folded);
-  kernels->filter_dct3(folded, s);
+/* The window of filter step `step` in the input of a granule. */
+static int32_t *step_window(int32_t x[SHINE_FILTER_INPUT], int step) {
+  return &x[32 * (17 - step)];
 }
 
-static void flush_filter(void) {
+static void check_filter(const int32_t x[SHINE_FILTER_INPUT]) {
   static int32_t s[3][18][32];
-  const size_t size = filter_queue.count * sizeof(s[0][0]);
 
   for (int set = 0; set < kernel_count; set++) {
-    run_filter(kernel_sets[set], s[set]);
+    kernel_sets[set]->filter(x, s[set]);
     if (set) {
       identity_checks++;
-      identity_failures += memcmp(s[set], s[0], size) != 0;
+      identity_failures += memcmp(s[set], s[0], sizeof(s[0])) != 0;
     }
   }
-  for (int step = 0; step < filter_queue.count; step++) {
+  for (int step = 0; step < 18; step++) {
     double exact[32];
 
-    filter_exact(filter_queue.x[step], filter_queue.off[step], exact);
+    filter_exact(step_window((int32_t *)x, step), exact);
     record(FILTER, s[0][step], exact, 32);
   }
-  filter_queue.count = 0;
-}
-
-static void check_filter(const int32_t x[512], int off) {
-  memcpy(filter_queue.x[filter_queue.count], x, sizeof(filter_queue.x[0]));
-  filter_queue.off[filter_queue.count++] = off;
-  if (filter_queue.count == 18)
-    flush_filter();
 }
 
 /* MDCT inputs of one window type waiting for a granule of 32 subbands to be
@@ -233,18 +213,17 @@ static void check_mdct(const int32_t in[36], int type_index) {
 }
 
 static void flush_checks(void) {
-  flush_filter();
   for (int type_index = 0; type_index < 3; type_index++)
     flush_mdct(type_index);
 }
 
-/* One filter step of the first kernel set. */
-static void filter_step(const int32_t x[512], int off, int32_t s[32]) {
-  int32_t folded[32][SHINE_FOLDED_STEPS] = {{0}}, steps[18][32];
+/* One filter step of the first kernel set: the last of a granule. */
+static void filter_step(const int32_t window[512], int32_t s[32]) {
+  int32_t x[SHINE_FILTER_INPUT] = {0}, steps[18][32];
 
-  kernel_sets[0]->filter_fold(x, off, 0, folded);
-  kernel_sets[0]->filter_dct3(folded, steps);
-  memcpy(s, steps[0], sizeof(steps[0]));
+  memcpy(step_window(x, 17), window, 512 * sizeof(x[0]));
+  kernel_sets[0]->filter(x, steps);
+  memcpy(s, steps[17], sizeof(steps[17]));
 }
 
 /* Runs the filter over a stream of samples as l3subband.c does, giving the
@@ -253,13 +232,12 @@ static void filter_step(const int32_t x[512], int off, int32_t s[32]) {
 static void subband_input(const int16_t stream[STREAM_SAMPLES], int band,
                           int32_t in[36]) {
   int32_t x[512] = {0}, s[32];
-  int off = 0;
 
   for (int step = 0; step < STREAM_STEPS; step++) {
+    memmove(&x[32], x, 480 * sizeof(x[0]));
     for (int i = 32; i--;)
-      x[i + off] = stream[32 * step + 31 - i] * 65536;
-    filter_step(x, off, s);
-    off = (off + 480) & 511;
+      x[i] = stream[32 * step + 31 - i] * 65536;
+    filter_step(x, s);
     if (step >= WARMUP_STEPS) {
       int j = step - WARMUP_STEPS;
 
@@ -292,36 +270,39 @@ static void stream_maximising(const double weights[36], int band, int negative,
 }
 
 static void check_filter_random(void) {
-  for (int round = 0; round < 2000; round++) {
-    int32_t x[512];
+  for (int round = 0; round < 120; round++) {
+    int32_t x[SHINE_FILTER_INPUT];
 
-    for (int i = 0; i < 512; i++)
+    for (int i = 0; i < SHINE_FILTER_INPUT; i++)
       x[i] = random_sample();
-    check_filter(x, 32 * (round % 16));
+    check_filter(x);
   }
 }
 
 static void check_filter_full_scale(void) {
-  for (int round = 0; round < 64; round++) {
-    int32_t x[512];
+  for (int round = 0; round < 8; round++) {
+    int32_t x[SHINE_FILTER_INPUT];
 
-    for (int i = 0; i < 512; i++)
-      x[i] = full_scale(round < 2 ? round : next_random() >> 31);
-    check_filter(x, 32 * (round % 16));
+    for (int i = 0; i < SHINE_FILTER_INPUT; i++)
+      x[i] = full_scale(round < 2 ? round : (int)(next_random() >> 31));
+    check_filter(x);
   }
 }
 
-/* x[tap] = +-full scale with the sign of the coefficient, for every band. */
+/* The window of one step at +-full scale with the sign of the coefficient,
+ * for every band, the samples outside it at full scale of either sign. */
 static void check_filter_maximising(void) {
   for (int band = 0; band < 32; band++)
     for (int negative = 0; negative < 2; negative++) {
-      int32_t x[512];
-      int off = 32 * ((band + negative) % 16);
+      int32_t x[SHINE_FILTER_INPUT];
+      int32_t *window = step_window(x, (band + negative) % 18);
 
+      for (int i = 0; i < SHINE_FILTER_INPUT; i++)
+        x[i] = full_scale(next_random() >> 31);
       for (int tap = 0; tap < 512; tap++)
-        x[(off + tap) & 511] =
+        window[tap] =
             full_scale((filter_coefficient(band, tap) < 0) != negative);
-      check_filter(x, off);
+      check_filter(x);
     }
 }
 

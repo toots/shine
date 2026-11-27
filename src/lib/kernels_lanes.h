@@ -208,28 +208,99 @@ KERNEL_BODY void FN(filter_dct3_32)(const LANE_T a[32], LANE_T s[32]) {
   FN(dct3_merge)(even16, odd16, 16, s);
 }
 
+#if LANES > 1
+/* Lane l from in[l * stride], for the first `count` lanes. */
+KERNEL_BODY LANE_T FN(load_column)(const int32_t *in, int stride, int count) {
+  LANE_T lanes = {0};
+
+  for (int l = 0; l < count; l++)
+    LANE(lanes, l) = in[l * stride];
+  return lanes;
+}
+
+/* The windowed sums y[i] of a filter step for LANES consecutive i, from
+ * the samples x and the window at the first of them. */
+KERNEL_BODY WIDE_T FN(window_sums)(const int32_t *x, const LANE_T window[8]) {
+  WIDE_T sums = WIDEN(FN(load)(x)) * WIDEN(window[0]);
+
+  for (int j = 1; j < 8; j++)
+    sums += WIDEN(FN(load)(&x[64 * j])) * WIDEN(window[j]);
+  return sums;
+}
+
+KERNEL_BODY WIDE_T FN(reversed)(WIDE_T lanes) {
+  WIDE_T reversed = {0};
+
+  for (int l = 0; l < LANES; l++)
+    reversed[l] = lanes[LANES - 1 - l];
+  return reversed;
+}
+
+/* folded[step][n] = a[n] of filter_fold for LANES consecutive n from `first`
+ * on, in 1..32, and every step: y[16 + n] + y[16 - n] up to n = 16, then
+ * y[16 + n] - y[80 - n], which is 0 at n = 32. The window stays in
+ * registers over the steps, the second run negated for the difference. */
+KERNEL_BODY void FN(filter_fold_run)(const int32_t *x, int first,
+                                     int32_t folded[18][FOLDED_WIDTH]) {
+  const int ahead = 16 + first, behind = (17 - LANES - first) & 63;
+  LANE_T ahead_window[8], behind_window[8];
+
+  for (int j = 0; j < 8; j++) {
+    ahead_window[j] = FN(load)(&shine_enwindow[64 * j + ahead]);
+    behind_window[j] = FN(load)(&shine_enwindow[64 * j + behind]);
+    if (first > 16)
+      behind_window[j] = -behind_window[j];
+  }
+  for (int step = 0; step < 18; step++) {
+    const int32_t *in = &x[32 * (17 - step)];
+    LANE_T a = FN(round_shift)(
+        FN(window_sums)(&in[ahead], ahead_window) +
+            FN(reversed)(FN(window_sums)(&in[behind], behind_window)),
+        32);
+
+    memcpy(&folded[step][first], &a, sizeof(a));
+  }
+}
+
+/* folded[step][0] = a[0] = y[16]. */
+KERNEL_BODY void FN(filter_fold_centre)(const int32_t *x,
+                                        int32_t folded[18][FOLDED_WIDTH]) {
+  for (int step = 0; step < 18; step++) {
+    const int32_t *in = &x[32 * (17 - step) + 16];
+    int64_t sum = 0;
+
+    for (int j = 0; j < 8; j++)
+      sum += (int64_t)in[64 * j] * shine_enwindow[64 * j + 16];
+    folded[step][0] = round_half(sum);
+  }
+}
+
 /* The first `count` lanes are the filter steps from `step` on. */
-KERNEL_BODY void
-FN(filter_dct3_batch)(const int32_t folded[32][SHINE_FOLDED_STEPS], int step,
-                      int count, int32_t s[18][32]) {
+KERNEL_BODY void FN(filter_dct3_batch)(const int32_t folded[18][FOLDED_WIDTH],
+                                       int step, int count, int32_t s[18][32]) {
   LANE_T a[32], subbands[32];
 
   for (int n = 0; n < 32; n++)
-    a[n] = FN(load)(&folded[n][step]);
+    a[n] = FN(load_column)(&folded[step][n], FOLDED_WIDTH, count);
   FN(filter_dct3_32)(a, subbands);
   FN(store_lines)(subbands, 32, s[step], 32, count);
 }
 
-KERNEL_BODY void
-FN(filter_dct3_steps)(const int32_t folded[32][SHINE_FOLDED_STEPS],
-                      int32_t s[18][32]) {
+/* The filter over a granule: the fold with consecutive taps as lanes, then
+ * the cosine transform with consecutive steps as lanes. */
+KERNEL_BODY void FN(filter_granule)(const int32_t *x, int32_t s[18][32]) {
   const int full = 18 - 18 % LANES;
+  int32_t folded[18][FOLDED_WIDTH];
 
+  FN(filter_fold_centre)(x, folded);
+  for (int first = 1; first <= 32; first += LANES)
+    FN(filter_fold_run)(x, first, folded);
   for (int step = 0; step < full; step += LANES)
     FN(filter_dct3_batch)(folded, step, LANES, s);
   if (full < 18)
     FN(filter_dct3_batch)(folded, full, 18 - full, s);
 }
+#endif
 
 /* The windowed MDCT input of size n folded to the DCT-IV input of size n/2,
  * halved. */

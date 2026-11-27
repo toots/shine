@@ -18,19 +18,14 @@
 #define SHINE_KERNELS_NEON 1
 #endif
 
-/* The filter steps of a granule, padded to a multiple of the lanes. */
-#define SHINE_FOLDED_STEPS 20
+/* Samples under the analysis windows of the 18 filter steps of a granule. */
+#define SHINE_FILTER_INPUT (512 + 17 * 32)
 
 typedef struct {
-  /* Step `step` of a granule: the window buffer x (HAN_SIZE samples), its
-   * newest 32 at offset `off`, a multiple of 32, windowed and folded to the
-   * 32 inputs folded[.][step] of the filter's cosine transform. */
-  void (*filter_fold)(const int32_t x[512], int off, int step,
-                      int32_t folded[32][SHINE_FOLDED_STEPS]);
-  /* The 32 subband samples of each of the 18 steps of a granule. Every
-   * entry of `folded` is read. */
-  void (*filter_dct3)(const int32_t folded[32][SHINE_FOLDED_STEPS],
-                      int32_t s[18][32]);
+  /* The analysis filter over a granule. x holds its 576 samples then the
+   * 480 before them, newest first, in Q31: step t is under the window at
+   * x + 32 (17 - t). s gets the 32 subband samples of each step. */
+  void (*filter)(const int32_t x[SHINE_FILTER_INPUT], int32_t s[18][32]);
   /* The long MDCT of each subband of a granule under `window`, from its 18
    * previous and 18 current samples, and the three short ones, 6 lines per
    * subband and window, when `short_out` is not NULL. */

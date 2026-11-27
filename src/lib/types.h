@@ -96,9 +96,14 @@ typedef struct {
   uint32_t quant_threshold[128][QUANT_DIRECT_LEVELS + 1];
 } l3loop_t;
 
+/* Samples before a granule that the analysis window of its first filter step
+ * covers. */
+#define SUBBAND_HISTORY (HAN_SIZE - 32)
+
 typedef struct {
-  int off[MAX_CHANNELS];
-  int32_t x[MAX_CHANNELS][HAN_SIZE];
+  /* The current granule then the history before it, newest sample first,
+   * in Q31. */
+  int32_t x[MAX_CHANNELS][GRANULE_SIZE + SUBBAND_HISTORY];
 } subband_t;
 
 /* Side information */
