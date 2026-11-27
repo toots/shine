@@ -81,12 +81,14 @@ the total excess of noise over the allowed distortion, in octaves of energy.
 
 ### 3.1 The budget of a channel
 
-A granule of two coded channels shares its bits between them in proportion
-to their perceptual entropy ([perceptual-entropy.md](perceptual-entropy.md)),
-the model's estimate of the bits each one needs:
+A granule of two coded channels shares its bits between them by their
+perceptual entropy ([perceptual-entropy.md](perceptual-entropy.md)), the
+model's estimate of the bits each one needs, raised to `PE_SPLIT_POWER`, a
+parameter of the bitrate ([parameters.md](parameters.md) §1):
 
 ```
-max_bits[0] = int(granule_bits · pe[0] / (pe[0] + pe[1]))
+w[c] = pe[c]^PE_SPLIT_POWER
+max_bits[0] = int(granule_bits · w[0] / (w[0] + w[1]))
 max_bits[1] = granule_bits − max_bits[0]
 ```
 
@@ -100,6 +102,19 @@ An equal split wastes on the channel that needs few bits what the other
 one lacks. In an M/S frame the side channel often needs a fraction of what
 the mid does, and the bits it leaves unused are stuffing. PE never falls
 below its base, so no channel gets nothing.
+
+A power of 1 shares the bits in proportion to PE, and an encoder MUST then
+compute the share exactly. A power above 1 gives the channel that needs
+more a larger share than its PE: when bits are short, PE underestimates
+how much more the fuller channel gains from a bit than the other. With
+another power the weights come from the model's `log2` and its inverse
+([fixed-point.md](fixed-point.md)), and the share MUST be within 2 bits of
+the formula.
+
+A larger power takes bits from the side channel of an M/S frame, and the
+score, which rates each channel by itself, does not hear the stereo image
+([tests.md](tests.md) §4): the power is capped at 2.4, below what the
+score alone asks for under 64 kbps, until it is judged by ear.
 
 ### 3.2 The step size
 
