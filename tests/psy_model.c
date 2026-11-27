@@ -606,6 +606,8 @@ static void check_spreading_sum(void) {
 
     for (int l = 0; l < 2; l++) {
       const psy_layout_t *layout = &e->psy->layout[l];
+      const int16_t *offset = l ? psy_spread_offset_s[r] : psy_spread_offset[r];
+      const uint32_t *spread = l ? psy_spread_s[r] : psy_spread[r];
 
       for (int trial = 0; trial < 30; trial++) {
         psy_partitions_t parts;
@@ -634,8 +636,7 @@ static void check_spreading_sum(void) {
 
           for (int p = lo; p <= hi; p++) {
             expected += linear(parts.eb[p]) * linear(psy_tab[parts.idx[p]]) *
-                        layout->spread[layout->spread_offset[b] + p - lo] /
-                        (1 << 29);
+                        spread[offset[b] + p - lo] / (1 << 29);
             indices += parts.idx[p];
           }
           /* fixed-point.md: exact down to SPREAD_EXACT_RANGE below the

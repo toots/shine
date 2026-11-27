@@ -261,7 +261,7 @@ static void spreading(const layout_t *layouts, int is_short, const char *tag,
   static long values[9][NPART_CAPACITY * NPART_CAPACITY];
   static int lo[9][NPART_CAPACITY], hi[9][NPART_CAPACITY],
       offset[9][NPART_CAPACITY];
-  int size_max = 0;
+  int size_max = 0, width_max = 0;
 
   for (int r = 0; r < 9; r++) {
     const layout_t *layout = &layouts[r];
@@ -276,6 +276,8 @@ static void spreading(const layout_t *layouts, int is_short, const char *tag,
           hi[r][i] = j;
         }
       offset[r][i] = size;
+      if (hi[r][i] - lo[r][i] + 1 > width_max)
+        width_max = hi[r][i] - lo[r][i] + 1;
       /* The positive range is contiguous: s3 is unimodal. */
       for (int j = lo[r][i]; j <= hi[r][i]; j++)
         values[r][size++] =
@@ -292,6 +294,8 @@ static void spreading(const layout_t *layouts, int is_short, const char *tag,
          "*/\n",
          is_short ? "Short" : "Long", tag);
   printf("#define %s %d\n", size_macro, size_max);
+  printf("#define PSY_SPREAD_WIDTH%s %d /* the widest row */\n",
+         is_short ? "_S" : "", width_max);
   printf("static const uint8_t psy_spread_lo%s[9][%s] = {\n", tag, macro);
   for (int r = 0; r < 9; r++) {
     printf("{");

@@ -29,6 +29,11 @@
 #define PSY_LOOKAHEAD 256
 #define PSY_INPUT_HISTORY 608
 
+/* Spreading rows padded with zeros to a common width. */
+#define PSY_SPREAD_ROW                                                         \
+  (PSY_SPREAD_WIDTH > PSY_SPREAD_WIDTH_S ? PSY_SPREAD_WIDTH                    \
+                                         : PSY_SPREAD_WIDTH_S)
+
 typedef struct {
   /* History of an analysis channel (doc/psy/signal-path.md §4). */
   int granules_seen;                  /* saturates at 2 */
@@ -57,8 +62,7 @@ typedef struct {
   const int16_t *start; /* first line of each partition, then lines */
   const int32_t *mld, *masking_lower;
   const uint8_t *spread_lo, *spread_hi;
-  const int16_t *spread_offset;
-  const uint32_t *spread;
+  const uint32_t (*spread)[PSY_SPREAD_ROW]; /* row b from spread_lo[b] */
   const int *band_part; /* first partition of each band, then npart */
   const int32_t *minval, *ath_part;
 } psy_layout_t;
@@ -114,6 +118,7 @@ typedef struct psy_model {
   int32_t minval[PSY_NPART_MAX];
   int32_t ath_part[PSY_NPART_MAX];
   int32_t ath_band[PSY_LONG_BANDS];
+  uint32_t spread[PSY_NPART_MAX][PSY_SPREAD_ROW];
   int xmin_bands;                         /* bands with an allowed distortion */
   uint32_t loudness_weight[GRANULE_SIZE]; /* eql_w, Q32 */
 
@@ -157,6 +162,7 @@ typedef struct psy_model {
   psy_channel_t channel_s[PSY_CHANNELS];
   int band_part_s[PSY_SHORT_BANDS + 1];
   int32_t minval_s[PSY_NPART_S_MAX], ath_part_s[PSY_NPART_S_MAX];
+  uint32_t spread_s[PSY_NPART_S_MAX][PSY_SPREAD_ROW];
   int32_t ath_band_s[PSY_SHORT_BANDS];
   int xmin_bands_s;  /* short bands with an allowed distortion */
   psy_bands_t bands; /* of the channel being allocated */

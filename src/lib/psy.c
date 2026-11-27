@@ -232,7 +232,8 @@ static void spread_energy(const psy_layout_t *layout,
                           int *idx_sum) {
   /* Each energy, at most 2^SPREAD_RANGE, in two halves of SPREAD_SHIFT
    * bits: energy · row exceeds 64 bits, each half's product does not. */
-  uint32_t energy_high[PSY_NPART_MAX], energy_low[PSY_NPART_MAX];
+  uint32_t energy_high[PSY_NPART_MAX + PSY_SPREAD_ROW];
+  uint32_t energy_low[PSY_NPART_MAX + PSY_SPREAD_ROW];
   int32_t attenuated[PSY_NPART_MAX], loudest = ZERO;
   int idx_before[PSY_NPART_MAX + 1];
 
@@ -251,13 +252,16 @@ static void spread_energy(const psy_layout_t *layout,
     energy_high[p] = (uint32_t)(energy >> SPREAD_SHIFT);
     energy_low[p] = (uint32_t)energy & ((1u << SPREAD_SHIFT) - 1);
   }
+  /* Under the padding of the last rows. */
+  for (int p = layout->npart; p < layout->npart + PSY_SPREAD_ROW; p++)
+    energy_high[p] = energy_low[p] = 0;
   for (int b = 0; b < layout->npart; b++) {
     const int lo = layout->spread_lo[b], hi = layout->spread_hi[b];
-    const uint32_t *row = &layout->spread[layout->spread_offset[b]];
+    const uint32_t *row = layout->spread[b];
     const uint32_t *high = &energy_high[lo], *low = &energy_low[lo];
     uint64_t sum = 0;
 
-    for (int j = 0; j <= hi - lo; j++)
+    for (int j = 0; j < PSY_SPREAD_ROW; j++)
       sum += (uint64_t)high[j] * row[j] +
              (((uint64_t)low[j] * row[j]) >> SPREAD_SHIFT);
     ecb[b] = sum ? log2_q16(sum) + loudest - SPREAD_RANGE * ONE : ZERO;
@@ -1037,6 +1041,16 @@ static void loudness_weights(psy_model_t *model, const int32_t *ath_line) {
     model->loudness_weight[k] = (uint32_t)((weight[k] << 32) / total);
 }
 
+/* The spreading rows of a layout, from the first partition each spans,
+ * padded with zeros. */
+static void pad_spreading(int npart, const uint8_t *lo, const uint8_t *hi,
+                          const int16_t *offset, const uint32_t *values,
+                          uint32_t (*rows)[PSY_SPREAD_ROW]) {
+  for (int b = 0; b < npart; b++)
+    for (int j = 0; j < PSY_SPREAD_ROW; j++)
+      rows[b][j] = j <= hi[b] - lo[b] ? values[offset[b] + j] : 0;
+}
+
 int shine_psy_initialise(shine_global_config *config) {
   psy_model_t *model;
   const int rate = config->mpeg.samplerate_index;
@@ -1174,6 +1188,10 @@ int shine_psy_initialise(shine_global_config *config) {
     }
     model->xmin_bands_s = config->wave.samplerate <= 8000 ? 9 : 12;
   }
+  pad_spreading(psy_npart_s[rate], psy_spread_lo_s[rate], psy_spread_hi_s[rate],
+                psy_spread_offset_s[rate], psy_spread_s[rate], model->spread_s);
+  pad_spreading(model->npart, psy_spread_lo[rate], psy_spread_hi[rate],
+                psy_spread_offset[rate], psy_spread[rate], model->spread);
   model->layout[1] = (psy_layout_t){
       .npart = psy_npart_s[rate],
       .lines = 192,
@@ -1184,8 +1202,7 @@ int shine_psy_initialise(shine_global_config *config) {
       .masking_lower = psy_part_masking_lower_s[rate],
       .spread_lo = psy_spread_lo_s[rate],
       .spread_hi = psy_spread_hi_s[rate],
-      .spread_offset = psy_spread_offset_s[rate],
-      .spread = psy_spread_s[rate],
+      .spread = model->spread_s,
       .band_part = model->band_part_s,
       .minval = model->minval_s,
       .ath_part = model->ath_part_s,
@@ -1201,8 +1218,7 @@ int shine_psy_initialise(shine_global_config *config) {
       .masking_lower = psy_part_masking_lower[rate],
       .spread_lo = psy_spread_lo[rate],
       .spread_hi = psy_spread_hi[rate],
-      .spread_offset = psy_spread_offset[rate],
-      .spread = psy_spread[rate],
+      .spread = model->spread,
       .band_part = model->band_part,
       .minval = model->minval,
       .ath_part = model->ath_part,

@@ -301,6 +301,7 @@ static const int32_t psy_part_masking_lower[9][PSY_NPART_MAX] = {
 /* Long spreading rows (doc/psy/spectral-analysis.md §4): row i holds
  * S[i][j] in Q29 for j = lo..hi at psy_spread[offset]. */
 #define PSY_SPREAD_MAX 909
+#define PSY_SPREAD_WIDTH 20 /* the widest row */
 static const uint8_t psy_spread_lo[9][PSY_NPART_MAX] = {
     {0,  0,  0,  0,  0,  0,  0,  1,  2,  3,  4,  5,  6,  8,  10, 12, 13,
      14, 14, 15, 16, 17, 18, 18, 19, 20, 21, 21, 22, 23, 24, 25, 26, 27,
@@ -1948,6 +1949,7 @@ static const int32_t psy_part_masking_lower_s[9][PSY_NPART_S_MAX] = {
 /* Short spreading rows (doc/psy/spectral-analysis.md §4): row i holds
  * S[i][j] in Q29 for j = lo..hi at psy_spread_s[offset]. */
 #define PSY_SPREAD_S_MAX 647
+#define PSY_SPREAD_WIDTH_S 18 /* the widest row */
 static const uint8_t psy_spread_lo_s[9][PSY_NPART_S_MAX] = {
     {0,  0,  0,  1,  2,  3,  4,  5,  6,  7,  7,  8,  9,  10, 10, 11, 12,
      12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
