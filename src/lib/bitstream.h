@@ -1,11 +1,13 @@
 #ifndef BITSTREAM_H
 #define BITSTREAM_H
 
+#include <stdint.h>
+
 typedef struct bit_stream_struc {
   unsigned char *data;     /* Processed data */
   int data_size;           /* Total data size */
   int data_position;       /* Data position */
-  unsigned int cache;      /* bit stream cache */
+  uint64_t cache;          /* pending bits, most significant first */
   unsigned int cache_bits; /* free bits in cache */
 } bitstream_t;
 
@@ -53,8 +55,21 @@ unsigned char *shine_stream_take(frame_stream_t *stream, int end, int *written);
 
 int shine_open_bit_stream(bitstream_t *bs, const int size);
 void shine_close_bit_stream(bitstream_t *bs);
-void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N);
+void shine_putbits_word(bitstream_t *bs, uint64_t val, unsigned int N);
 void shine_flush_bit_stream(bitstream_t *bs);
 int shine_get_bits_count(bitstream_t *bs);
+
+/* Writes the N low bits of val, 0 <= N <= 64; the bits of val above N
+ * must be clear. */
+static inline void shine_putbits(bitstream_t *bs, uint64_t val,
+                                 unsigned int N) {
+  if (N == 0)
+    return;
+  if (bs->cache_bits > N) {
+    bs->cache_bits -= N;
+    bs->cache |= val << bs->cache_bits;
+  } else
+    shine_putbits_word(bs, val, N);
+}
 
 #endif

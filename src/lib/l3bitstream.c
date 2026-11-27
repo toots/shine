@@ -269,7 +269,7 @@ static void Huffmancodebits(shine_global_config *config, int *ix, gr_info *gi) {
 
     /* Due to the nature of the Huffman code tables, we will pad with ones */
     while (stuffingWords--)
-      shine_putbits(&config->bs, ~0, 32);
+      shine_putbits(&config->bs, 0xffffffff, 32);
     if (remainingBits)
       shine_putbits(&config->bs, (1UL << remainingBits) - 1, remainingBits);
   }
