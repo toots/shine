@@ -81,6 +81,17 @@ int shine_outer_loop(int max_bits,
  * shine_iteration_loop:
  * ------------------
  */
+/* Fills xrabs with the magnitudes of xr. Returns the largest. */
+static int32_t absolute_values(const int32_t *xr, int32_t *xrabs) {
+  int32_t max = 0;
+
+  for (int i = 0; i < GRANULE_SIZE; i++) {
+    xrabs[i] = labs(xr[i]);
+    max = xrabs[i] > max ? xrabs[i] : max;
+  }
+  return max;
+}
+
 void shine_iteration_loop(shine_global_config *config) {
   gr_info *cod_info;
   int max_bits;
@@ -93,12 +104,8 @@ void shine_iteration_loop(shine_global_config *config) {
       ix = config->l3_enc[ch][gr];
       config->l3loop.xr = config->mdct_freq[ch][gr];
 
-      /* Precalculate the absolute values and their maximum. */
-      for (i = GRANULE_SIZE, config->l3loop.xrmax = 0; i--;) {
-        config->l3loop.xrabs[i] = labs(config->l3loop.xr[i]);
-        if (config->l3loop.xrabs[i] > config->l3loop.xrmax)
-          config->l3loop.xrmax = config->l3loop.xrabs[i];
-      }
+      config->l3loop.xrmax =
+          absolute_values(config->l3loop.xr, config->l3loop.xrabs);
 
       cod_info = (gr_info *)&(config->side_info.gr[gr].ch[ch]);
       cod_info->sfb_lmax = SFB_LMAX - 1; /* gr_deco */
