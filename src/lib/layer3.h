@@ -144,7 +144,8 @@ int shine_samplerate(shine_t s);
  * Returns a pointer to freshly encoded data while `written` contains the size
  * of available data. This pointer's memory is handled by the library and is
  * only valid until the next call to `shine_encode_buffer` or `shine_close` and
- * may be NULL if no data was written. The samples are not modified.
+ * may be NULL if no data was written. The samples are not modified. Once the
+ * encoder has run out of memory, every call writes nothing.
  *
  * The data is a whole number of frames. Above quality 0 it is not always one:
  * with the bit reservoir a frame is complete only once later frames have

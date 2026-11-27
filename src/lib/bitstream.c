@@ -131,9 +131,11 @@ int shine_stream_frame(frame_stream_t *stream, const unsigned char *frame,
                        int header_bytes, int main_bytes, int slot_bytes) {
   const unsigned char *main_data = frame + header_bytes;
 
+  if (stream->failed)
+    return -1;
   drop_returned(stream);
   if (stream->count == SLOT_QUEUE || reserve_slot(stream, slot_bytes) < 0)
-    return -1;
+    return stream->failed = -1;
 
   memcpy(stream->data + stream->length, frame, header_bytes);
   memset(stream->data + stream->length + header_bytes, 0,
@@ -154,7 +156,7 @@ int shine_stream_frame(frame_stream_t *stream, const unsigned char *frame,
     limit = stream->count ? stream->starts[stream->first] : stream->length;
     bytes = MIN(main_bytes, limit - stream->main);
     if (bytes <= 0)
-      return -1;
+      return stream->failed = -1;
     memcpy(stream->data + stream->main, main_data, bytes);
     stream->main += bytes;
     main_data += bytes;
@@ -167,6 +169,10 @@ unsigned char *shine_stream_take(frame_stream_t *stream, int end,
                                  int *written) {
   int complete = stream->slot;
 
+  if (stream->failed) {
+    *written = 0;
+    return NULL;
+  }
   if (end || stream->main == stream->length)
     complete = stream->length;
   else if (stream->count && stream->main == stream->starts[stream->first])

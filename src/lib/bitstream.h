@@ -36,16 +36,19 @@ typedef struct {
   int returned; /* bytes handed to the caller, dropped by the next frame */
   int starts[SLOT_QUEUE]; /* slots main data has not reached, oldest first */
   int first, count;
+  int failed; /* a frame could not be laid out: nothing more is returned */
 } frame_stream_t;
 
 /* Appends a frame's slot and its main data. frame holds header_bytes of
  * header and side information, then main_bytes of main data; the slot is
- * slot_bytes long. Returns -1 when out of memory. */
+ * slot_bytes long. Returns -1 when out of memory or when the frame does not
+ * fit the layout, and on every call after that: a later frame's
+ * main_data_begin counts the bytes of the one that is missing. */
 int shine_stream_frame(frame_stream_t *stream, const unsigned char *frame,
                        int header_bytes, int main_bytes, int slot_bytes);
 
 /* The complete slots not returned yet, or every slot begun when ending the
- * stream. */
+ * stream; NULL and nothing written once a frame has failed. */
 unsigned char *shine_stream_take(frame_stream_t *stream, int end, int *written);
 
 int shine_open_bit_stream(bitstream_t *bs, const int size);

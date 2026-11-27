@@ -73,6 +73,7 @@ enum {
   RESERVOIR_STEADY,         /* reservoir §3 */
   RESERVOIR_BURST,          /* reservoir §3 */
   STREAM_LAYOUT,            /* reservoir §1, §4 */
+  STREAM_FAILURE,           /* reservoir §4 */
   ALLOCATION_SURPLUS,       /* noise-allocation §4.1 */
   BLOCK_SEQUENCE,           /* block-switching §2, §3 */
   ATTACK_STEADY,            /* block-switching §1, KC 7 */
@@ -112,6 +113,7 @@ static const char *check_names[CHECK_COUNT] = {
     [RESERVOIR_STEADY] = "steady signal gets the mean",
     [RESERVOIR_BURST] = "burst draws on the reservoir",
     [STREAM_LAYOUT] = "stream layout",
+    [STREAM_FAILURE] = "failed frame ends the stream",
     [ALLOCATION_SURPLUS] = "bits a channel does not need",
     [BLOCK_SEQUENCE] = "block type sequence",
     [ATTACK_STEADY] = "steady signals stay long",
@@ -2664,6 +2666,23 @@ static void check_reservoir_burst(void) {
   }
 }
 
+/* A frame that cannot be laid out ends the stream: later frames, whose
+ * main_data_begin counts its bytes, are not returned. */
+static void check_stream_failure(void) {
+  static const unsigned char frame[64];
+  frame_stream_t stream = {0};
+  int written = -1, ok;
+
+  ok = shine_stream_frame(&stream, frame, 4, 60, 64) == 0;
+  stream.count = SLOT_QUEUE;
+  ok &= shine_stream_frame(&stream, frame, 4, 60, 64) < 0;
+  stream.count = 0;
+  ok &= shine_stream_frame(&stream, frame, 4, 60, 64) < 0;
+  ok &= shine_stream_take(&stream, 1, &written) == NULL && written == 0;
+  check(STREAM_FAILURE, ok, "a stream went on after a failed frame");
+  free(stream.data);
+}
+
 /* reservoir §1, §4: the stream is each frame's header and side information
  * at its slot, and between them every frame's main data in order, then
  * zeros. */
@@ -3059,6 +3078,7 @@ int main(void) {
   check_reservoir_burst();
   check_pe_smoothing();
   check_stream_layout();
+  check_stream_failure();
   check_block_sequence();
   check_attack_steady();
   check_attack_step();
