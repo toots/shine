@@ -95,28 +95,42 @@ static int32_t scale(int32_t a, int32_t b) { return a == ZERO ? ZERO : a + b; }
 
 static int32_t min32(int32_t a, int32_t b) { return a < b ? a : b; }
 static int32_t max32(int32_t a, int32_t b) { return a > b ? a : b; }
+static uint64_t max64(uint64_t a, uint64_t b) { return a > b ? a : b; }
 
-/* §masking 1, from the tonality spectrum: n·m - a and a·L stay below 2^63,
+/* §masking 1: the index of a partition from the tonality sum a and peak m
+ * of its neighbourhood first..last. n·m - a and a·lines stay below 2^63,
  * as partitions are under 256 lines and line energies under 2^53. */
+static int tonality_index(const int16_t *start, int first, int last, uint64_t a,
+                          uint64_t m) {
+  const uint64_t n = (uint64_t)(last - first + 1);
+  const int lines = start[last + 1] - start[first] - 1;
+  uint64_t idx;
+
+  if (!a || !lines)
+    return 0;
+  idx = 15 * (n * m - a) / (a * lines);
+  return idx > 8 ? 8 : (int)idx;
+}
+
+/* §masking 1, from the tonality spectrum. */
 static void tonality(const psy_layout_t *layout, const uint64_t *max_t,
                      const uint64_t *avg_t, psy_partitions_t *parts) {
   const int16_t *start = layout->start;
+  const int last = layout->npart - 1;
 
-  for (int b = 0; b < layout->npart; b++) {
-    int first = b > 0 ? b - 1 : b, last = b < layout->npart - 1 ? b + 1 : b;
-    uint64_t a = avg_t[b] + (first < b ? avg_t[first] : 0) +
-                 (last > b ? avg_t[last] : 0);
-    uint64_t m = max_t[first] > max_t[b] ? max_t[first] : max_t[b], idx;
-    int n = last - first + 1, lines = start[last + 1] - start[first] - 1;
-
-    m = max_t[last] > m ? max_t[last] : m;
-    if (!a || !lines) {
-      parts->idx[b] = 0;
-      continue;
-    }
-    idx = 15 * (n * m - a) / (a * lines);
-    parts->idx[b] = idx > 8 ? 8 : (int)idx;
+  if (!last) {
+    parts->idx[0] = tonality_index(start, 0, 0, avg_t[0], max_t[0]);
+    return;
   }
+  parts->idx[0] = tonality_index(start, 0, 1, avg_t[0] + avg_t[1],
+                                 max64(max_t[0], max_t[1]));
+  for (int b = 1; b < last; b++)
+    parts->idx[b] = tonality_index(
+        start, b - 1, b + 1, avg_t[b - 1] + avg_t[b] + avg_t[b + 1],
+        max64(max64(max_t[b - 1], max_t[b]), max_t[b + 1]));
+  parts->idx[last] =
+      tonality_index(start, last - 1, last, avg_t[last - 1] + avg_t[last],
+                     max64(max_t[last - 1], max_t[last]));
 }
 
 static int energy_shift(uint64_t peak) {
