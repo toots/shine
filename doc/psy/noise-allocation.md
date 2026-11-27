@@ -344,7 +344,8 @@ short sfb `sb` of window `j`, and carries that window's `xmin` and energy
   groups are sfbs `0..2`, `3..5`, `6..8` and `9..11`, each with its three
   windows, on `slen1..slen4` bits; `scalefac_compress` is formed as in §5
   and `part2_length = 9·(slen1 + slen2 + slen3 + slen4)`.
-- **Huffman regions.** Region 0 ends after 3 short sfbs (36 lines); there
+- **Huffman regions.** Region 0 ends after 3 short sfbs of each window
+  (36 lines, 72 at 8 kHz, where a short sfb is 8 lines wide); there
   is no region 2 (ISO 11172-3 §2.4.2.7).
 
 §4.1 applies to a SHORT granule as to a long one.
