@@ -207,7 +207,8 @@ links the rule that handles it now. Every entry is a conformance check
   a real short analysis of the previous granule: the result does not depend
   on how the previous granule was coded. A two-attack sequence (window 2 of
   granule n, then window 0 of granule n+1) checks the combination order.
-- **Answered by.** Short spectra and thresholds for every granule
+- **Answered by.** Short spectra for every granule, and real short
+  thresholds wherever a later granule reads them
   ([spectral-analysis.md](spectral-analysis.md) §2,
   [masking.md](masking.md) §4). Sequential order of the limits
   ([block-switching.md](block-switching.md) §4).

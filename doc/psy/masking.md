@@ -167,7 +167,13 @@ The procedure of §1–§3 per short window `j`, with:
 - energies from `E_s[j]` ([spectral-analysis.md](spectral-analysis.md) §2);
 - no pre-echo limit (§3.2).
 
-Short thresholds are computed for every granule, whatever its block type
+The short thresholds of a granule MUST be those of this procedure wherever
+a rule reads them: in a SHORT granule, and in the granule before one whose
+short pre-echo control reads the previous granule
+([block-switching.md](block-switching.md) §4) and whose own are read. An
+encoder MAY leave them out for any other granule; it MUST NOT put another
+value in their place ([known-complexity.md](known-complexity.md) entry 10).
+The short spectra exist for every granule
 ([spectral-analysis.md](spectral-analysis.md) §2).
 
 ## 5. Partition to scalefactor band

@@ -24,8 +24,9 @@ can mask.
 
 It runs per partition on partition thresholds, after masking
 ([masking.md](masking.md) §3) and before the band sums: on the long layout
-every granule, and on the short layout every granule and window,
-whatever the block type. The short thresholds of a long granule are history
+every granule, and on the short layout every window of every granule whose
+short thresholds are computed ([masking.md](masking.md) §4), whatever the
+block type. The short thresholds of a long granule are history
 for the next granule's pre-echo control
 ([block-switching.md](block-switching.md) §4), so they are corrected like
 any other.

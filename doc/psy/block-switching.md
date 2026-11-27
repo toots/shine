@@ -158,8 +158,8 @@ START. `tentative` starts at NORM.
 ## 4. Short-block pre-echo control
 
 Runs per analysis channel on the short band thresholds, after the short
-masking and the M/S correction of every granule, whatever its block type
-([masking.md](masking.md) §4).
+masking and the M/S correction, on every granule whose short thresholds are
+computed, whatever its block type ([masking.md](masking.md) §4).
 
 For each short sfb `sb` (0..12) and window `j` (0..2), `prev` is the
 processed value of the window before: `new[j−1]` for `j > 0`, and
