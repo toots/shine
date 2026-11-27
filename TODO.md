@@ -123,9 +123,10 @@ quality report before the next one starts.
 - [ ] MPEG-2.5 rates as resampling targets: 11.025 kHz gains 1.5 to 1.9
       at 16 and 24 kbps over 16 kHz. `RESAMPLE_MIN_RATE` is a compatibility
       choice (`resampling.md` §1).
-- [ ] Stereo at 64 and 112 kbps scores 1.2 to 2.1 higher on a 32 kHz
-      stream, with one item past the tolerance each (a violin at 64 kbps,
-      clapping at 112 on 48 kHz input): for a listening round.
+- [ ] Stereo scores 2.4 higher at 64 kbps and 1.2 to 2.0 higher at
+      112 kbps on a 32 kHz stream, with an item or two past the tolerance
+      (a violin, down 6.5 at 64 kbps; clapping and claves, down 6 to 6.7 at
+      112): for a listening round. Mono keeps its rates.
 - [ ] Castanets and claves at 128 kbps trail LAME by 10 and 13 points.
       The noise is flatter than the signal when every band is over: 14 dB
       of SNR under 1 kHz against LAME's 24, more than LAME at 2 to 6 kHz.
