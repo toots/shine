@@ -272,11 +272,36 @@ TARGET_AVX2 static void attack_peaks_avx2(const int16_t *in,
   }
 }
 
+TARGET_AVX2 static void line_energies_avx2(const uint32_t *magnitude, int lines,
+                                           int shift, int shift_t, int rescale,
+                                           uint64_t *energy,
+                                           uint64_t *energy_t) {
+  const __m128i by = _mm_cvtsi32_si128(shift);
+  const __m128i by_t = _mm_cvtsi32_si128(shift_t);
+  const __m128i by_rescale = _mm_cvtsi32_si128(rescale);
+  int k = 0;
+
+  for (; k + 4 <= lines; k += 4) {
+    const __m256i m =
+        _mm256_cvtepu32_epi64(_mm_loadu_si128((const __m128i *)&magnitude[k]));
+    const __m256i square = _mm256_mul_epu32(m, m);
+    const __m256i before = _mm256_loadu_si256((const __m256i *)&energy[k]);
+
+    _mm256_storeu_si256((__m256i *)&energy_t[k],
+                        _mm256_add_epi64(_mm256_srl_epi64(square, by_t),
+                                         _mm256_srl_epi64(before, by_rescale)));
+    _mm256_storeu_si256((__m256i *)&energy[k], _mm256_srl_epi64(square, by));
+  }
+  line_energies(&magnitude[k], lines - k, shift, shift_t, rescale, &energy[k],
+                &energy_t[k]);
+}
+
 static const shine_kernels_t kernels_avx2 = {
     .filter = filter_avx2,
     .mdct = mdct_avx2,
     .ix_max_nonzero = ix_max_nonzero_avx2,
-    .attack_peaks = attack_peaks_avx2};
+    .attack_peaks = attack_peaks_avx2,
+    .line_energies = line_energies_avx2};
 
 const shine_kernels_t *shine_kernels_avx2(void) {
   __builtin_cpu_init();

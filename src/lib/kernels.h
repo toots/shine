@@ -43,6 +43,12 @@ typedef struct {
    * 64. */
   void (*attack_peaks)(const int16_t *in, const int32_t taps[5], int64_t h[576],
                        int64_t peaks[9]);
+  /* The squares of the magnitudes at scale 2^-shift, which replace those in
+   * energy, and in energy_t their sums with the ones replaced, at scales
+   * 2^-shift_t and 2^-rescale. */
+  void (*line_energies)(const uint32_t *magnitude, int lines, int shift,
+                        int shift_t, int rescale, uint64_t *energy,
+                        uint64_t *energy_t);
 } shine_kernels_t;
 
 extern const shine_kernels_t shine_kernels_plain;

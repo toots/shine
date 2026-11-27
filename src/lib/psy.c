@@ -157,20 +157,6 @@ static uint32_t magnitudes(const int32_t *x, int lines, uint32_t *magnitude) {
   return largest;
 }
 
-/* §spectral-analysis 1.1, 1.2: the line energies at scale 2^-shift, which
- * replace those of the granule before, and the sums of both at scale
- * 2^-shift_t, the granule before being at 2^-(shift_t - rescale). */
-static void line_energies(const uint32_t *magnitude, int lines, int shift,
-                          int shift_t, int rescale, uint64_t *energy,
-                          uint64_t *energy_t) {
-  for (int k = 0; k < lines; k++) {
-    uint64_t square = (uint64_t)magnitude[k] * magnitude[k];
-
-    energy_t[k] = (square >> shift_t) + (energy[k] >> rescale);
-    energy[k] = square >> shift;
-  }
-}
-
 /* The line energies of a channel's first granule, which counts twice in
  * the tonality sums. */
 static void first_line_energies(const uint32_t *magnitude, int lines, int shift,
@@ -184,8 +170,11 @@ static void first_line_energies(const uint32_t *magnitude, int lines, int shift,
 }
 
 /* §spectral-analysis 1, 3: line energies, partition sums and tonality.
- * Returns the log2 total energy. */
-static int32_t analyse_in(const psy_layout_t *layout, psy_channel_t *channel,
+ * Returns the log2 total energy. §1.1, 1.2: the line energies are at scale
+ * 2^-shift, and the sums of both granules at scale 2^-shift_t, the granule
+ * before being at 2^-(shift_t - rescale). */
+static int32_t analyse_in(const shine_kernels_t *kernels,
+                          const psy_layout_t *layout, psy_channel_t *channel,
                           const int32_t *x, psy_partitions_t *parts) {
   const int16_t *start = layout->start;
   uint64_t max_t[PSY_NPART_MAX], avg_t[PSY_NPART_MAX], total = 0;
@@ -203,8 +192,8 @@ static int32_t analyse_in(const psy_layout_t *layout, psy_channel_t *channel,
   parts->shift = shift;
   parts->unit = layout->log2_k + shift * ONE;
   if (channel->granules_seen)
-    line_energies(magnitude, layout->lines, shift, shift_t,
-                  shift_t - last_shift, energy, energy_t);
+    call_line_energies(kernels, magnitude, layout->lines, shift, shift_t,
+                       shift_t - last_shift, energy, energy_t);
   else
     first_line_energies(magnitude, layout->lines, shift, energy, energy_t);
 
@@ -240,9 +229,11 @@ static int32_t analyse_in(const psy_layout_t *layout, psy_channel_t *channel,
   return scale(shine_psy_log2(total), parts->unit);
 }
 
-static int32_t analyse(psy_model_t *model, psy_channel_t *channel,
-                       const int32_t *x, psy_partitions_t *parts) {
-  return analyse_in(&model->layout[0], channel, x, parts);
+static int32_t analyse(const shine_global_config *config,
+                       psy_channel_t *channel, const int32_t *x,
+                       psy_partitions_t *parts) {
+  return analyse_in(&config->kernels, &config->psy->layout[0], channel, x,
+                    parts);
 }
 
 /* §masking 2: the spreading sum is linear. Energies are 64-bit integers,
@@ -897,7 +888,8 @@ static void short_model(shine_global_config *config, int g, int32_t weight) {
     if (model->channels == 4)
       mid_side_spectra(x[0], x[1], 192, mid, side);
     for (int c = 0; c < model->channels; c++) {
-      analyse_in(layout, &model->channel_s[c], x[c], &parts[c]);
+      analyse_in(&config->kernels, layout, &model->channel_s[c], x[c],
+                 &parts[c]);
       threshold_in(model, layout, &model->channel_s[c], &parts[c]);
     }
     if (model->channels == 4)
@@ -1154,7 +1146,8 @@ void shine_psy_frame(shine_global_config *config) {
       mid_side_spectra(x[0], x[1], GRANULE_SIZE, model->mid_side[g][0],
                        model->mid_side[g][1]);
     for (int c = 0; c < model->channels; c++) {
-      model->energy[g][c] = analyse(model, &model->channel[c], x[c], &parts[c]);
+      model->energy[g][c] =
+          analyse(config, &model->channel[c], x[c], &parts[c]);
       threshold(model, &model->channel[c], &parts[c]);
     }
     if (model->channels == 4)

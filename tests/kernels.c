@@ -467,6 +467,35 @@ static void check_attack_peaks(void) {
   }
 }
 
+/* Magnitudes up to 2^31, previous energies up to 2^62, every shift the
+ * model takes. */
+static void check_line_energies(void) {
+  for (int round = 0; round < 2000; round++) {
+    static uint64_t energy[MAX_KERNEL_SETS][GRANULE_SIZE],
+        energy_t[MAX_KERNEL_SETS][GRANULE_SIZE];
+    uint32_t magnitude[GRANULE_SIZE];
+    uint64_t before[GRANULE_SIZE];
+    const int lines =
+        round % 2 ? GRANULE_SIZE : (int)(next_random() >> 8) % 577;
+    const int shift = (int)(next_random() >> 8) % 12,
+              shift_t = shift + (int)(next_random() >> 8) % 4,
+              rescale = (int)(next_random() >> 8) % 12;
+
+    for (int k = 0; k < GRANULE_SIZE; k++) {
+      magnitude[k] = round % 5 ? next_random() >> (1 + round % 31) : 1u << 31;
+      before[k] = (uint64_t)next_random() << (round % 31);
+    }
+    for (int set = 0; set < kernel_count; set++) {
+      memcpy(energy[set], before, sizeof(before));
+      call_line_energies(kernel_sets[set], magnitude, lines, shift, shift_t,
+                         rescale, energy[set], energy_t[set]);
+      same_in_every_set(
+          memcmp(energy[set], energy[0], (size_t)lines * sizeof(uint64_t)) ||
+          memcmp(energy_t[set], energy_t[0], (size_t)lines * sizeof(uint64_t)));
+    }
+  }
+}
+
 static void add_kernel_set(const char *name, const shine_kernels_t *kernels) {
   kernel_names[kernel_count] = name;
   kernel_sets[kernel_count++] = kernels;
@@ -535,5 +564,6 @@ int main(int argc, char **argv) {
   flush_checks();
   check_ix_max_nonzero();
   check_attack_peaks();
+  check_line_energies();
   return report();
 }

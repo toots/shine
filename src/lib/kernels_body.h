@@ -101,6 +101,17 @@ KERNEL_INLINE void attack_peaks(const int16_t *in, const int32_t taps[5],
   run_peaks(h, peaks);
 }
 
+KERNEL_INLINE void line_energies(const uint32_t *magnitude, int lines,
+                                 int shift, int shift_t, int rescale,
+                                 uint64_t *energy, uint64_t *energy_t) {
+  for (int k = 0; k < lines; k++) {
+    uint64_t square = (uint64_t)magnitude[k] * magnitude[k];
+
+    energy_t[k] = (square >> shift_t) + (energy[k] >> rescale);
+    energy[k] = square >> shift;
+  }
+}
+
 KERNEL_INLINE unsigned call_ix_max_nonzero(const shine_kernels_t *kernels,
                                            const int *ix, int n, int *nonzero) {
   return kernels->ix_max_nonzero ? kernels->ix_max_nonzero(ix, n, nonzero)
@@ -114,6 +125,17 @@ KERNEL_INLINE void call_attack_peaks(const shine_kernels_t *kernels,
     kernels->attack_peaks(in, taps, h, peaks);
   else
     attack_peaks(in, taps, h, peaks);
+}
+
+KERNEL_INLINE void call_line_energies(const shine_kernels_t *kernels,
+                                      const uint32_t *magnitude, int lines,
+                                      int shift, int shift_t, int rescale,
+                                      uint64_t *energy, uint64_t *energy_t) {
+  if (kernels->line_energies)
+    kernels->line_energies(magnitude, lines, shift, shift_t, rescale, energy,
+                           energy_t);
+  else
+    line_energies(magnitude, lines, shift, shift_t, rescale, energy, energy_t);
 }
 
 #endif

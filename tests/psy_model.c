@@ -696,11 +696,11 @@ static void check_tonality(void) {
       for (int k = 0; k < GRANULE_SIZE; k++)
         x[k] = k == line ? 1 << 28 : 0;
       if (pass)
-        analyse(m, &channel, x, &smoothed);
+        analyse(e, &channel, x, &smoothed);
       channel.granules_seen = pass;
       for (int k = 0; k < GRANULE_SIZE; k++)
         x[k] = 1 << 20;
-      analyse(m, &channel, x, &smoothed);
+      analyse(e, &channel, x, &smoothed);
       for (int b = 0; b < m->npart; b++)
         if (psy_part_start[r][b] <= line && line < psy_part_start[r][b + 1])
           check(TONALITY, pass ? smoothed.idx[b] == 8 : smoothed.idx[b] == 0,
