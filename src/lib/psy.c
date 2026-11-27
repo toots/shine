@@ -1482,38 +1482,60 @@ static int fit(shine_global_config *config, int *ix, gr_info *gi, int budget,
 
 /* x̂ = ix^(4/3) · 2^(step/4) in the coefficient scale of quantize: the
  * product of the Q14 power and the Q30 quarter step is scaled by
- * 2^(step/4 rounded down + 31 - 44). */
-static uint64_t reconstruct(int ix, int step) {
-  int whole = step >= 0 ? step / 4 : -((3 - step) / 4), shift;
-  uint64_t product =
-      (uint64_t)psy_pow43[ix] * psy_quarter_step[step - 4 * whole];
+ * 2^(step/4 rounded down + 31 - 44), rounded when it is scaled down. */
+typedef struct {
+  uint64_t quarter, half;
+  int right, left;
+} dequantiser_t;
 
-  shift = whole + 31 - 44;
-  if (shift >= 0)
-    return product << shift;
-  return -shift < 64 ? (product + (1ULL << (-shift - 1))) >> -shift : 0;
+static dequantiser_t dequantiser(int step) {
+  const int whole = step >= 0 ? step / 4 : -((3 - step) / 4);
+  const int shift = whole + 31 - 44;
+  /* STEP_MIN keeps the right shift below 64. */
+  const int right = shift < 0 ? -shift : 0;
+
+  return (dequantiser_t){psy_quarter_step[step - 4 * whole],
+                         right ? 1ULL << (right - 1) : 0, right,
+                         shift > 0 ? shift : 0};
+}
+
+static uint64_t line_error(int32_t xrabs, int ix, const dequantiser_t *d) {
+  const uint64_t product = (uint64_t)psy_pow43[ix] * d->quarter;
+  const int64_t difference =
+      (int64_t)xrabs - (int64_t)(((product + d->half) >> d->right) << d->left);
+
+  return (uint64_t)(difference < 0 ? -difference : difference);
 }
 
 /* §2: the noise of band sb quantised at a step, log2 in the energy unit.
  * The errors are below 2^32: the band shifts them so that its largest is
- * below 2^28, and its squares, fewer than 256 of them, add up in 64 bits. */
+ * below 2^28, and its squares, fewer than 256 of them, add up in 64 bits.
+ * The unshifted sum may wrap, and is used only when no shift is needed. */
 static int32_t measure_noise(const shine_global_config *config,
                              const psy_bands_t *bands, const int *ix, int sb,
                              int step) {
-  uint64_t error[256], peak = 0, sum = 0;
-  int first = bands->edge[sb], lines = bands->edge[sb + 1] - first, shift;
+  const dequantiser_t d = dequantiser(step);
+  const int first = bands->edge[sb], lines = bands->edge[sb + 1] - first;
+  const int32_t *xrabs = config->l3loop.xrabs + first;
+  const int *band_ix = ix + first;
+  uint64_t peak = 0, sum = 0;
+  int shift = 0;
 
   for (int k = 0; k < lines; k++) {
-    int64_t difference = (int64_t)config->l3loop.xrabs[first + k] -
-                         (int64_t)reconstruct(ix[first + k], step);
+    const uint64_t error = line_error(xrabs[k], band_ix[k], &d);
 
-    error[k] = (uint64_t)(difference < 0 ? -difference : difference);
-    if (error[k] > peak)
-      peak = error[k];
+    peak = error > peak ? error : peak;
+    sum += error * error;
   }
-  shift = peak >> 28 ? highest_bit(peak) - 27 : 0;
-  for (int k = 0; k < lines; k++)
-    sum += (error[k] >> shift) * (error[k] >> shift);
+  if (peak >> 28) {
+    shift = highest_bit(peak) - 27;
+    sum = 0;
+    for (int k = 0; k < lines; k++) {
+      const uint64_t error = line_error(xrabs[k], band_ix[k], &d) >> shift;
+
+      sum += error * error;
+    }
+  }
   return scale(shine_psy_log2(sum), bands->log2_k + 2 * shift * ONE);
 }
 
