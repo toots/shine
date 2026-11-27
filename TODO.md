@@ -134,6 +134,16 @@ quality report before the next one starts.
       attack frames more bits: a reservoir filled by a tax on steady
       granules gains 3 more on these items and costs every other 0.2 to
       0.7.
+- [x] `MASK_ADJUST` by how the channels are coded: one channel, joint
+      stereo, two channels without M/S; and by bits per sample for
+      one-channel streams up to 24 kHz (`parameters.md` §1).
+- [ ] Native 11.025 to 22.05 kHz joint stereo from 1.45 bits per sample
+      and channel scores 0.4 to 0.7 higher with `MASK_ADJUST` 1.5 to 2 dB
+      lower (11.025 kHz at 32 kbps, 16 kHz at 48, 22.05 kHz at 64 and 96),
+      but 16 kHz at 64 kbps then loses 9 on one item: no rule fits yet.
+- [ ] `shineenc` codes two channels as plain stereo unless given `-j`:
+      at 128 kbps that scores 84 where joint stereo scores 90. Consider
+      joint stereo as the default mode.
 - [ ] Dropping the count1 values that cost more than they are worth.
 - [x] Masking spread as a plain sum of energies, in the linear domain.
 - [x] The step size search starts where the previous attempt ended.
