@@ -1433,6 +1433,8 @@ static int fit(shine_global_config *config, int *ix, gr_info *gi, int budget,
   /* low never fits (STEP_MIN - 1 stands for "none"), high fits. */
   int low, high, high_bits, last = start,
                             bits = bits_at(config, ix, gi, budget, s, start);
+  /* Counting the bits also chooses the code tables of gi: those of high. */
+  gr_info high_gi = *gi;
 
   if (bits >= 0) {
     high = start;
@@ -1444,6 +1446,7 @@ static int fit(shine_global_config *config, int *ix, gr_info *gi, int budget,
         break;
       high = low;
       high_bits = bits;
+      high_gi = *gi;
       low = high - 2 * width < STEP_MIN - 1 ? STEP_MIN - 1 : high - 2 * width;
     }
   } else {
@@ -1460,6 +1463,7 @@ static int fit(shine_global_config *config, int *ix, gr_info *gi, int budget,
       low = high;
       high = low + 2 * width;
     }
+    high_gi = *gi;
   }
   while (high - low > 1) {
     int middle = low + (high - low) / 2;
@@ -1468,13 +1472,13 @@ static int fit(shine_global_config *config, int *ix, gr_info *gi, int budget,
     if ((bits = bits_at(config, ix, gi, budget, s, middle)) >= 0) {
       high = middle;
       high_bits = bits;
+      high_gi = *gi;
     } else
       low = middle;
   }
-  /* Counting the bits also chooses the code tables of gi. */
   if (last != high) {
     quantize_granule(config, ix, high, s);
-    shine_count_bits(ix, gi, config);
+    *gi = high_gi;
   }
   *q = high;
   return high_bits;
