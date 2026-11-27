@@ -112,6 +112,10 @@ was cut into calls.
 At the end of the stream every slot begun MUST be completed: capacity no
 main data used is filled with zero bytes.
 
+An encoder that cannot lay out a frame, out of memory for instance, MUST
+end the stream with the last complete slot: the `main_data_begin` of every
+later frame counts the bytes of the missing one.
+
 ## 5. Determinism
 
 `R`, the demand and the budgets are integers
