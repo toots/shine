@@ -121,8 +121,12 @@ of 5 runs, in multiples of realtime, one thread.
 | WebAssembly, quality 1 (Node 26) | 150x | 148x | 156x | 359x |
 | LAME 4.0 `-q 7` | 310x | 300x | 290x | 643x |
 | LAME 4.0, default | 154x | 158x | 146x | 286x |
+| FDK AAC 2.0, AAC-LC | 240x | 222x | 200x | 474x |
 
-Peak memory: 1.5 MB at level 0, 1.8 MB at level 1, 2.7 MB for LAME.
+Peak memory: 1.5 MB at level 0, 1.8 MB at level 1, 2.1 MB for FDK AAC, 2.7 MB
+for LAME. FDK AAC runs through its library API with the afterburner on, as in
+FFmpeg's `libfdk_aac`; at 64 kbps stereo it runs at 281x in AAC-LC, as level
+1 does, and at 205x in HE-AAC.
 `shineenc` is built with `CFLAGS=-O2`; it and LAME, run with `-b <bitrate>`,
 code stereo as joint stereo, their default. Its default quality is `-q 3`; `-q 7` is its fastest
 setting that still uses a psychoacoustic model.
@@ -149,15 +153,28 @@ test: differences under 5 points on one item say little.
 | `shineenc -Q 0` | 39.9 | 56.0 | 70.9 | 92.2 | 72.8 |
 | `shineenc -Q 1` | 60.7 | 78.1 | 90.1 | 100.0 | 89.1 |
 | LAME 4.0, default | 56.6 | 77.5 | 90.2 | 99.9 | 88.4 |
+| FDK AAC 2.0, AAC-LC | 67.2 | 82.0 | 93.9 | 99.9 | 87.0 |
+| FDK AAC 2.0, HE-AAC | 73.7 | | | | |
+| FFmpeg 9.0 `aac` | 56.8 | 72.3 | 82.9 | 95.6 | 74.3 |
 
-From 192 kbps in stereo and 128 kbps in mono, every encoder scores within a
-point of 100.
+From 192 kbps in stereo and 128 kbps in mono, every MP3 encoder scores within
+a point of 100.
+
+AAC is the newer format: in stereo FDK AAC scores 4 to 6 points above level 1
+up to 128 kbps, and the two are level from 160 kbps (99.1 against 98.9). At
+64 kbps HE-AAC scores 13 points above it; PEAQ predates the spectral band
+replication HE-AAC is built on, and that score is the least certain of the
+table. Level 1 scores above FFmpeg's own AAC encoder at every bitrate, and
+above FDK AAC in mono at 64 kbps.
 
 Limitations
 -----------
 
-Level 1 scores level with LAME from 96 kbps up in stereo, and above it at
-64 kbps and under. The score is a model: the choices it led to
+Level 1 scores level with or above LAME at its default settings at 32, 44.1
+and 48 kHz, from 32 to 320 kbps, and runs faster. It is as close to the MP3
+ceiling as we have been able to get, and narrows the gap to AAC with
+standard MP3 streams: level with FDK AAC-LC from 160 kbps and ahead of it in
+mono at 64 kbps. The score is a model: the choices it led to
 that listeners have not confirmed yet, the bandwidth of the lowest
 bitrates first, are in [TODO.md](TODO.md) with the work under way. Level 0 output is frozen: it
 only changes to fix a bug.
