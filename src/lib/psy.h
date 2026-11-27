@@ -100,6 +100,10 @@ typedef struct psy_model {
   int channels; /* analysis channels: 1, 2, or 4 with M/S */
   int adapt_ath;
   const psy_bitrate_row_t *row;
+  /* doc/psy/parameters.md §1: a one-channel stream at a low rate takes
+   * MASK_ADJUST and MASK_ADJUST_SHORT from its bits per sample. */
+  int low_mono;
+  int32_t low_mono_adjust[2];
   psy_layout_t layout[2]; /* long, short */
   /* doc/psy/bandwidth.md: the lowpass gains of long and short lines, Q15,
    * and whether there is a cutoff. */

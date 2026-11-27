@@ -60,6 +60,7 @@ enum {
   NOISE_MEASURE,            /* noise-allocation §1, §2 */
   QUANTISER,                /* noise-allocation §1 */
   LOWPASS,                  /* bandwidth §1, §2 */
+  LOW_MONO,                 /* parameters §1 */
   STUFFING,                 /* reservoir §2 */
   ALLOWED_DISTORTION,       /* allowed-distortion §2 */
   SHORT_ALLOWED_DISTORTION, /* allowed-distortion §2, §3 */
@@ -125,6 +126,7 @@ static const char *check_names[CHECK_COUNT] = {
     [REGION_SPLIT] = "cheapest region split",
     [QUANTISER] = "quantiser rounding",
     [LOWPASS] = "lowpass",
+    [LOW_MONO] = "MASK_ADJUST of low-rate mono",
     [STUFFING] = "no stuffing in a granule",
     [PE_BOUNDS] = "PE bounds",
     [SHORT_THRESHOLD_BOUNDS] = "short threshold bounds",
@@ -828,6 +830,7 @@ static void check_preecho(void) {
     row.log2_mask_adjust_2ch = 0;
     row.log2_mask_adjust_apart = 0;
     m->row = &row;
+    m->low_mono_adjust[0] = 0;
 
     for (int frame = 0; frame < 10; frame++) {
       /* The second limit holds after a NORM granule only. */
@@ -2155,6 +2158,68 @@ static double expected_cutoff(int samplerate, int channels, int bitrate) {
   return cutoff >= 0.95 * samplerate / 2 ? 0 : cutoff;
 }
 
+/* parameters §1: MASK_ADJUST in dB by bits per sample. */
+static double expected_low_mono_adjust(double bits) {
+  static const double points[4][2] = {
+      {1.5, 6}, {2.0, 3.5}, {2.2, 1.2}, {2.6, 0.75}};
+
+  if (bits <= points[0][0])
+    return points[0][1];
+  for (int i = 1; i < 4; i++)
+    if (bits <= points[i][0])
+      return points[i - 1][1] + (points[i][1] - points[i - 1][1]) *
+                                    (bits - points[i - 1][0]) /
+                                    (points[i][0] - points[i - 1][0]);
+  return points[3][1];
+}
+
+/* parameters §1: a one-channel stream up to 24 kHz takes MASK_ADJUST from
+ * its bits per sample, and no other stream does. */
+static void check_low_mono_adjust(void) {
+  static const int bitrates[8] = {8, 16, 24, 32, 40, 48, 56, 64};
+  int low = 0, other = 0;
+
+  for (int r = 0; r < 9; r++)
+    for (int channels = 1; channels <= 2; channels++)
+      for (int b = 0; b < 8; b++) {
+        shine_config_t config;
+        shine_t e;
+        double db;
+
+        shine_set_config_mpeg_defaults(&config.mpeg);
+        config.wave.samplerate = rates[r];
+        config.wave.channels = channels;
+        config.mpeg.mode = channels == 1 ? SHINE_MONO : SHINE_JOINT_STEREO;
+        config.mpeg.bitrate = bitrates[b];
+        config.mpeg.quality = 1;
+        if (shine_check_config(rates[r], bitrates[b]) < 0 ||
+            !(e = shine_initialise(&config)))
+          continue;
+        if (channels == 2 || rates[r] > 24000) {
+          other++;
+          check(LOW_MONO, !e->psy->low_mono, "%d Hz %d ch: takes the rule",
+                rates[r], channels);
+          shine_close(e);
+          continue;
+        }
+        low++;
+        db = expected_low_mono_adjust(1000.0 * bitrates[b] / rates[r]);
+        /* Within 0.01 dB of the formula in floating point. */
+        check(LOW_MONO,
+              e->psy->low_mono &&
+                  fabs(e->psy->low_mono_adjust[0] * 10 / log2(10) / 65536 -
+                       db) < 0.01 &&
+                  fabs(e->psy->low_mono_adjust[1] * 10 / log2(10) / 65536 -
+                       0.9 * db) < 0.01,
+              "%d Hz %d kbps: MASK_ADJUST %.3f dB, expected %.3f", rates[r],
+              bitrates[b], e->psy->low_mono_adjust[0] * 10 / log2(10) / 65536,
+              db);
+        shine_close(e);
+      }
+  check(LOW_MONO, low > 20 && other > 20, "%d low-rate mono, %d others", low,
+        other);
+}
+
 /* bandwidth §1, §2: the gains follow the taper at every configuration, and
  * an encode codes nothing at or above the cutoff. */
 static void check_lowpass(void) {
@@ -2986,6 +3051,7 @@ int main(void) {
   check_short_preecho();
   check_quantiser();
   check_lowpass();
+  check_low_mono_adjust();
   check_reservoir_steady();
   check_reservoir_burst();
   check_pe_smoothing();

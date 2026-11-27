@@ -387,6 +387,26 @@ static const struct {
     {256, 0.97, -8, 10, 1},  {320, 0.90, -10, 12, 0}};
 #define ROWS (int)(sizeof(rows) / sizeof(*rows))
 
+/* MASK_ADJUST of the one-channel streams at low rates, by bits per sample
+ * (doc/psy/parameters.md §1). */
+static void low_mono_adjust(void) {
+  static const double points[][2] = {
+      {1.5, 6}, {2.0, 3.5}, {2.2, 1.2}, {2.6, 0.75}};
+  const int count = (int)(sizeof(points) / sizeof(*points));
+
+  printf("/* MASK_ADJUST of a one-channel stream up to this rate in Hz, by its "
+         "bits\n * per sample: millionths of a bit, then MASK_ADJUST and\n"
+         " * MASK_ADJUST_SHORT, log2 in Q16 (doc/psy/parameters.md §1). */\n");
+  printf("#define PSY_MASK_ADJUST_LOW_RATE 24000\n");
+  printf("#define PSY_LOW_MONO_POINTS %d\n", count);
+  printf("static const int32_t psy_low_mono_adjust[PSY_LOW_MONO_POINTS][3] = "
+         "{\n");
+  for (int i = 0; i < count; i++)
+    printf("{%ld, %ld, %ld},\n", fixed(points[i][0], 1000000),
+           db_q16(points[i][1]), db_q16(0.9 * points[i][1]));
+  printf("};\n\n");
+}
+
 static void bitrate_rows(void) {
   const int count = ROWS;
 
@@ -457,6 +477,7 @@ static void bitrate_rows(void) {
            db_q16(adjust3 > 0 ? 0.9 * adjust3 : 1.1 * adjust3));
   }
   printf("};\n\n");
+  low_mono_adjust();
 }
 
 /* Attack detection (doc/psy/block-switching.md §1). Filtered samples and

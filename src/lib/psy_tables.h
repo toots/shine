@@ -4488,6 +4488,18 @@ static const psy_bitrate_row_t psy_bitrate_rows[PSY_BITRATE_ROWS] = {
      8192000, 65536, -217706, -239476, -217706, -239476},
 };
 
+/* MASK_ADJUST of a one-channel stream up to this rate in Hz, by its bits
+ * per sample: millionths of a bit, then MASK_ADJUST and
+ * MASK_ADJUST_SHORT, log2 in Q16 (doc/psy/parameters.md §1). */
+#define PSY_MASK_ADJUST_LOW_RATE 24000
+#define PSY_LOW_MONO_POINTS 4
+static const int32_t psy_low_mono_adjust[PSY_LOW_MONO_POINTS][3] = {
+    {1500000, 130624, 117561},
+    {2000000, 76197, 68577},
+    {2200000, 26125, 23512},
+    {2600000, 16328, 14695},
+};
+
 /* Attack filter taps c[1], c[3], .. c[9], Q16. */
 static const int32_t psy_attack_taps[5] = {-1116, 2740, -5743, 12213, -41133};
 #define PSY_PEAK_FLOOR 65604

@@ -226,6 +226,8 @@ static void spread_energy(const psy_layout_t *layout,
 static int32_t mask_adjust(const psy_model_t *model, int is_long) {
   const psy_bitrate_row_t *row = model->row;
 
+  if (model->low_mono)
+    return model->low_mono_adjust[is_long ? 0 : 1];
   if (model->channels == 4)
     return is_long ? row->log2_mask_adjust_2ch
                    : row->log2_mask_adjust_short_2ch;
@@ -830,6 +832,26 @@ int shine_psy_cutoff(int bitrate, int channels) {
   return cutoff;
 }
 
+/* parameters §1: MASK_ADJUST (column 1) or MASK_ADJUST_SHORT (column 2) of
+ * a one-channel stream at a low rate: linear in its bits per sample
+ * between the points of the table, constant outside them. */
+static int32_t low_mono_adjust(int bitrate, int samplerate, int column) {
+  /* Millionths of a bit per sample. */
+  const int64_t bits = (int64_t)bitrate * 1000000000 / samplerate;
+  const int32_t (*point)[3] = psy_low_mono_adjust;
+  const int last = PSY_LOW_MONO_POINTS - 1;
+
+  if (bits <= point[0][0])
+    return point[0][column];
+  for (int i = 1; i <= last; i++)
+    if (bits <= point[i][0])
+      return (int32_t)(point[i - 1][column] +
+                       (int64_t)(point[i][column] - point[i - 1][column]) *
+                           (bits - point[i - 1][0]) /
+                           (point[i][0] - point[i - 1][0]));
+  return point[last][column];
+}
+
 /* §bandwidth 1: a stream up to this rate codes its whole band. */
 #define LOWPASS_FREE_RATE 32000
 
@@ -1001,6 +1023,11 @@ int shine_psy_initialise(shine_global_config *config) {
         psy_bitrate_rows[i - 1].kbps + psy_bitrate_rows[i].kbps)
       row = i;
   model->row = &psy_bitrate_rows[row];
+  model->low_mono = model->channels == 1 &&
+                    config->wave.samplerate <= PSY_MASK_ADJUST_LOW_RATE;
+  for (int column = 1; column <= 2; column++)
+    model->low_mono_adjust[column - 1] =
+        low_mono_adjust(config->mpeg.bitrate, config->wave.samplerate, column);
 
   for (int k = 0; k < GRANULE_SIZE; k++)
     ath_line[k] = psy_ath_line[rate][k] +
