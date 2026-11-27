@@ -20,9 +20,9 @@ static int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin,
                             unsigned int end, int *bits);
 static int bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info, int limit);
 static void subdivide(gr_info *cod_info, shine_global_config *config);
-static int count1_region(int ix[GRANULE_SIZE], gr_info *cod_info);
+static int count1_region(int ix[GRANULE_SIZE], int end, gr_info *cod_info);
 static int quantize(int ix[GRANULE_SIZE], int stepsize,
-                    shine_global_config *config);
+                    shine_global_config *config, int *end);
 
 /*
  * shine_inner_loop:
@@ -32,17 +32,17 @@ static int quantize(int ix[GRANULE_SIZE], int stepsize,
  */
 int shine_inner_loop(int ix[GRANULE_SIZE], int max_bits, gr_info *cod_info,
                      shine_global_config *config) {
-  int bits;
+  int bits, end;
 
   if (max_bits < 0)
     cod_info->quantizerStepSize--;
   do {
-    while (quantize(ix, ++cod_info->quantizerStepSize, config) > 8192)
+    while (quantize(ix, ++cod_info->quantizerStepSize, config, &end) > 8192)
       ; /* within table range? */
 
     /* The last step size keeps its count whatever it is. */
     bits = shine_count_bits_up_to(
-        ix, cod_info, config,
+        ix, end, cod_info, config,
         cod_info->quantizerStepSize < MAX_STEPSIZE ? max_bits : INT_MAX);
     /* All coefficients quantize to 0 well before MAX_STEPSIZE. */
   } while (bits > max_bits && cod_info->quantizerStepSize < MAX_STEPSIZE);
@@ -370,7 +370,9 @@ static int quantize_range(int ix[GRANULE_SIZE], int begin, int end,
   return max;
 }
 
-int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config) {
+/* Also sets end past the last run that is not all zeros. */
+int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config,
+             int *end) {
   int max = 0;
 
   /* Whether the step is too small, as quantize_range finds for the run of
@@ -378,6 +380,7 @@ int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config) {
   if (stepsize <= 0 &&
       mulr(config->l3loop.xrmax, shine_steptabi[stepsize + 127]) > 165140)
     return 16384;
+  *end = 0;
   for (int run = 0; run < GRANULE_SIZE / QUANT_RUN_LINES; run++) {
     int run_max =
         quantize_range(ix, run * QUANT_RUN_LINES, (run + 1) * QUANT_RUN_LINES,
@@ -385,6 +388,8 @@ int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config) {
 
     if (run_max > max)
       max = run_max;
+    if (run_max)
+      *end = (run + 1) * QUANT_RUN_LINES;
   }
   return max;
 }
@@ -407,8 +412,8 @@ static inline int ix_max(int ix[GRANULE_SIZE], unsigned int begin,
 /* The end of ix without its trailing pairs of zeros. The values are not
  * negative: a group is zero when its bitwise or is, and at most 1 when its
  * bitwise or is. */
-static int nonzero_end(const int ix[GRANULE_SIZE]) {
-  int i = GRANULE_SIZE;
+static int nonzero_end(const int ix[GRANULE_SIZE], int end) {
+  int i = end;
 
   while (i >= 8 && !(ix[i - 1] | ix[i - 2] | ix[i - 3] | ix[i - 4] | ix[i - 5] |
                      ix[i - 6] | ix[i - 7] | ix[i - 8]))
@@ -432,8 +437,8 @@ static const uint32_t count1_cost[16] = {
 
 /* Partitions ix into big values, quadruples of values up to 1 and zeros.
  * Returns the bits of the quadruples, choosing their table. */
-static int count1_region(int ix[GRANULE_SIZE], gr_info *cod_info) {
-  int i = nonzero_end(ix), sum0, sum1;
+static int count1_region(int ix[GRANULE_SIZE], int end, gr_info *cod_info) {
+  int i = nonzero_end(ix, end), sum0, sum1;
   unsigned int count1 = 0;
   uint32_t sums = 0;
 
@@ -677,7 +682,7 @@ int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin, unsigned int end,
  */
 int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE],
                         gr_info *cod_info, shine_global_config *config) {
-  int bit, next, count;
+  int bit, next, count, end;
 
   next = -120;
   count = 120;
@@ -685,10 +690,10 @@ int bin_search_StepSize(int desired_rate, int ix[GRANULE_SIZE],
   do {
     int half = count / 2;
 
-    if (quantize(ix, next + half, config) > 8192)
+    if (quantize(ix, next + half, config, &end) > 8192)
       bit = 100000; /* fail */
     else
-      bit = shine_count_bits_up_to(ix, cod_info, config, desired_rate);
+      bit = shine_count_bits_up_to(ix, end, cod_info, config, desired_rate);
 
     if (bit < desired_rate)
       count = half;
@@ -715,11 +720,11 @@ int shine_quantize_band(int ix[GRANULE_SIZE], int begin, int end, int stepsize,
   return quantize_range(ix, begin, end, stepsize, peak, config);
 }
 
-int shine_count_bits_up_to(int ix[GRANULE_SIZE], gr_info *cod_info,
+int shine_count_bits_up_to(int ix[GRANULE_SIZE], int end, gr_info *cod_info,
                            shine_global_config *config, int limit) {
   int bits;
 
-  bits = count1_region(ix, cod_info);
+  bits = count1_region(ix, end, cod_info);
   if (bits > limit)
     return bits;
   subdivide(cod_info, config);
@@ -728,7 +733,7 @@ int shine_count_bits_up_to(int ix[GRANULE_SIZE], gr_info *cod_info,
 
 int shine_count_bits(int ix[GRANULE_SIZE], gr_info *cod_info,
                      shine_global_config *config) {
-  return shine_count_bits_up_to(ix, cod_info, config, INT_MAX);
+  return shine_count_bits_up_to(ix, GRANULE_SIZE, cod_info, config, INT_MAX);
 }
 
 /* Classes of big-value regions: a region whose largest value is max chooses
@@ -944,7 +949,7 @@ int shine_count_bits_split(int ix[GRANULE_SIZE], gr_info *gi,
   region_split_t split;
   region_classes_t classes;
 
-  bits = count1_region(ix, gi);
+  bits = count1_region(ix, GRANULE_SIZE, gi);
   bigvalues = (int)gi->big_values << 1;
   if (gi->block_type || !bigvalues) {
     subdivide(gi, config);

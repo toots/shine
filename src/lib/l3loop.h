@@ -21,9 +21,10 @@ int shine_quantize_band(int ix[GRANULE_SIZE], int begin, int end, int stepsize,
 int shine_count_bits(int ix[GRANULE_SIZE], gr_info *cod_info,
                      shine_global_config *config);
 
-/* As shine_count_bits when the bits are at most limit; above limit
- * otherwise, with the code tables of cod_info incomplete. */
-int shine_count_bits_up_to(int ix[GRANULE_SIZE], gr_info *cod_info,
+/* As shine_count_bits of an ix that is zero from end on, an even line,
+ * when the bits are at most limit; above limit otherwise, with the code
+ * tables of cod_info incomplete. */
+int shine_count_bits_up_to(int ix[GRANULE_SIZE], int end, gr_info *cod_info,
                            shine_global_config *config, int limit);
 
 /* As shine_count_bits, with the region split of a long granule that takes

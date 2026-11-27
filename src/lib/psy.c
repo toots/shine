@@ -1393,11 +1393,12 @@ static int quantize_band(shine_global_config *config, int *ix, int sb,
 
 /* §1: every band at its own step. Returns the largest ix, above IX_MAX when
  * a step is too small or below the exact range. */
-static int quantize_granule(shine_global_config *config, int *ix, int q,
-                            const scalefactors_t *s) {
+static int quantize_granule_to(shine_global_config *config, int *ix, int q,
+                               const scalefactors_t *s, int *end) {
   const psy_bands_t *bands = &config->psy->bands;
   int max = 0;
 
+  *end = 0;
   for (int sb = 0; sb < bands->count; sb++) {
     int step = band_step(q, s, sb), band_max;
 
@@ -1406,19 +1407,28 @@ static int quantize_granule(shine_global_config *config, int *ix, int q,
     band_max = quantize_band(config, ix, sb, step);
     if (band_max > max)
       max = band_max;
+    if (band_max)
+      *end = bands->edge[sb + 1];
   }
   return max;
+}
+
+static int quantize_granule(shine_global_config *config, int *ix, int q,
+                            const scalefactors_t *s) {
+  int end;
+
+  return quantize_granule_to(config, ix, q, s, &end);
 }
 
 /* The Huffman bits of the granule at step size q, or -1 if it does not
  * fit the budget. */
 static int bits_at(shine_global_config *config, int *ix, gr_info *gi,
                    int budget, const scalefactors_t *s, int q) {
-  int bits;
+  int bits, end;
 
-  if (quantize_granule(config, ix, q, s) > PSY_IX_MAX)
+  if (quantize_granule_to(config, ix, q, s, &end) > PSY_IX_MAX)
     return -1;
-  bits = shine_count_bits_up_to(ix, gi, config, budget);
+  bits = shine_count_bits_up_to(ix, end, gi, config, budget);
   return bits <= budget ? bits : -1;
 }
 
@@ -1768,10 +1778,11 @@ static int under_at(shine_global_config *config, int *ix, gr_info *gi, int q,
                     int *bits) {
   psy_model_t *model = config->psy;
   int32_t excess;
+  int end;
 
-  if (quantize_granule(config, ix, q, s) > PSY_IX_MAX)
+  if (quantize_granule_to(config, ix, q, s, &end) > PSY_IX_MAX)
     return 0;
-  *bits = shine_count_bits_up_to(ix, gi, config, ceiling_bits);
+  *bits = shine_count_bits_up_to(ix, end, gi, config, ceiling_bits);
   /* A larger step size does not always count fewer bits. */
   if (*bits < floor_bits || *bits > ceiling_bits)
     return 0;
