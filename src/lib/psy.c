@@ -221,6 +221,17 @@ static void spread_energy(const psy_layout_t *layout,
   }
 }
 
+/* parameters §1: MASK_ADJUST of the stream, by its channel count, or
+ * MASK_ADJUST_SHORT. */
+static int32_t mask_adjust(const psy_model_t *model, int is_long) {
+  const psy_bitrate_row_t *row = model->row;
+
+  if (model->channels > 1)
+    return is_long ? row->log2_mask_adjust_2ch
+                   : row->log2_mask_adjust_short_2ch;
+  return is_long ? row->log2_mask_adjust : row->log2_mask_adjust_short;
+}
+
 /* §masking 2-3: spreading, pre-echo limit, tonal ceiling, lowering. */
 static void threshold_in(psy_model_t *model, const psy_layout_t *layout,
                          psy_channel_t *channel, psy_partitions_t *parts) {
@@ -256,9 +267,7 @@ static void threshold_in(psy_model_t *model, const psy_layout_t *layout,
       thr = min32(thr, scale(parts->max[b], layout->minval[b] + avg_mask));
 
     /* §3.4 */
-    lowering = layout->masking_lower[b] +
-               (layout->preecho ? model->row->log2_mask_adjust
-                                : model->row->log2_mask_adjust_short);
+    lowering = layout->masking_lower[b] + mask_adjust(model, layout->preecho);
     if (lowering > 0)
       thr = scale(thr, lowering);
     thr = min32(thr, parts->eb[b]);
