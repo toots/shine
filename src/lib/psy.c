@@ -748,6 +748,24 @@ static int detect_granule(psy_model_t *model, int channels, int start,
   return needs_short;
 }
 
+static inline void take_samples(const int16_t *buffer, int samples, int stride,
+                                int16_t *input) {
+  for (int i = 0; i < samples; i++)
+    input[i] = buffer[i * stride];
+}
+
+/* The samples of a channel from the buffer: a constant stride of the
+ * usual stereo or mono buffer vectorises. */
+static void take_input(const int16_t *buffer, int samples, int stride,
+                       int16_t *input) {
+  if (stride == 2)
+    take_samples(buffer, samples, 2, input);
+  else if (stride == 1)
+    take_samples(buffer, samples, 1, input);
+  else
+    take_samples(buffer, samples, stride, input);
+}
+
 int shine_psy_block_types(shine_global_config *config, int stride) {
   psy_model_t *model = config->psy;
   const int granules = config->mpeg.granules_per_frame;
@@ -759,8 +777,7 @@ int shine_psy_block_types(shine_global_config *config, int stride) {
     int16_t *input = model->input[ch];
 
     memmove(input, input + samples, PSY_INPUT_HISTORY * sizeof(*input));
-    for (int i = 0; i < samples; i++)
-      input[PSY_INPUT_HISTORY + i] = config->buffer[ch][i * stride];
+    take_input(config->buffer[ch], samples, stride, input + PSY_INPUT_HISTORY);
     config->buffer[ch] = input + PSY_INPUT_HISTORY - PSY_LOOKAHEAD;
   }
 
