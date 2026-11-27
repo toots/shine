@@ -180,8 +180,8 @@ use best
   at large step sizes. An attempt whose scalefactors alone, or whose
   coefficients at the largest step size, exceed the budget is not made.
 - **Ties** in `D` keep the earlier attempt. Attempt 0 has every scalefactor
-  at 0, so the allocation never ends with more distortion than a plain step
-  size search.
+  at 0, so the allocation never ends with more distortion than a step size
+  search with the granule's `preflag` (§5.1).
 
 `OUTER_ATTEMPTS` bounds the number of inner loops per granule, and so the
 encoding time. It is a parameter of the quality level
