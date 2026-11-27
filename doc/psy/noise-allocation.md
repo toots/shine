@@ -196,6 +196,30 @@ more than its mean gives all of it back, scored worse
 band over leaves nothing: the reservoir is filled only with bits whose
 absence the model cannot tell.
 
+### 4.2 Huffman regions of the chosen quantisation
+
+A long granule without window switching divides its big values into three
+regions at scalefactor band edges, set by `region0_count` ∈ 0..15 and
+`region1_count` ∈ 0..7, each region with its own code table
+(ISO 11172-3 §2.4.2.7). The split does not change what is decoded, only
+the bits it takes.
+
+The inner loop (§3.2) MAY count `huffman_bits` with any split. For the
+quantisation the allocation ends with, after §4.1, the encoder MUST send
+the split whose regions, each with its cheapest table, take the fewest
+bits among all pairs (`region0_count`, `region1_count`); a tie keeps the
+smallest `region0_count`, then the smallest `region1_count`. A boundary
+past the big values is taken at their end. `part2_3_length` counts the
+granule with that split, and the bits it saves against the count of the
+loop stay in the reservoir.
+
+START, STOP and SHORT granules have fixed boundaries (§6): nothing to
+choose.
+
+The search is made once per channel, not in the loop: on the corpus it
+saves 1.1 to 1.7% of the bits from 64 to 192 kbps, as much when made once
+as when the loop also refits its step size to it.
+
 ## 5. Scalefactor coding
 
 `scfsi` is 0 in every band: each granule sends its own scalefactors.
