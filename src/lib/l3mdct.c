@@ -18,65 +18,43 @@ static void reorder_short(const int32_t lines[3][192], const int *sfb,
   }
 }
 
-void shine_mdct_sub(shine_global_config *config, int stride) {
-  int32_t mdct_in[36];
+/* The analysis filter inverts the odd samples of the odd subbands. */
+static void restore_inverted_samples(int32_t s[18][SBLIMIT]) {
+  for (int k = 1; k < 18; k += 2)
+    for (int band = 1; band < SBLIMIT; band += 2)
+      s[k][band] *= -1;
+}
 
+static void alias_reduction(int32_t lines[SBLIMIT][18]) {
+  for (int band = 1; band < SBLIMIT; band++)
+    for (int k = 0; k < 8; k++)
+      cmuls(lines[band][k], lines[band - 1][17 - k], lines[band][k],
+            lines[band - 1][17 - k], shine_mdct_alias_cs[k],
+            shine_mdct_alias_ca[k]);
+}
+
+void shine_mdct_sub(shine_global_config *config, int stride) {
   for (int ch = config->wave.channels; ch--;) {
     for (int gr = 0; gr < config->mpeg.granules_per_frame; gr++) {
       int32_t (*mdct_enc)[18] = (int32_t (*)[18])config->mdct_freq[ch][gr];
       unsigned block_type = config->side_info.gr[gr].ch[ch].tt.block_type;
-      const int32_t *long_window = shine_mdct_window[block_type];
       /* A short granule also gets a long MDCT, for the model. */
       int32_t (*long_enc)[18] =
           block_type == BLOCK_SHORT
               ? (int32_t (*)[18])config->psy->analysis_long[ch][gr]
               : mdct_enc;
-      int32_t scratch_lines[3][192];
       /* The model analyses the short spectra of every granule
        * (doc/psy/spectral-analysis.md §2). */
       int32_t (*short_lines)[192] =
-          config->psy ? config->psy->short_lines[ch][gr] : scratch_lines;
+          config->psy ? config->psy->short_lines[ch][gr] : NULL;
 
-      /* polyphase filtering */
-      for (int k = 0; k < 18; k += 2) {
-        shine_window_filter_subband(&config->buffer[ch],
-                                    &config->l3_sb_sample[ch][gr + 1][k][0], ch,
-                                    config, stride);
-        shine_window_filter_subband(&config->buffer[ch],
-                                    &config->l3_sb_sample[ch][gr + 1][k + 1][0],
-                                    ch, config, stride);
-        /* Compensate for inversion in the analysis filter
-         * (every odd index of band AND k)
-         */
-        for (int band = 1; band < 32; band += 2)
-          config->l3_sb_sample[ch][gr + 1][k + 1][band] *= -1;
-      }
-
-      /* MDCT of the 18 previous and the 18 current samples of each subband */
-      for (int band = 0; band < 32; band++) {
-        for (int k = 18; k--;) {
-          mdct_in[k] = config->l3_sb_sample[ch][gr][k][band];
-          mdct_in[k + 18] = config->l3_sb_sample[ch][gr + 1][k][band];
-        }
-
-        if (config->psy) {
-          int32_t out[3][6];
-
-          config->kernels.mdct(mdct_in, long_window, long_enc[band], out);
-          for (int window = 0; window < 3; window++)
-            for (int k = 0; k < 6; k++)
-              short_lines[window][6 * band + k] = out[window][k];
-        } else
-          config->kernels.mdct(mdct_in, long_window, long_enc[band], NULL);
-
-        /* Perform aliasing reduction butterfly */
-        if (band != 0) {
-          for (int k = 0; k < 8; k++)
-            cmuls(long_enc[band][k], long_enc[band - 1][17 - k],
-                  long_enc[band][k], long_enc[band - 1][17 - k],
-                  shine_mdct_alias_cs[k], shine_mdct_alias_ca[k]);
-        }
-      }
+      shine_window_filter_subband(config, ch, stride,
+                                  config->l3_sb_sample[ch][gr + 1]);
+      restore_inverted_samples(config->l3_sb_sample[ch][gr + 1]);
+      config->kernels.mdct(
+          config->l3_sb_sample[ch][gr], config->l3_sb_sample[ch][gr + 1],
+          shine_mdct_window[block_type], long_enc, short_lines);
+      alias_reduction(long_enc);
       if (config->psy)
         shine_psy_lowpass(config->psy, (int32_t *)long_enc, short_lines);
       if (block_type == BLOCK_SHORT)

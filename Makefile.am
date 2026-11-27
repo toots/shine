@@ -9,7 +9,8 @@ noinst_HEADERS = src/bin/main.h src/bin/wave.h \
                  src/lib/l3loop.h src/lib/l3mdct.h src/lib/l3subband.h \
                  src/lib/fixed_point.h src/lib/reservoir.h src/lib/tables.h \
                  src/lib/types.h src/lib/psy.h src/lib/psy_tables.h \
-                 src/lib/resample.h src/lib/kernels.h
+                 src/lib/resample.h src/lib/kernels.h \
+                 src/lib/kernels_lanes.h
 
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS  = -I m4

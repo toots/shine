@@ -131,30 +131,68 @@ static void mdct_exact(const int32_t in[36], int type, double long_out[18],
     }
 }
 
-static void check_filter(const int32_t x[512], int off) {
-  int32_t s[3][32];
-  double exact[32];
+/* Filter inputs waiting for a granule of 18 steps to be full. */
+static struct {
+  int32_t x[18][512];
+  int off[18];
+  int count;
+} filter_queue;
 
-  for (int set = 0; set < kernel_count; set++) {
-    kernel_sets[set]->filter(x, off, s[set]);
-    if (set) {
-      identity_checks++;
-      identity_failures += memcmp(s[set], s[0], sizeof(s[0])) != 0;
-    }
-  }
-  filter_exact(x, off, exact);
-  record(FILTER, s[0], exact, 32);
+static void run_filter(const shine_kernels_t *kernels, int32_t s[18][32]) {
+  int32_t folded[32][SHINE_FOLDED_STEPS] = {{0}};
+
+  for (int step = 0; step < filter_queue.count; step++)
+    kernels->filter_fold(filter_queue.x[step], filter_queue.off[step], step,
+                         folded);
+  kernels->filter_dct3(folded, s);
 }
 
-static void check_mdct(const int32_t in[36], int type_index) {
-  const int type = long_types[type_index];
-  int32_t long_out[3][18], short_out[3][3][6], long_only[18];
-  double long_exact[18], short_exact[3][6];
+static void flush_filter(void) {
+  static int32_t s[3][18][32];
+  const size_t size = filter_queue.count * sizeof(s[0][0]);
 
   for (int set = 0; set < kernel_count; set++) {
-    kernel_sets[set]->mdct(in, shine_mdct_window[type], long_out[set],
-                           short_out[set]);
-    kernel_sets[set]->mdct(in, shine_mdct_window[type], long_only, NULL);
+    run_filter(kernel_sets[set], s[set]);
+    if (set) {
+      identity_checks++;
+      identity_failures += memcmp(s[set], s[0], size) != 0;
+    }
+  }
+  for (int step = 0; step < filter_queue.count; step++) {
+    double exact[32];
+
+    filter_exact(filter_queue.x[step], filter_queue.off[step], exact);
+    record(FILTER, s[0][step], exact, 32);
+  }
+  filter_queue.count = 0;
+}
+
+static void check_filter(const int32_t x[512], int off) {
+  memcpy(filter_queue.x[filter_queue.count], x, sizeof(filter_queue.x[0]));
+  filter_queue.off[filter_queue.count++] = off;
+  if (filter_queue.count == 18)
+    flush_filter();
+}
+
+/* MDCT inputs of one window type waiting for a granule of 32 subbands to be
+ * full. */
+typedef struct {
+  int32_t previous[18][32], current[18][32];
+  int count;
+} mdct_queue_t;
+
+static mdct_queue_t mdct_queues[3];
+
+static void flush_mdct(int type_index) {
+  static int32_t long_out[3][32][18], short_out[3][3][192], long_only[32][18];
+  mdct_queue_t *queue = &mdct_queues[type_index];
+  const int32_t *window = shine_mdct_window[long_types[type_index]];
+
+  for (int set = 0; set < kernel_count; set++) {
+    kernel_sets[set]->mdct(queue->previous, queue->current, window,
+                           long_out[set], short_out[set]);
+    kernel_sets[set]->mdct(queue->previous, queue->current, window, long_only,
+                           NULL);
     identity_checks++;
     identity_failures +=
         memcmp(long_only, long_out[set], sizeof(long_only)) != 0;
@@ -165,9 +203,48 @@ static void check_mdct(const int32_t in[36], int type_index) {
           memcmp(short_out[set], short_out[0], sizeof(short_out[0])) != 0;
     }
   }
-  mdct_exact(in, type, long_exact, short_exact);
-  record(LONG_NORM + type_index, long_out[0], long_exact, 18);
-  record(SHORT, &short_out[0][0][0], &short_exact[0][0], 18);
+  for (int band = 0; band < queue->count; band++) {
+    int32_t in[36], short_lines[3][6];
+    double long_exact[18], short_exact[3][6];
+
+    for (int k = 0; k < 18; k++) {
+      in[k] = queue->previous[k][band];
+      in[k + 18] = queue->current[k][band];
+    }
+    for (int w = 0; w < 3; w++)
+      memcpy(short_lines[w], &short_out[0][w][6 * band],
+             sizeof(short_lines[w]));
+    mdct_exact(in, long_types[type_index], long_exact, short_exact);
+    record(LONG_NORM + type_index, long_out[0][band], long_exact, 18);
+    record(SHORT, &short_lines[0][0], &short_exact[0][0], 18);
+  }
+  memset(queue, 0, sizeof(*queue));
+}
+
+static void check_mdct(const int32_t in[36], int type_index) {
+  mdct_queue_t *queue = &mdct_queues[type_index];
+
+  for (int k = 0; k < 18; k++) {
+    queue->previous[k][queue->count] = in[k];
+    queue->current[k][queue->count] = in[k + 18];
+  }
+  if (++queue->count == 32)
+    flush_mdct(type_index);
+}
+
+static void flush_checks(void) {
+  flush_filter();
+  for (int type_index = 0; type_index < 3; type_index++)
+    flush_mdct(type_index);
+}
+
+/* One filter step of the first kernel set. */
+static void filter_step(const int32_t x[512], int off, int32_t s[32]) {
+  int32_t folded[32][SHINE_FOLDED_STEPS] = {{0}}, steps[18][32];
+
+  kernel_sets[0]->filter_fold(x, off, 0, folded);
+  kernel_sets[0]->filter_dct3(folded, steps);
+  memcpy(s, steps[0], sizeof(steps[0]));
 }
 
 /* Runs the filter over a stream of samples as l3subband.c does, giving the
@@ -181,7 +258,7 @@ static void subband_input(const int16_t stream[STREAM_SAMPLES], int band,
   for (int step = 0; step < STREAM_STEPS; step++) {
     for (int i = 32; i--;)
       x[i + off] = stream[32 * step + 31 - i] * 65536;
-    kernel_sets[0]->filter(x, off, s);
+    filter_step(x, off, s);
     off = (off + 480) & 511;
     if (step >= WARMUP_STEPS) {
       int j = step - WARMUP_STEPS;
@@ -391,6 +468,9 @@ int main(void) {
   else
     printf("avx2 not run: the processor does not have it\n");
 #endif
+#ifdef SHINE_KERNELS_NEON
+  add_kernel_set("neon", &shine_kernels_neon);
+#endif
   shine_kernels_select(&selected);
   add_kernel_set("chosen", &selected);
 
@@ -401,5 +481,6 @@ int main(void) {
   check_mdct_box_maximising();
   check_mdct_subbands_random();
   check_mdct_subbands_maximising();
+  flush_checks();
   return report();
 }
