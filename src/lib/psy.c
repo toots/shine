@@ -289,6 +289,13 @@ static int32_t mask_adjust(const psy_model_t *model, int is_long) {
 static void threshold_in(psy_model_t *model, const psy_layout_t *layout,
                          psy_channel_t *channel, psy_partitions_t *parts) {
   const int16_t *start = layout->start;
+  const int32_t adjust = mask_adjust(model, layout->preecho);
+  /* §3.1: every granule is NORM before short blocks, so both limits; the
+   * second is dropped after a granule that is not NORM. §3.2: no pre-echo
+   * limit on the short layout. */
+  const int limit_1 = layout->preecho && channel->granules_seen >= 1;
+  const int limit_2 = layout->preecho && model->previous_type == BLOCK_NORM &&
+                      channel->granules_seen >= 2;
   int32_t spread_ecb[PSY_NPART_MAX];
   int idx_sum[PSY_NPART_MAX];
 
@@ -302,15 +309,10 @@ static void threshold_in(psy_model_t *model, const psy_layout_t *layout,
     ecb = scale(spread_ecb[b], avg_mask);
     parts->ecb[b] = ecb;
 
-    /* §3.1: every granule is NORM before short blocks, so both limits. */
     thr = ecb;
-    /* §3.2: no pre-echo limit on the short layout. */
-    if (layout->preecho && channel->granules_seen >= 1 &&
-        channel->nb_1[b] != ZERO)
+    if (limit_1 && channel->nb_1[b] != ZERO)
       thr = min32(thr, channel->nb_1[b] + PSY_LOG2_PREECHO_RATIO_1);
-    /* §3.1: the second limit is dropped after a granule that is not NORM. */
-    if (layout->preecho && model->previous_type == BLOCK_NORM &&
-        channel->granules_seen >= 2 && channel->nb_2[b] != ZERO)
+    if (limit_2 && channel->nb_2[b] != ZERO)
       thr = min32(thr, channel->nb_2[b] + PSY_LOG2_PREECHO_RATIO_2);
     channel->nb_2[b] = channel->nb_1[b];
     channel->nb_1[b] = ecb;
@@ -320,7 +322,7 @@ static void threshold_in(psy_model_t *model, const psy_layout_t *layout,
       thr = min32(thr, scale(parts->max[b], layout->minval[b] + avg_mask));
 
     /* §3.4 */
-    lowering = layout->masking_lower[b] + mask_adjust(model, layout->preecho);
+    lowering = layout->masking_lower[b] + adjust;
     if (lowering > 0)
       thr = scale(thr, lowering);
     thr = min32(thr, parts->eb[b]);
