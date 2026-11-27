@@ -26,7 +26,7 @@ CORE_SOURCES         = src/lib/bitstream.c src/lib/huffman.c src/lib/kernels.c \
                        src/lib/tables.c src/lib/precomputed_tables.c
 libshine_la_SOURCES  = $(CORE_SOURCES) src/lib/psy.c
 
-libshine_la_LDFLAGS  = -no-undefined -version-info 5:0:2 -export-symbols $(srcdir)/libshine.sym
+libshine_la_LDFLAGS  = -no-undefined -version-info 4:0:0 -export-symbols $(srcdir)/libshine.sym
 libshine_ladir       = ${prefix}/include/shine
 libshine_la_HEADERS  = src/lib/layer3.h
 
