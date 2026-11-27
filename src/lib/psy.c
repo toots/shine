@@ -624,45 +624,57 @@ static void attack_filter_granule(const int16_t *input, int start, int64_t *h) {
   }
 }
 
-/* (L ± R)/√2 of filter outputs, whose sums are below 2^35: sign is 1 for
- * the mid channel, -1 for the side. */
-static void mid_side_filtered(const int64_t *left, const int64_t *right,
-                              int64_t sign, int64_t *h) {
-  int32_t sum[DETECTOR_GRANULE];
-
-  for (int n = 0; n < DETECTOR_GRANULE; n++)
-    sum[n] = (int32_t)((left[n] + sign * right[n]) >> 4);
-  for (int n = 0; n < DETECTOR_GRANULE; n++)
-    h[n] = ((int64_t)sum[n] * PSY_INV_SQRT2) >> 27;
-}
+static int64_t magnitude64(int64_t x) { return x < 0 ? -x : x; }
 
 static int64_t sub_block_peak(const int64_t *h) {
   int64_t peak = PSY_PEAK_FLOOR;
 
-  for (int n = 0; n < SUB_BLOCK; n++) {
-    int64_t magnitude = h[n] < 0 ? -h[n] : h[n];
-
-    peak = magnitude > peak ? magnitude : peak;
-  }
+  for (int n = 0; n < SUB_BLOCK; n++)
+    peak = magnitude64(h[n]) > peak ? magnitude64(h[n]) : peak;
   return peak;
+}
+
+/* (L ± R)/√2 of a filter output in 32 bits, as the sums are below 2^35. */
+static int64_t mid_side_filtered(int32_t sum) {
+  return ((int64_t)sum * PSY_INV_SQRT2) >> 27;
+}
+
+/* The sub-block peaks of (L ± R)/√2 of filter outputs: sign is 1 for the mid
+ * channel, -1 for the side. (L ± R)/√2 grows with L ± R, so the largest
+ * magnitude of a sub-block is that of its lowest or its highest sum. */
+static void mid_side_peaks(const int64_t *left, const int64_t *right,
+                           int64_t sign, int64_t peaks[9]) {
+  for (int i = 0; i < 9; i++) {
+    const int64_t *l = &left[SUB_BLOCK * i], *r = &right[SUB_BLOCK * i];
+    int32_t lowest = INT32_MAX, highest = INT32_MIN;
+
+    for (int n = 0; n < SUB_BLOCK; n++) {
+      const int32_t sum = (int32_t)((l[n] + sign * r[n]) >> 4);
+
+      lowest = sum < lowest ? sum : lowest;
+      highest = sum > highest ? sum : highest;
+    }
+    peaks[i] =
+        max64(PSY_PEAK_FLOOR, max64(magnitude64(mid_side_filtered(lowest)),
+                                    magnitude64(mid_side_filtered(highest))));
+  }
 }
 
 /* §1.2: the nine sub-block peaks of the detector granule that starts at
  * input[start], for each analysis channel. */
 static void sub_block_peaks(const psy_model_t *model, int channels, int start,
                             int64_t peaks[PSY_CHANNELS][9]) {
-  int64_t h[PSY_CHANNELS][DETECTOR_GRANULE];
+  int64_t h[MAX_CHANNELS][DETECTOR_GRANULE];
 
-  attack_filter_granule(model->input[0], start, h[0]);
-  if (channels == 2)
-    attack_filter_granule(model->input[1], start, h[1]);
-  if (model->channels == 4) {
-    mid_side_filtered(h[0], h[1], 1, h[2]);
-    mid_side_filtered(h[0], h[1], -1, h[3]);
-  }
-  for (int c = 0; c < model->channels; c++)
+  for (int c = 0; c < channels; c++) {
+    attack_filter_granule(model->input[c], start, h[c]);
     for (int i = 0; i < 9; i++)
       peaks[c][i] = sub_block_peak(&h[c][SUB_BLOCK * i]);
+  }
+  if (model->channels == 4) {
+    mid_side_peaks(h[0], h[1], 1, peaks[2]);
+    mid_side_peaks(h[0], h[1], -1, peaks[3]);
+  }
 }
 
 /* §1.3 to §1.5 for analysis channel c: the slots of the granule, and whether
