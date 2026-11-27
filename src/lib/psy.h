@@ -154,6 +154,8 @@ typedef struct psy_model {
   int xmin_bands_s;  /* short bands with an allowed distortion */
   psy_bands_t bands; /* of the channel being allocated */
   psy_step_cache_t steps;
+  /* Scratch of the region split (noise-allocation.md §4.2). */
+  shine_region_bits_t region_sums[SHINE_REGION_CLASSES + 1][23];
   /* Short band energies and thresholds, per window, after the short
    * pre-echo control (doc/psy/block-switching.md §4). */
   int32_t en_s[MAX_GRANULES][PSY_CHANNELS][3][PSY_SHORT_BANDS];

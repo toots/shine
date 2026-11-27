@@ -66,6 +66,7 @@ enum {
   SHORT_SHAPED,             /* noise-allocation §6 */
   SHORT_PREECHO,            /* block-switching §1.6, §4 */
   HUFFMAN_TABLE,            /* ISO 11172-3 2.4.2.7: cheapest table per region */
+  REGION_SPLIT,             /* noise-allocation §4.2 */
   GRANULE_BITS,             /* reservoir §3, KC 21 */
   PE_SMOOTHING,             /* perceptual-entropy §3, KC 21 */
   RESERVOIR_STEADY,         /* reservoir §3 */
@@ -121,6 +122,7 @@ static const char *check_names[CHECK_COUNT] = {
     [SHORT_SHAPED] = "short granules amplified",
     [SHORT_PREECHO] = "short pre-echo control",
     [HUFFMAN_TABLE] = "cheapest Huffman table",
+    [REGION_SPLIT] = "cheapest region split",
     [QUANTISER] = "quantiser rounding",
     [LOWPASS] = "lowpass",
     [STUFFING] = "no stuffing in a granule",
@@ -1493,6 +1495,62 @@ static void check_huffman_tables(shine_t e, int gr, int ch, const char *name) {
   }
 }
 
+/* The bits of [begin, end) in its cheapest table. */
+static int cheapest_table_bits(const int *ix, int begin, int end) {
+  int cheapest = -1;
+
+  if (end <= begin)
+    return 0;
+  for (int t = 0; t < 32; t++) {
+    int bits = table_bits(ix, begin, end, t);
+
+    if (bits >= 0 && (cheapest < 0 || bits < cheapest))
+      cheapest = bits;
+  }
+  return cheapest;
+}
+
+/* noise-allocation §4.2: the region counts of a long granule give the
+ * boundaries used, and no other pair takes fewer bits. Every 16th granule:
+ * the search is exhaustive. */
+static void check_region_split(shine_t e, int gr, int ch, const char *name) {
+  static long granules;
+  const gr_info *gi = &e->side_info.gr[gr].ch[ch].tt;
+  const int *ix = e->l3_enc[ch][gr];
+  const int *sfb = shine_scale_fact_band_index[e->mpeg.samplerate_index];
+  const int end = (int)gi->big_values << 1;
+  int chosen, best = -1, first, second;
+
+  if (gi->block_type || !end || granules++ % 16)
+    return;
+  first = sfb[gi->region0_count + 1];
+  second = sfb[gi->region0_count + gi->region1_count + 2];
+  check(REGION_SPLIT,
+        (int)gi->address1 == (first < end ? first : end) &&
+            (int)gi->address2 == (second < end ? second : end) &&
+            (int)gi->address3 == end,
+        "%s gr %d ch %d: regions end at %u, %u, %u with counts %u, %u", name,
+        gr, ch, gi->address1, gi->address2, gi->address3, gi->region0_count,
+        gi->region1_count);
+  chosen = cheapest_table_bits(ix, 0, (int)gi->address1) +
+           cheapest_table_bits(ix, (int)gi->address1, (int)gi->address2) +
+           cheapest_table_bits(ix, (int)gi->address2, end);
+  for (int count0 = 0; count0 < 16; count0++)
+    for (int count1 = 0; count1 < 8 && count0 + count1 + 2 <= 22; count1++) {
+      int a1 = sfb[count0 + 1] < end ? sfb[count0 + 1] : end;
+      int a2 = sfb[count0 + count1 + 2] < end ? sfb[count0 + count1 + 2] : end;
+      int bits = cheapest_table_bits(ix, 0, a1) +
+                 cheapest_table_bits(ix, a1, a2) +
+                 cheapest_table_bits(ix, a2, end);
+
+      if (best < 0 || bits < best)
+        best = bits;
+    }
+  check(REGION_SPLIT, chosen == best,
+        "%s gr %d ch %d: split %u, %u takes %d bits, the cheapest %d", name, gr,
+        ch, gi->region0_count, gi->region1_count, chosen, best);
+}
+
 /* Short granules checked, and those with a scalefactor above 0, by MPEG
  * version (1 for MPEG-1). */
 static int short_granules[2], short_amplified[2];
@@ -1779,7 +1837,9 @@ static void check_granule(shine_t e) {
       /* The bitstream writer signs ix in place. */
       for (int k = 0; k < GRANULE_SIZE; k++)
         magnitudes[k] = abs(e->l3_enc[ch][gr][k]);
-      bits = (int)gi->part2_length + shine_count_bits(magnitudes, &counted, e);
+      bits =
+          (int)gi->part2_length +
+          shine_count_bits_split(magnitudes, &counted, e, e->psy->region_sums);
 
       /* noise-allocation §3.1, in floating point. */
       const int32_t *pe = &e->psy->pe[gr][e->psy->ms ? 2 : 0];
@@ -1817,6 +1877,7 @@ static void check_granule(shine_t e) {
                 name, gr, ch, b, chosen.sf[b]);
       check_scalefactors(e, gr, ch, name);
       check_huffman_tables(e, gr, ch, name);
+      check_region_split(e, gr, ch, name);
     }
   }
 }

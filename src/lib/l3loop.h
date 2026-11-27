@@ -21,6 +21,13 @@ int shine_quantize_band(int ix[GRANULE_SIZE], int begin, int end, int stepsize,
 int shine_count_bits(int ix[GRANULE_SIZE], gr_info *cod_info,
                      shine_global_config *config);
 
+/* As shine_count_bits, with the region split of a long granule that takes
+ * the fewest bits (doc/psy/noise-allocation.md §4.2). `sums` is scratch:
+ * one row per class, and row 0 unused. */
+int shine_count_bits_split(int ix[GRANULE_SIZE], gr_info *cod_info,
+                           shine_global_config *config,
+                           shine_region_bits_t (*sums)[23]);
+
 /* The share of the granule's bits of channel ch (psy.c,
  * doc/psy/noise-allocation.md §3.1). */
 /* The bits of a granule, from its perceptual entropy and the reservoir

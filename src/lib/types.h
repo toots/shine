@@ -68,6 +68,16 @@ typedef struct {
   int original;  /* + */
 } priv_shine_mpeg_t;
 
+/* Bits of pairs in the tables of one class of big-value regions, one
+ * 16-bit field per table, and the number of escaped values. */
+typedef struct {
+  uint64_t codes[2];
+  uint32_t escapes;
+} shine_region_bits_t;
+
+/* The classes of big-value regions, numbered from 1. */
+#define SHINE_REGION_CLASSES 16
+
 /* Largest quantised value of a band whose lines are quantised by comparing
  * them with thresholds. */
 #define QUANT_DIRECT_LEVELS 3

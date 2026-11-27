@@ -1627,6 +1627,9 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
   *gi = best_gi;
   model->last_step[ch] = best_q;
   memcpy(ix, best_ix, sizeof(best_ix));
+  /* §4.2 */
+  if (best_distortion >= 0)
+    best_bits = shine_count_bits_split(ix, gi, config, model->region_sums);
   gi->quantizerStepSize = best_q;
   gi->scalefac_scale = (unsigned)best_s.scale;
   gi->scalefac_compress = best_compress;
