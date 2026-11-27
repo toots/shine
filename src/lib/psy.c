@@ -909,6 +909,63 @@ static void short_model(shine_global_config *config, int g, int32_t weight) {
   model->have_last_thm_s = 1;
 }
 
+/* §masking 4 without the thresholds: the history the last window of granule
+ * g leaves to the next granule's first, as analyse_in and threshold_in
+ * leave it. Three windows saturate granules_seen. */
+static void short_history(psy_model_t *model, int g, int stereo) {
+  const int32_t *right = stereo ? model->short_lines[1][g][2] : NULL;
+  int32_t mid[192], side[192];
+  const int32_t *x[PSY_CHANNELS] = {model->short_lines[0][g][2], right, mid,
+                                    side};
+
+  if (model->channels == 4)
+    mid_side_spectra(x[0], x[1], 192, mid, side);
+  for (int c = 0; c < model->channels; c++) {
+    psy_channel_t *channel = &model->channel_s[c];
+    uint32_t magnitude[192];
+    const uint32_t largest = magnitudes(x[c], 192, magnitude);
+    const int shift = energy_shift((uint64_t)largest * largest);
+
+    for (int k = 0; k < 192; k++)
+      channel->last_energy[k] =
+          ((uint64_t)magnitude[k] * magnitude[k]) >> shift;
+    channel->last_shift = shift;
+    channel->granules_seen = 2;
+    model->previous_slot2[c] = model->attacks[g][c][2];
+  }
+}
+
+/* §block-switching 4: whether the short pre-echo control of granule g reads
+ * the thresholds of the granule before, on any analysis channel. */
+static int reads_last_short(const psy_model_t *model, int g) {
+  for (int c = 0; c < model->channels; c++) {
+    const int *attacks = model->attacks[g][c];
+    const int slot2 =
+        g ? model->attacks[g - 1][c][2] : model->previous_slot2[c];
+
+    if (attacks[0] || attacks[1] == 1 || slot2 == 3)
+      return 1;
+  }
+  return 0;
+}
+
+/* The granules of the frame whose short thresholds are used: those of a
+ * short granule, and those the pre-echo control of a granule whose own are
+ * used reads. The next frame's first granule counts as used: its type
+ * depends on the frame after. */
+static void short_thresholds_used(const shine_global_config *config,
+                                  int *used) {
+  const psy_model_t *model = config->psy;
+  const int granules = config->mpeg.granules_per_frame;
+  int read = reads_last_short(model, granules);
+
+  for (int g = granules - 1; g >= 0; g--) {
+    used[g] =
+        read || config->side_info.gr[g].ch[0].tt.block_type == BLOCK_SHORT;
+    read = used[g] && reads_last_short(model, g);
+  }
+}
+
 /* §allowed-distortion 2, 3, for coded channel ch of a short granule, from
  * analysis channel c. */
 static void allowed_distortion_short(psy_model_t *model, int32_t weight, int g,
@@ -1054,6 +1111,7 @@ void shine_psy_frame(shine_global_config *config) {
   const int stereo = config->wave.channels == 2;
   int32_t frame_loudness[MAX_GRANULES];
   int32_t pe_lr = 0, pe_ms = 0, weight;
+  int short_used[MAX_GRANULES];
   int64_t pe_frame = 0;
 
   /* §signal-path 1 step 3: loudness and the ATH update, before the model. */
@@ -1073,6 +1131,7 @@ void shine_psy_frame(shine_global_config *config) {
   if (model->adapt_ath)
     adapt_ath(model, frame_loudness, granules);
   weight = ath_weight(model);
+  short_thresholds_used(config, short_used);
 
   for (int g = 0; g < granules; g++) {
     psy_partitions_t *parts = model->parts;
@@ -1099,9 +1158,14 @@ void shine_psy_frame(shine_global_config *config) {
       band_sums(model, &parts[c], model->en[g][c], model->thm[g][c]);
       model->pe[g][c] = perceptual_entropy(model->en[g][c], model->thm[g][c]);
     }
-    /* §masking 4: short thresholds for every granule, whatever its type.
-     * §perceptual-entropy 1: the PE of a short granule is the short one. */
-    short_model(config, g, weight);
+    /* §masking 4: the short thresholds of a granule, whatever its type, when
+     * it or a later granule's pre-echo control uses them, and only the
+     * history otherwise. §perceptual-entropy 1: the PE of a short granule is
+     * the short one. */
+    if (short_used[g])
+      short_model(config, g, weight);
+    else
+      short_history(model, g, stereo);
     if (type == BLOCK_SHORT)
       for (int c = 0; c < model->channels; c++)
         model->pe[g][c] =
