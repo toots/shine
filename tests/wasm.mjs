@@ -60,7 +60,7 @@ const encodeWithShine = (config, data) => {
 };
 
 const cases = [
-  { samplerate: 44100, bitrate: 128, channels: 2, stereoMode: StereoMode.STEREO, options: [] },
+  { samplerate: 44100, bitrate: 128, channels: 2, stereoMode: StereoMode.STEREO, options: ["-s"] },
   { samplerate: 48000, bitrate: 320, channels: 2, stereoMode: StereoMode.JOINT_STEREO, options: ["-j"] },
   { samplerate: 32000, bitrate: 64, channels: 2, stereoMode: StereoMode.DUAL_CHANNEL, options: ["-d"] },
   { samplerate: 22050, bitrate: 64, channels: 1, stereoMode: StereoMode.MONO, options: [] },
