@@ -20,7 +20,7 @@
 #
 #   -b  bitrates in kbps (default: 64 128 192)
 #   -q  quality levels (default: every level)
-#   -m  stereo mode for two-channel items: j joint (default), s, d dual
+#   -m  stereo mode for two-channel items: j joint (default), s plain, d dual
 #   -s  add synthetic items made by FFmpeg: a tone, a sweep, pink noise,
 #       bursts on one channel against a tone on the other
 #   -g  only what tools/quality-gate.sh reads: shine, decoded by FFmpeg
@@ -172,9 +172,8 @@ for path in "$@"; do
     "$work/item.wav"
   ffmpeg -nostdin -loglevel error -y -i "$work/item.wav" -f s16le \
     "$work/reference.raw"
-  # Plain stereo is shineenc's default.
   stereo=
-  [ "$channels" = 2 ] && [ "$mode" != s ] && stereo=-$mode
+  [ "$channels" = 2 ] && stereo=-$mode
 
   for bitrate in $bitrates; do
     for quality in $qualities; do

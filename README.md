@@ -123,8 +123,8 @@ of 5 runs, in multiples of realtime, one thread.
 | LAME 4.0, default | 154x | 158x | 146x | 286x |
 
 Peak memory: 1.5 MB at level 0, 1.8 MB at level 1, 2.7 MB for LAME.
-`shineenc` is built with `CFLAGS=-O2` and runs in joint stereo (`-j`); LAME
-runs with `-b <bitrate>` and its default joint stereo. Its default quality is `-q 3`; `-q 7` is its fastest
+`shineenc` is built with `CFLAGS=-O2`; it and LAME, run with `-b <bitrate>`,
+code stereo as joint stereo, their default. Its default quality is `-q 3`; `-q 7` is its fastest
 setting that still uses a psychoacoustic model.
 
 On x86-64 the filter bank is also built for AVX2 and chosen at run time. On

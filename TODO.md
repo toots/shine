@@ -141,9 +141,9 @@ quality report before the next one starts.
       and channel scores 0.4 to 0.7 higher with `MASK_ADJUST` 1.5 to 2 dB
       lower (11.025 kHz at 32 kbps, 16 kHz at 48, 22.05 kHz at 64 and 96),
       but 16 kHz at 64 kbps then loses 9 on one item: no rule fits yet.
-- [ ] `shineenc` codes two channels as plain stereo unless given `-j`:
-      at 128 kbps that scores 84 where joint stereo scores 90. Consider
-      joint stereo as the default mode.
+- [x] `shineenc` codes two channels as joint stereo by default, as LAME
+      does, and as plain stereo with `-s`: at 128 kbps plain stereo scores
+      84 where joint stereo scores 90.
 - [ ] Dropping the count1 values that cost more than they are worth.
 - [x] Masking spread as a plain sum of energies, in the linear domain.
 - [x] The step size search starts where the previous attempt ended.

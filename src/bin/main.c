@@ -32,7 +32,7 @@ char *infname, *outfname;
 FILE *infile, *outfile;
 int quiet = 0;
 int _verbose = 0;
-int stereo = SHINE_STEREO;
+int stereo = SHINE_JOINT_STEREO;
 int force_mono = 0;
 
 int verbose() { return _verbose; }
@@ -65,7 +65,9 @@ static void print_usage() {
   printf(" -b <bitrate>  set the bitrate [8-320], default 128kbit\n");
   printf(" -m            force encoder to operate in mono\n");
   printf(" -c            set copyright flag, default off\n");
-  printf(" -j            encode in joint stereo (stereo data only)\n");
+  printf(" -j            encode in joint stereo, the default (stereo data "
+         "only)\n");
+  printf(" -s            encode in plain stereo (stereo data only)\n");
   printf(" -d            encode in dual-channel (stereo data only)\n");
   printf(" -Q <level>    set the quality level [0-%d], default 0\n",
          SHINE_QUALITY_MAX);
@@ -100,6 +102,10 @@ static int parse_command(int argc, char **argv, shine_config_t *config) {
 
     case 'j':
       stereo = SHINE_JOINT_STEREO;
+      break;
+
+    case 's':
+      stereo = SHINE_STEREO;
       break;
 
     case 'd':
