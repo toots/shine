@@ -1543,27 +1543,43 @@ static int32_t measure_noise(const shine_global_config *config,
   return scale(shine_psy_log2(sum), bands->log2_k + 2 * shift * ONE);
 }
 
-/* §2: noise per band of the granule as quantize_granule left it in ix. */
-static void band_noise(shine_global_config *config, psy_model_t *model,
-                       const int *ix, int q, const scalefactors_t *s,
-                       int32_t *noise) {
-  const psy_bands_t *bands = &model->bands;
+/* §2: the noise of band sb of the granule as quantize_granule left it in
+ * ix. */
+static int32_t noise_of_band(shine_global_config *config, psy_model_t *model,
+                             const int *ix, int q, const scalefactors_t *s,
+                             int sb) {
   psy_step_cache_t *cache = &model->steps;
+  const int step = band_step(q, s, sb), slot = step_slot(step);
+  const int cached = step_cached(cache, sb, step);
+  int32_t noise;
 
-  for (int sb = 0; sb < bands->shaped; sb++) {
-    const int step = band_step(q, s, sb), slot = step_slot(step);
-    const int cached = step_cached(cache, sb, step);
-
-    if (cached && cache->state[sb][slot] == PSY_STEP_MEASURED) {
-      noise[sb] = cache->noise[sb][slot];
-      continue;
-    }
-    noise[sb] = measure_noise(config, bands, ix, sb, step);
-    if (cached) {
-      cache->noise[sb][slot] = noise[sb];
-      cache->state[sb][slot] = PSY_STEP_MEASURED;
-    }
+  if (cached && cache->state[sb][slot] == PSY_STEP_MEASURED)
+    return cache->noise[sb][slot];
+  noise = measure_noise(config, &model->bands, ix, sb, step);
+  if (cached) {
+    cache->noise[sb][slot] = noise;
+    cache->state[sb][slot] = PSY_STEP_MEASURED;
   }
+  return noise;
+}
+
+/* §2: a band allowed its whole energy is never over. */
+static int audible(const psy_bands_t *bands, int sb) {
+  return bands->xmin[sb] < bands->en[sb];
+}
+
+/* Whether band sb is over, and its noise above xmin in `excess`. */
+static int band_over(shine_global_config *config, psy_model_t *model,
+                     const int *ix, int q, const scalefactors_t *s, int sb,
+                     int32_t *excess) {
+  const psy_bands_t *bands = &model->bands;
+  int32_t noise;
+
+  if (!audible(bands, sb))
+    return 0;
+  noise = noise_of_band(config, model, ix, q, s, sb);
+  *excess = noise - bands->xmin[sb];
+  return noise > bands->xmin[sb];
 }
 
 /* Whether the granule fits max_bits at some step with scalefactors s, from
@@ -1748,11 +1764,10 @@ int shine_psy_channel_bits(const shine_global_config *config, int gr, int ch) {
  * band over and uses floor_bits to ceiling_bits Huffman bits. Leaves it
  * quantised in ix and counted in gi. */
 static int under_at(shine_global_config *config, int *ix, gr_info *gi, int q,
-                    const scalefactors_t *s, const int32_t *xmin,
-                    const int32_t *en, int floor_bits, int ceiling_bits,
+                    const scalefactors_t *s, int floor_bits, int ceiling_bits,
                     int *bits) {
   psy_model_t *model = config->psy;
-  int32_t noise[PSY_ALLOCATION_BANDS];
+  int32_t excess;
 
   if (quantize_granule(config, ix, q, s) > PSY_IX_MAX)
     return 0;
@@ -1760,9 +1775,8 @@ static int under_at(shine_global_config *config, int *ix, gr_info *gi, int q,
   /* A larger step size does not always count fewer bits. */
   if (*bits < floor_bits || *bits > ceiling_bits)
     return 0;
-  band_noise(config, model, ix, q, s, noise);
   for (int sb = 0; sb < model->bands.shaped; sb++)
-    if (noise[sb] > xmin[sb] && xmin[sb] < en[sb])
+    if (band_over(config, model, ix, q, s, sb, &excess))
       return 0;
   return 1;
 }
@@ -1771,7 +1785,6 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
                        int gr, int ch, int max_bits) {
   psy_model_t *model = config->psy;
   const psy_bands_t *map = (select_bands(config, gr, ch), &model->bands);
-  const int32_t *xmin = map->xmin, *en = map->en;
   const int bands = map->shaped;
   gr_info *gi = &config->side_info.gr[gr].ch[ch].tt;
   scalefactors_t s, best_s;
@@ -1794,7 +1807,6 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
       memset(&s, 0, sizeof(s));
   }
   for (int attempt = 0; attempt < OUTER_ATTEMPTS; attempt++) {
-    int32_t noise[PSY_ALLOCATION_BANDS];
     int over[PSY_ALLOCATION_BANDS], any_over = 0, all_amplified = 1, bits;
     unsigned compress;
     int part2 = scalefactor_coding(
@@ -1806,12 +1818,12 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
     bits = fit(config, ix, gi, max_bits - part2, &s, q, &q);
     if (bits < 0)
       break;
-    band_noise(config, model, ix, q, &s, noise);
     for (int sb = 0; sb < bands; sb++) {
-      /* §2: a band allowed its whole energy is never over. */
-      over[sb] = noise[sb] > xmin[sb] && xmin[sb] < en[sb];
+      int32_t excess;
+
+      over[sb] = band_over(config, model, ix, q, &s, sb, &excess);
       if (over[sb]) {
-        distortion += noise[sb] - xmin[sb];
+        distortion += excess;
         any_over = 1;
       }
     }
@@ -1828,7 +1840,7 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
     if (!any_over || !amplify(map, &s, over, bands))
       break;
     for (int sb = 0; sb < bands; sb++)
-      all_amplified &= s.sf[sb] > 0 || xmin[sb] >= en[sb];
+      all_amplified &= s.sf[sb] > 0 || !audible(map, sb);
     if (all_amplified)
       break;
   }
@@ -1842,14 +1854,14 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
     while (high - low > 1) {
       int middle = low + (high - low) / 2;
 
-      if (under_at(config, ix, gi, middle, &best_s, xmin, en, floor_bits,
-                   best_bits, &bits))
+      if (under_at(config, ix, gi, middle, &best_s, floor_bits, best_bits,
+                   &bits))
         low = middle;
       else
         high = middle;
     }
-    if (low > best_q && under_at(config, ix, gi, low, &best_s, xmin, en,
-                                 floor_bits, best_bits, &bits)) {
+    if (low > best_q &&
+        under_at(config, ix, gi, low, &best_s, floor_bits, best_bits, &bits)) {
       best_q = low;
       best_bits = bits;
       best_gi = *gi;
