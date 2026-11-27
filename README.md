@@ -115,21 +115,23 @@ of 5 runs, in multiples of realtime, one thread.
 
 | | 44.1 kHz stereo 128 kbps | 44.1 kHz stereo 192 kbps | 44.1 kHz stereo 320 kbps | 44.1 kHz mono 64 kbps |
 |---|---|---|---|---|
-| `shineenc -Q 0` | 667x | 643x | 562x | 1385x |
-| `shineenc -Q 1` | 212x | 200x | 189x | 500x |
-| WebAssembly, quality 0 (Node 26) | 209x | 204x | 192x | 417x |
-| WebAssembly, quality 1 (Node 26) | 105x | 100x | 96x | 233x |
-| LAME 4.0 `-q 7` | 305x | 295x | 277x | 667x |
-| LAME 4.0, default | 135x | 153x | 140x | 277x |
+| `shineenc -Q 0` | 900x | 818x | 720x | 1800x |
+| `shineenc -Q 1` | 234x | 234x | 247x | 581x |
+| WebAssembly, quality 0 (Node 26) | 479x | 434x | 393x | 930x |
+| WebAssembly, quality 1 (Node 26) | 150x | 148x | 156x | 359x |
+| LAME 4.0 `-q 7` | 310x | 300x | 290x | 643x |
+| LAME 4.0, default | 154x | 158x | 146x | 286x |
 
-Peak memory: 1.45 MB at level 0, 1.7 to 1.8 MB at level 1, 2.6 MB for LAME.
-`shineenc` is built with `CFLAGS=-O2`, LAME runs with `-b <bitrate>` and its
-default joint stereo. Its default quality is `-q 3`; `-q 7` is its fastest
+Peak memory: 1.5 MB at level 0, 1.8 MB at level 1, 2.7 MB for LAME.
+`shineenc` is built with `CFLAGS=-O2` and runs in joint stereo (`-j`); LAME
+runs with `-b <bitrate>` and its default joint stereo. Its default quality is `-q 3`; `-q 7` is its fastest
 setting that still uses a psychoacoustic model.
 
 On x86-64 the filter bank is also built for AVX2 and chosen at run time. On
-an Intel Xeon Platinum 8488C, at 44.1 kHz stereo 128 kbps, level 1 runs at
-88x realtime built with clang 18 and 67x with GCC 13, against 66x for LAME.
+an Intel Xeon Platinum 8488C, at 44.1 kHz stereo 128 kbps, level 1 ran at
+88x realtime built with clang 18 and 67x with GCC 13, against 66x for LAME,
+before the filter bank and MDCT got their fast transforms: it is not
+measured again since.
 
 The WebAssembly build is measured through its JavaScript API: see
 [js/README.md](js/README.md), which also measures it in a browser.
@@ -145,7 +147,7 @@ test: differences under 5 points on one item say little.
 | | 44.1 kHz stereo 64 kbps | 96 kbps | 128 kbps | 192 kbps | 44.1 kHz mono 64 kbps |
 |---|---|---|---|---|---|
 | `shineenc -Q 0` | 39.9 | 56.0 | 70.9 | 92.2 | 72.8 |
-| `shineenc -Q 1` | 53.3 | 71.4 | 87.1 | 99.4 | 86.3 |
+| `shineenc -Q 1` | 57.9 | 77.0 | 89.6 | 99.7 | 89.1 |
 | LAME 4.0, default | 56.6 | 77.5 | 90.2 | 99.9 | 88.4 |
 
 From 192 kbps in stereo and 128 kbps in mono, every encoder scores within a
@@ -154,8 +156,10 @@ point of 100.
 Limitations
 -----------
 
-Level 1 is still a few points short of LAME from 64 to 128 kbps in stereo:
-[TODO.md](TODO.md) lists the work under way. Level 0 output is frozen: it
+Level 1 scores within a point of LAME from 96 to 128 kbps in stereo, and
+above it at 64 kbps and under. The score is a model: the choices it led to
+that listeners have not confirmed yet, the bandwidth of the lowest
+bitrates first, are in [TODO.md](TODO.md) with the work under way. Level 0 output is frozen: it
 only changes to fix a bug.
 
 A bit of history
