@@ -246,6 +246,8 @@ static int32_t analyse(psy_model_t *model, psy_channel_t *channel,
 #define SPREAD_RANGE 57
 #define SPREAD_SHIFT 29
 
+#define SPREAD_INVERSE_BITS 16
+
 /* 2^(x / ONE) for 0 <= x <= SPREAD_RANGE * ONE. */
 static uint64_t linear_energy(int32_t x) {
   const int shift = (x >> 16) + 1 - 30;
@@ -299,6 +301,14 @@ static void spread_energy(const psy_layout_t *layout,
   }
 }
 
+/* §masking 2: the average index of a row of n partitions whose indices add
+ * up to sum, (2 sum + 1) / (2 n), which is floor(sum / n). inverse is
+ * 2^SPREAD_INVERSE_BITS / n rounded up: for sums up to 8 n, at most 8 ·
+ * PSY_SPREAD_ROW, the product's error stays below 1 / n. */
+static int average_index(int sum, uint32_t inverse) {
+  return (int)(((uint32_t)sum * inverse) >> SPREAD_INVERSE_BITS);
+}
+
 /* parameters §1: MASK_ADJUST of the stream, by how its channels are coded,
  * or MASK_ADJUST_SHORT. The model has 4 analysis channels in joint stereo. */
 static int32_t mask_adjust(const psy_model_t *model, int is_long) {
@@ -331,10 +341,9 @@ static void threshold_in(psy_model_t *model, const psy_layout_t *layout,
 
   spread_energy(layout, parts, spread_ecb, idx_sum);
   for (int b = 0; b < layout->npart; b++) {
-    const int lo = layout->spread_lo[b], hi = layout->spread_hi[b];
     int32_t ecb, thr, avg_mask, lowering;
 
-    avg_mask = psy_tab[(1 + 2 * idx_sum[b]) / (2 * (hi - lo + 1))] +
+    avg_mask = psy_tab[average_index(idx_sum[b], layout->spread_inverse[b])] +
                PSY_LOG2_AVG_MASK_FACTOR;
     ecb = scale(spread_ecb[b], avg_mask);
     parts->ecb[b] = ecb;
@@ -1107,6 +1116,16 @@ static void loudness_weights(psy_model_t *model, const int32_t *ath_line) {
     model->loudness_weight[k] = (uint32_t)((weight[k] << 32) / total);
 }
 
+/* The inverse of the width of each spreading row, for average_index. */
+static void spread_inverses(int npart, const uint8_t *lo, const uint8_t *hi,
+                            uint32_t *inverse) {
+  for (int b = 0; b < npart; b++) {
+    const uint32_t width = (uint32_t)(hi[b] - lo[b] + 1);
+
+    inverse[b] = ((1u << SPREAD_INVERSE_BITS) + width - 1) / width;
+  }
+}
+
 /* The spreading rows of a layout, from the first partition each spans,
  * padded with zeros. */
 static void pad_spreading(int npart, const uint8_t *lo, const uint8_t *hi,
@@ -1258,6 +1277,10 @@ int shine_psy_initialise(shine_global_config *config) {
                 psy_spread_offset_s[rate], psy_spread_s[rate], model->spread_s);
   pad_spreading(model->npart, psy_spread_lo[rate], psy_spread_hi[rate],
                 psy_spread_offset[rate], psy_spread[rate], model->spread);
+  spread_inverses(psy_npart_s[rate], psy_spread_lo_s[rate],
+                  psy_spread_hi_s[rate], model->spread_inverse_s);
+  spread_inverses(model->npart, psy_spread_lo[rate], psy_spread_hi[rate],
+                  model->spread_inverse);
   model->layout[1] = (psy_layout_t){
       .npart = psy_npart_s[rate],
       .lines = 192,
@@ -1269,6 +1292,7 @@ int shine_psy_initialise(shine_global_config *config) {
       .spread_lo = psy_spread_lo_s[rate],
       .spread_hi = psy_spread_hi_s[rate],
       .spread = model->spread_s,
+      .spread_inverse = model->spread_inverse_s,
       .band_part = model->band_part_s,
       .minval = model->minval_s,
       .ath_part = model->ath_part_s,
@@ -1285,6 +1309,7 @@ int shine_psy_initialise(shine_global_config *config) {
       .spread_lo = psy_spread_lo[rate],
       .spread_hi = psy_spread_hi[rate],
       .spread = model->spread,
+      .spread_inverse = model->spread_inverse,
       .band_part = model->band_part,
       .minval = model->minval,
       .ath_part = model->ath_part,
