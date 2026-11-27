@@ -107,7 +107,7 @@ quality report before the next one starts.
       unchanged, since a cutoff above 14.7 kHz keeps the stream at 44.1 kHz.
       Retune it, or let 32 kHz take a higher cutoff (`resampling.md`,
       `bandwidth.md`).
-- [ ] `TONALITY_SCALE` is not tuned.
+- [x] `TONALITY_SCALE` tuned on the 2f score: 15.
 - [ ] `scfsi` and `preflag`, to save bits.
 - [ ] Exact search of the Huffman region boundaries, and dropping the
       count1 values that cost more than they are worth.

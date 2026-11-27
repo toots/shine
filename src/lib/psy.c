@@ -105,7 +105,7 @@ static void tonality(const psy_layout_t *layout, const uint64_t *max_t,
       parts->idx[b] = 0;
       continue;
     }
-    idx = 20 * (n * m - a) / (a * lines);
+    idx = 15 * (n * m - a) / (a * lines);
     parts->idx[b] = idx > 8 ? 8 : (int)idx;
   }
 }
