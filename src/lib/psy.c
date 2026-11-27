@@ -93,14 +93,12 @@ static void tonality(const psy_layout_t *layout, const uint64_t *max_t,
 
   for (int b = 0; b < layout->npart; b++) {
     int first = b > 0 ? b - 1 : b, last = b < layout->npart - 1 ? b + 1 : b;
-    uint64_t a = 0, m = 0, idx;
+    uint64_t a = avg_t[b] + (first < b ? avg_t[first] : 0) +
+                 (last > b ? avg_t[last] : 0);
+    uint64_t m = max_t[first] > max_t[b] ? max_t[first] : max_t[b], idx;
     int n = last - first + 1, lines = start[last + 1] - start[first] - 1;
 
-    for (int p = first; p <= last; p++) {
-      a += avg_t[p];
-      if (max_t[p] > m)
-        m = max_t[p];
-    }
+    m = max_t[last] > m ? max_t[last] : m;
     if (!a || !lines) {
       parts->idx[b] = 0;
       continue;
