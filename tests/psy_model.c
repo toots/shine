@@ -1888,7 +1888,9 @@ static void check_granule(shine_t e) {
       if (e->wave.channels == 1)
         max_bits = total > 4095 ? 4095 : total;
       else {
-        const double power = e->psy->row->pe_split_power / 65536.0;
+        /* §3.1: PE_SPLIT_POWER in an M/S frame, 1 otherwise. */
+        const double power =
+            e->psy->ms ? e->psy->row->pe_split_power / 65536.0 : 1;
         const double share =
             total * pow(pe[0], power) / (pow(pe[0], power) + pow(pe[1], power));
         int first = (int)floor(share);

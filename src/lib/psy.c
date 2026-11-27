@@ -1671,7 +1671,8 @@ int shine_psy_channel_bits(const shine_global_config *config, int gr, int ch) {
 
   if (config->wave.channels == 1)
     return granule_bits;
-  first = first_channel_bits(granule_bits, pe, model->row->pe_split_power);
+  first = first_channel_bits(granule_bits, pe,
+                             model->ms ? model->row->pe_split_power : ONE);
   if (first > PART2_3_MAX)
     first = PART2_3_MAX;
   if (granule_bits - first > PART2_3_MAX)
