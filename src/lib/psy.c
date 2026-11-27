@@ -70,11 +70,22 @@ static inline uint32_t exp2_q30(int32_t x) {
 
 static inline int32_t log_add(int32_t a, int32_t b) {
   int32_t high = a > b ? a : b, low = a > b ? b : a;
+  uint32_t smaller, index, rest;
 
   if (low == ZERO)
     return high;
-  /* log2(1 + 2^(low - high)) + high; the sum is below 2^31. */
-  return high + log2_q16((1u << 30) + exp2_q30(low - high)) - 30 * ONE;
+  if (low == high)
+    return high + ONE + psy_log2_table[0];
+  /* log2(1 + 2^(low - high)) + high: log2_q16 of 2^30 + smaller, smaller
+   * below 2^30. */
+  smaller = exp2_q30(low - high);
+  index = smaller >> 21;
+  rest = (smaller << 1) & 0x3fffff;
+  return high + psy_log2_table[index] +
+         (int32_t)(((int64_t)(psy_log2_table[index + 1] -
+                              psy_log2_table[index]) *
+                    rest) >>
+                   22);
 }
 
 int32_t shine_psy_log_add(int32_t a, int32_t b) { return log_add(a, b); }
