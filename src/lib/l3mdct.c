@@ -25,10 +25,7 @@ void shine_mdct_sub(shine_global_config *config, int stride) {
     for (int gr = 0; gr < config->mpeg.granules_per_frame; gr++) {
       int32_t (*mdct_enc)[18] = (int32_t (*)[18])config->mdct_freq[ch][gr];
       unsigned block_type = config->side_info.gr[gr].ch[ch].tt.block_type;
-      const int32_t (*table)[36] =
-          block_type == BLOCK_START  ? shine_mdct_cosine_start
-          : block_type == BLOCK_STOP ? shine_mdct_cosine_stop
-                                     : shine_mdct_cosine;
+      const int32_t *long_window = shine_mdct_window[block_type];
       /* A short granule also gets a long MDCT, for the model. */
       int32_t (*long_enc)[18] =
           block_type == BLOCK_SHORT
@@ -65,12 +62,12 @@ void shine_mdct_sub(shine_global_config *config, int stride) {
         if (config->psy) {
           int32_t out[3][6];
 
-          config->kernels.mdct(mdct_in, table, long_enc[band], out);
+          config->kernels.mdct(mdct_in, long_window, long_enc[band], out);
           for (int window = 0; window < 3; window++)
             for (int k = 0; k < 6; k++)
               short_lines[window][6 * band + k] = out[window][k];
         } else
-          config->kernels.mdct(mdct_in, table, long_enc[band], NULL);
+          config->kernels.mdct(mdct_in, long_window, long_enc[band], NULL);
 
         /* Perform aliasing reduction butterfly */
         if (band != 0) {

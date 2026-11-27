@@ -19,48 +19,60 @@
 
 #define PI 3.14159265358979
 #define PI36 0.087266462599717
-#define PI64 0.049087385212
+
+/* The DCT-IV of size n, cos(pi (2i + 1) (2k + 1) / (4n)), in Q31. */
+static void dct4_table(const char *name, int n) {
+  printf("const int32_t %s[%d][%d] = {\n", name, n, n);
+  for (int i = 0; i < n; i++) {
+    printf("    {");
+    for (int k = 0; k < n; k++)
+      printf(
+          "%s%ld", k ? ", " : "",
+          lround(cos(PI * (2 * i + 1) * (2 * k + 1) / (4 * n)) * 2147483648.0));
+    printf("},\n");
+  }
+  printf("};\n\n");
+}
+
+/* cos and sin of pi (j + 1/8) / n for j < n/2, in Q31: the twiddles of a
+ * DCT-IV of size n computed with a DFT of size n/2. */
+static void dct4_twiddle(int n) {
+  printf("const int32_t shine_dct4_twiddle_%d[%d][2] = {", n, n / 2);
+  for (int j = 0; j < n / 2; j++) {
+    double angle = PI * (j + 0.125) / n;
+
+    printf("%s{%ld, %ld}", j ? ", " : "", lround(cos(angle) * 2147483648.0),
+           lround(sin(angle) * 2147483648.0));
+  }
+  printf("};\n\n");
+}
 
 static void subband_filter(void) {
-  printf(
-      "/* Polyphase filterbank coefficients, rounded to the 9th decimal like "
-      "the\n * ISO tables. */\n");
-  printf("const int32_t shine_subband_filter[SBLIMIT][64] = {\n");
-  for (int i = 0; i < SBLIMIT; i++) {
-    printf("    {");
-    for (int j = 0; j < 64; j++) {
-      double filter = 1e9 * cos((double)((2 * i + 1) * (16 - j) * PI64));
-      if (filter >= 0)
-        modf(filter + 0.5, &filter);
-      else
-        modf(filter - 0.5, &filter);
-      printf("%s%d", j ? ", " : "", (int32_t)(filter * (0x7fffffff * 1e-9)));
-    }
-    printf("},\n");
-  }
+  const long c = lround(cos(PI / 4) * 2147483648.0);
+
+  printf("/* The leaves of the polyphase filter's DCT-III of size 32 computed "
+         "directly:\n * the DCT-III of size 2 and the DCT-IVs of sizes 2 and "
+         "4, in Q31. */\n");
+  printf("const int32_t shine_dct3_2[2][2] = {{%d, %ld}, {%d, %ld}};\n\n",
+         0x7fffffff, c, 0x7fffffff, -c);
+  dct4_table("shine_dct4_2", 2);
+  dct4_table("shine_dct4_4", 4);
+  printf("/* The twiddles of the DCT-IVs computed with a DFT. */\n");
+  dct4_twiddle(6);
+  dct4_twiddle(8);
+  dct4_twiddle(16);
+  dct4_twiddle(18);
+  printf("/* cos and sin of 2 pi k / 9 for k = 1, 2 and 4, in Q31. */\n");
+  printf("const int32_t shine_dft9_twiddle[3][2] = {");
+  for (int k = 1; k <= 4; k *= 2)
+    printf("%s{%ld, %ld}", k > 1 ? ", " : "",
+           lround(cos(2 * PI * k / 9) * 2147483648.0),
+           lround(sin(2 * PI * k / 9) * 2147483648.0));
   printf("};\n\n");
 }
 
-static void mdct_cosine(void) {
-  printf(
-      "/* MDCT coefficients, combined with the window. Scaled by 8/9, as the\n"
-      " * decoder's IMDCT and overlap-add have a gain of 9 where the rest of\n"
-      " * the encoder compensates 8, and by 1/4 for headroom: see\n"
-      " * MDCT_HEADROOM_STEPS. */\n");
-  printf("const int32_t shine_mdct_cosine[18][36] = {\n");
-  for (int m = 0; m < 18; m++) {
-    printf("    {");
-    for (int k = 0; k < 36; k++)
-      printf("%s%d", k ? ", " : "",
-             (int32_t)(sin(PI36 * (k + 0.5)) *
-                       cos((PI / 72) * (2 * k + 19) * (2 * m + 1)) *
-                       (2.0 / 9.0) * 0x7fffffff));
-    printf("},\n");
-  }
-  printf("};\n\n");
-}
-
-/* Window of block type `type` (ISO 11172-3 2.4.3.4.10.3), sample i of 36. */
+/* Window of block type `type` (ISO 11172-3 2.4.3.4.10.3), sample i of 36.
+ * The long analysis of a short block uses the normal window. */
 static double block_window(int type, int i) {
   if (type == 1)
     return i < 18   ? sin(PI36 * (i + 0.5))
@@ -80,40 +92,29 @@ static int shine_quant_threshold_value(int n) {
   return n ? (int)ceil(pow(n - 0.4054, 4.0 / 3) * 256) : 0;
 }
 
-static void mdct_cosine_switching(void) {
-  static const char *names[2] = {"start", "stop"};
-
-  printf("/* As shine_mdct_cosine, with the windows of block types 1 (start)\n"
-         " * and 3 (stop). */\n");
-  for (int type = 1; type <= 3; type += 2) {
-    printf("const int32_t shine_mdct_cosine_%s[18][36] = {\n", names[type / 2]);
-    for (int m = 0; m < 18; m++) {
-      printf("    {");
-      for (int k = 0; k < 36; k++)
-        printf("%s%d", k ? ", " : "",
-               (int32_t)(block_window(type, k) *
-                         cos((PI / 72) * (2 * k + 19) * (2 * m + 1)) *
-                         (2.0 / 9.0) * 0x7fffffff));
-      printf("},\n");
-    }
-    printf("};\n\n");
-  }
-  printf("/* The 12-point MDCT of a short window (block type 2), with its\n"
-         " * window. The decoder's short IMDCT has a gain of 3 where the long\n"
-         " * one has 9, which would make the scale 3 times that of\n"
-         " * shine_mdct_cosine, 2/3. The sum of the absolute values of a row\n"
-         " * is then up to 3.34: scaled by a further 1/4, see\n"
-         " * SHORT_HEADROOM_STEPS. */\n");
-  printf("const int32_t shine_mdct_cosine_short[6][12] = {\n");
-  for (int m = 0; m < 6; m++) {
+static void mdct_cosine(void) {
+  printf("/* The windows of the long MDCT by block type, in Q31. Scaled by "
+         "8/9, as\n * the decoder's IMDCT and overlap-add have a gain of 9 "
+         "where the rest of\n * the encoder compensates 8. */\n");
+  printf("const int32_t shine_mdct_window[4][36] = {\n");
+  for (int type = 0; type < 4; type++) {
     printf("    {");
-    for (int k = 0; k < 12; k++)
-      printf("%s%d", k ? ", " : "",
-             (int32_t)(sin(PI / 12 * (k + 0.5)) *
-                       cos((PI / 24) * (2 * k + 7) * (2 * m + 1)) *
-                       (1.0 / 6.0) * 0x7fffffff));
+    for (int i = 0; i < 36; i++)
+      printf("%s%ld", i ? ", " : "",
+             lround(block_window(type, i) * (8.0 / 9.0) * 2147483648.0));
     printf("},\n");
   }
+  printf("};\n\n");
+  printf("/* The window of a short MDCT, in Q31. The decoder's short IMDCT "
+         "has a\n * gain of 3 where the long one has 9, which would make the "
+         "scale 8/3. With\n * the 1/4 of MDCT_HEADROOM_STEPS, the sum of the "
+         "absolute values of the\n * terms of a coefficient is then up to 3.34 "
+         "times the input: scaled by a\n * further 1/4, see "
+         "SHORT_HEADROOM_STEPS. */\n");
+  printf("const int32_t shine_mdct_window_short[12] = {");
+  for (int i = 0; i < 12; i++)
+    printf("%s%ld", i ? ", " : "",
+           lround(sin(PI / 12 * (i + 0.5)) * (2.0 / 3.0) * 2147483648.0));
   printf("};\n\n");
 }
 
@@ -372,7 +373,6 @@ int main(void) {
   printf("#include \"tables.h\"\n\n");
   subband_filter();
   mdct_cosine();
-  mdct_cosine_switching();
   mdct_aliasing();
   quantizer_steps();
   printf("\n");

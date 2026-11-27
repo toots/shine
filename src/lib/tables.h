@@ -14,11 +14,16 @@ extern const int shine_scale_fact_band_index_short[9][14];
 extern const int32_t shine_enwindow[];
 
 /* precomputed_tables.c */
-extern const int32_t shine_subband_filter[SBLIMIT][64];
-extern const int32_t shine_mdct_cosine[18][36];
-extern const int32_t shine_mdct_cosine_start[18][36];
-extern const int32_t shine_mdct_cosine_stop[18][36];
-extern const int32_t shine_mdct_cosine_short[6][12];
+extern const int32_t shine_dct3_2[2][2];
+extern const int32_t shine_dct4_2[2][2];
+extern const int32_t shine_dct4_4[4][4];
+extern const int32_t shine_dct4_twiddle_6[3][2];
+extern const int32_t shine_dct4_twiddle_8[4][2];
+extern const int32_t shine_dct4_twiddle_16[8][2];
+extern const int32_t shine_dct4_twiddle_18[9][2];
+extern const int32_t shine_dft9_twiddle[3][2];
+extern const int32_t shine_mdct_window[4][36];
+extern const int32_t shine_mdct_window_short[12];
 extern const int32_t shine_mdct_alias_cs[8];
 extern const int32_t shine_mdct_alias_ca[8];
 extern const int32_t shine_steptabi[128];

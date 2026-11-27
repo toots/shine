@@ -26,7 +26,7 @@
  * MDCT_HEADROOM_STEPS has 8 bits. */
 #define MAX_STEPSIZE (45 - MDCT_HEADROOM_STEPS)
 
-/* Short blocks carry a further headroom of 4 (shine_mdct_cosine_short):
+/* Short blocks carry a further headroom of 4 (shine_mdct_window_short):
  * their global_gain is 8 steps higher again. */
 #define SHORT_HEADROOM_STEPS 8
 
