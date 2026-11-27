@@ -2141,6 +2141,9 @@ static double expected_cutoff(int samplerate, int channels, int bitrate) {
                                 14500, 17000, 17250, 18000, 19000, 19500};
   double per_channel = (double)bitrate / channels, cutoff = hz[11];
 
+  /* JOINT_WIDE_KBPS: the tested stereo streams are joint. */
+  if (channels == 2 && per_channel >= 32 && per_channel < 40)
+    per_channel = 40;
   if (per_channel >= 128)
     return 0;
   if (per_channel <= kbps[0])

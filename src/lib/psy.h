@@ -204,7 +204,7 @@ int shine_psy_block_types(shine_global_config *config, int stride);
 
 /* doc/psy/bandwidth.md §1: the cutoff of a bitrate in Hz at any sample
  * rate, 0 for none. */
-int shine_psy_cutoff(int bitrate, int channels);
+int shine_psy_cutoff(int bitrate, int channels, int joint);
 
 /* doc/psy/bandwidth.md §2: the lowpass on a granule's long lines and its
  * three short windows, in frequency order. */

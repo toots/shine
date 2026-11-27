@@ -92,7 +92,8 @@ static int encoding_rate(const shine_config_t *config) {
     return config->wave.samplerate;
   return shine_resample_rate(
       config->wave.samplerate, config->mpeg.bitrate,
-      shine_psy_cutoff(config->mpeg.bitrate, config->wave.channels));
+      shine_psy_cutoff(config->mpeg.bitrate, config->wave.channels,
+                       config->mpeg.mode == SHINE_JOINT_STEREO));
 }
 
 /* Sets up the conversion from `input_rate`, when it is not the encoding

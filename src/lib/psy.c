@@ -810,13 +810,20 @@ void shine_psy_lowpass(const psy_model_t *model, int32_t *long_lines,
 /* §bandwidth 1: no lowpass from this bitrate per channel. */
 #define LOWPASS_NONE_KBPS 128
 
-int shine_psy_cutoff(int bitrate, int channels) {
+/* §bandwidth 1: joint stereo from this rate per channel up to 40 kbps takes
+ * the cutoff of 40. */
+#define JOINT_WIDE_KBPS 32
+
+int shine_psy_cutoff(int bitrate, int channels, int joint) {
   static const int kbps[12] = {8, 16, 24, 28, 32, 40, 48, 56, 64, 80, 96, 112};
   static const int hz[12] = {3000,  7000,  9500,  11000, 11000, 14500,
                              14500, 17000, 17250, 18000, 19000, 19500};
   /* Twice the bitrate per channel, to keep halves exact. */
-  const int rate2 = 2 * bitrate / channels;
+  int rate2 = 2 * bitrate / channels;
   int cutoff = hz[11];
+
+  if (joint && rate2 >= 2 * JOINT_WIDE_KBPS && rate2 < 2 * 40)
+    rate2 = 2 * 40;
 
   if (rate2 >= 2 * LOWPASS_NONE_KBPS)
     return 0;
@@ -857,7 +864,8 @@ static int32_t low_mono_adjust(int bitrate, int samplerate, int column) {
 
 /* §bandwidth 1: the cutoff of the stream in Hz, 0 for none. */
 static int lowpass_cutoff(const shine_global_config *config) {
-  int cutoff = shine_psy_cutoff(config->mpeg.bitrate, config->wave.channels);
+  int cutoff = shine_psy_cutoff(config->mpeg.bitrate, config->wave.channels,
+                                config->mpeg.mode == SHINE_JOINT_STEREO);
 
   if (config->wave.samplerate <= LOWPASS_FREE_RATE)
     return 0;
