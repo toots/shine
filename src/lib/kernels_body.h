@@ -65,10 +65,55 @@ KERNEL_INLINE unsigned ix_max_nonzero(const int *ix, int n, int *nonzero) {
   return max;
 }
 
+/* Each tap splits into a multiple of 256 and a remainder, so that the
+ * products of either part add up in 32 bits, which vectorises. */
+KERNEL_INLINE void attack_filter(const int16_t *in, const int32_t taps[5],
+                                 int64_t h[576]) {
+  for (int i = 0; i < 576; i++) {
+    int32_t high = 0, low = 0;
+
+    for (int j = 0; j < 5; j++) {
+      const int32_t pair = in[i - 9 + 2 * j] + in[i + 9 - 2 * j];
+
+      high += taps[j] / 256 * pair;
+      low += taps[j] % 256 * pair;
+    }
+    h[i] = (int64_t)in[i] * 65536 + (int64_t)high * 256 + low;
+  }
+}
+
+KERNEL_INLINE void run_peaks(const int64_t h[576], int64_t peaks[9]) {
+  for (int run = 0; run < 9; run++) {
+    int64_t peak = 0;
+
+    for (int n = 64 * run; n < 64 * run + 64; n++) {
+      const int64_t magnitude = h[n] < 0 ? -h[n] : h[n];
+
+      peak = magnitude > peak ? magnitude : peak;
+    }
+    peaks[run] = peak;
+  }
+}
+
+KERNEL_INLINE void attack_peaks(const int16_t *in, const int32_t taps[5],
+                                int64_t h[576], int64_t peaks[9]) {
+  attack_filter(in, taps, h);
+  run_peaks(h, peaks);
+}
+
 KERNEL_INLINE unsigned call_ix_max_nonzero(const shine_kernels_t *kernels,
                                            const int *ix, int n, int *nonzero) {
   return kernels->ix_max_nonzero ? kernels->ix_max_nonzero(ix, n, nonzero)
                                  : ix_max_nonzero(ix, n, nonzero);
+}
+
+KERNEL_INLINE void call_attack_peaks(const shine_kernels_t *kernels,
+                                     const int16_t *in, const int32_t taps[5],
+                                     int64_t h[576], int64_t peaks[9]) {
+  if (kernels->attack_peaks)
+    kernels->attack_peaks(in, taps, h, peaks);
+  else
+    attack_peaks(in, taps, h, peaks);
 }
 
 #endif

@@ -444,6 +444,29 @@ static void check_ix_max_nonzero(void) {
   }
 }
 
+/* Random samples, full scale ones of either sign, and runs of each. */
+static void check_attack_peaks(void) {
+  static const int32_t taps[5] = {-1116, 2740, -5743, 12213, -41133};
+
+  for (int round = 0; round < 300; round++) {
+    static int64_t h[MAX_KERNEL_SETS][576], peaks[MAX_KERNEL_SETS][9];
+    int16_t in[576 + 18];
+
+    for (int i = 0; i < 576 + 18; i++) {
+      const uint32_t r = next_random();
+
+      in[i] = round % 3 == 0   ? (int16_t)(r >> 16)
+              : round % 3 == 1 ? (r >> 31 ? 32767 : -32768)
+                               : ((i / 7 + round) % 2 ? 32767 : -32768);
+    }
+    for (int set = 0; set < kernel_count; set++) {
+      call_attack_peaks(kernel_sets[set], &in[9], taps, h[set], peaks[set]);
+      same_in_every_set(memcmp(h[set], h[0], sizeof(h[0])) ||
+                        memcmp(peaks[set], peaks[0], sizeof(peaks[0])));
+    }
+  }
+}
+
 static void add_kernel_set(const char *name, const shine_kernels_t *kernels) {
   kernel_names[kernel_count] = name;
   kernel_sets[kernel_count++] = kernels;
@@ -511,5 +534,6 @@ int main(int argc, char **argv) {
   check_mdct_subbands_maximising();
   flush_checks();
   check_ix_max_nonzero();
+  check_attack_peaks();
   return report();
 }

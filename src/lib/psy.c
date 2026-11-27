@@ -2,6 +2,7 @@
  * section numbers below refer to it. Log-domain values are log2 in Q16. */
 
 #include "psy.h"
+#include "kernels_body.h"
 #include "l3loop.h"
 #include "layer3.h"
 #include "tables.h"
@@ -605,34 +606,7 @@ static int forced_short(const psy_model_t *model, long granule) {
 #define SUB_BLOCK 64
 #define DETECTOR_GRANULE (9 * SUB_BLOCK)
 
-/* §1.1 over the detector granule that starts at input[start]. Each tap
- * splits into a multiple of 256 and a remainder, so that the products of
- * either part add up in 32 bits, which vectorises. */
-static void attack_filter_granule(const int16_t *input, int start, int64_t *h) {
-  const int16_t *f = input + start;
-
-  for (int i = 0; i < DETECTOR_GRANULE; i++) {
-    int32_t high = 0, low = 0;
-
-    for (int j = 0; j < 5; j++) {
-      const int32_t pair = f[i - 9 + 2 * j] + f[i + 9 - 2 * j];
-
-      high += psy_attack_taps[j] / 256 * pair;
-      low += psy_attack_taps[j] % 256 * pair;
-    }
-    h[i] = (int64_t)f[i] * 65536 + (int64_t)high * 256 + low;
-  }
-}
-
 static int64_t magnitude64(int64_t x) { return x < 0 ? -x : x; }
-
-static int64_t sub_block_peak(const int64_t *h) {
-  int64_t peak = PSY_PEAK_FLOOR;
-
-  for (int n = 0; n < SUB_BLOCK; n++)
-    peak = magnitude64(h[n]) > peak ? magnitude64(h[n]) : peak;
-  return peak;
-}
 
 /* (L ± R)/√2 of a filter output in 32 bits, as the sums are below 2^35. */
 static int64_t mid_side_filtered(int32_t sum) {
@@ -660,16 +634,18 @@ static void mid_side_peaks(const int64_t *left, const int64_t *right,
   }
 }
 
-/* §1.2: the nine sub-block peaks of the detector granule that starts at
- * input[start], for each analysis channel. */
-static void sub_block_peaks(const psy_model_t *model, int channels, int start,
-                            int64_t peaks[PSY_CHANNELS][9]) {
+/* §1.1, §1.2: the nine sub-block peaks of the detector granule that starts
+ * at input[start], for each analysis channel. */
+static void sub_block_peaks(const shine_global_config *config, int channels,
+                            int start, int64_t peaks[PSY_CHANNELS][9]) {
+  const psy_model_t *model = config->psy;
   int64_t h[MAX_CHANNELS][DETECTOR_GRANULE];
 
   for (int c = 0; c < channels; c++) {
-    attack_filter_granule(model->input[c], start, h[c]);
+    call_attack_peaks(&config->kernels, model->input[c] + start,
+                      psy_attack_taps, h[c], peaks[c]);
     for (int i = 0; i < 9; i++)
-      peaks[c][i] = sub_block_peak(&h[c][SUB_BLOCK * i]);
+      peaks[c][i] = peaks[c][i] > PSY_PEAK_FLOOR ? peaks[c][i] : PSY_PEAK_FLOOR;
   }
   if (model->channels == 4) {
     mid_side_peaks(h[0], h[1], 1, peaks[2]);
@@ -752,13 +728,14 @@ static int detect_attacks(psy_model_t *model, int c, const int64_t peaks[9],
 
 /* §1.7, §2: whether the detector granule at input[start] makes its coded
  * granule short, on any analysis channel. Its slots go to attacks. */
-static int detect_granule(psy_model_t *model, int channels, int start,
+static int detect_granule(shine_global_config *config, int channels, int start,
                           int attacks[PSY_CHANNELS][4],
                           int pulse[PSY_CHANNELS][3]) {
+  psy_model_t *model = config->psy;
   int64_t peaks[PSY_CHANNELS][9];
   int needs_short = 0;
 
-  sub_block_peaks(model, channels, start, peaks);
+  sub_block_peaks(config, channels, start, peaks);
   for (int c = 0; c < model->channels; c++)
     needs_short |= detect_attacks(model, c, peaks[c], attacks[c], pulse[c]);
   return needs_short;
@@ -804,7 +781,7 @@ int shine_psy_block_types(shine_global_config *config, int stride) {
   memcpy(model->pulse[0], model->pulse[granules], sizeof(model->pulse[0]));
   for (int g = first; g <= granules; g++)
     model->is_short[g] =
-        detect_granule(model, channels,
+        detect_granule(config, channels,
                        PSY_INPUT_HISTORY - PSY_LOOKAHEAD - PSY_DETECTOR_OFFSET +
                            g * GRANULE_SIZE,
                        model->attacks[g], model->pulse[g]);

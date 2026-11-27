@@ -38,6 +38,11 @@ typedef struct {
   /* The largest of n quantised values, and in *nonzero how many are not
    * 0. */
   unsigned (*ix_max_nonzero)(const int *ix, int n, int *nonzero);
+  /* The attack filter of the 576 samples from in[0], which reads 9 samples
+   * on either side, into h, and the largest magnitude of h in each run of
+   * 64. */
+  void (*attack_peaks)(const int16_t *in, const int32_t taps[5], int64_t h[576],
+                       int64_t peaks[9]);
 } shine_kernels_t;
 
 extern const shine_kernels_t shine_kernels_plain;

@@ -197,10 +197,86 @@ TARGET_AVX2 static unsigned ix_max_nonzero_avx2(const int *ix, int n,
   return largest;
 }
 
+/* The 8 int16_t from in, widened. */
+KERNEL_BODY __m256i load_samples_avx2(const int16_t *in) {
+  return _mm256_cvtepi16_epi32(_mm_loadu_si128((const __m128i *)in));
+}
+
+/* h = in * 65536 + high * 256 + low = (in * 256 + high) * 256 + low, where
+ * in * 256 + high is below 2^25: 64-bit lanes only for the last sum. */
+KERNEL_BODY void attack_filter_run_avx2(const int16_t *in,
+                                        const __m256i high_taps[5],
+                                        const __m256i low_taps[5],
+                                        __m256i h[2]) {
+  __m256i high = _mm256_setzero_si256(), low = high, scaled;
+
+  for (int j = 0; j < 5; j++) {
+    const __m256i pair = _mm256_add_epi32(load_samples_avx2(&in[-9 + 2 * j]),
+                                          load_samples_avx2(&in[9 - 2 * j]));
+
+    high = _mm256_add_epi32(high, _mm256_mullo_epi32(pair, high_taps[j]));
+    low = _mm256_add_epi32(low, _mm256_mullo_epi32(pair, low_taps[j]));
+  }
+  scaled = _mm256_add_epi32(_mm256_slli_epi32(load_samples_avx2(in), 8), high);
+  h[0] = _mm256_add_epi64(
+      _mm256_slli_epi64(_mm256_cvtepi32_epi64(_mm256_castsi256_si128(scaled)),
+                        8),
+      _mm256_cvtepi32_epi64(_mm256_castsi256_si128(low)));
+  h[1] = _mm256_add_epi64(
+      _mm256_slli_epi64(
+          _mm256_cvtepi32_epi64(_mm256_extracti128_si256(scaled, 1)), 8),
+      _mm256_cvtepi32_epi64(_mm256_extracti128_si256(low, 1)));
+}
+
+KERNEL_BODY __m256i max_epi64_avx2(__m256i a, __m256i b) {
+  return _mm256_blendv_epi8(b, a, _mm256_cmpgt_epi64(a, b));
+}
+
+KERNEL_BODY int64_t largest_lane_avx2(__m256i v) {
+  int64_t lanes[4], largest;
+
+  _mm256_storeu_si256((__m256i *)lanes, v);
+  largest = lanes[0];
+  for (int l = 1; l < 4; l++)
+    largest = lanes[l] > largest ? lanes[l] : largest;
+  return largest;
+}
+
+/* The largest magnitude of a run is the largest of its highest value and
+ * the opposite of its lowest. */
+TARGET_AVX2 static void attack_peaks_avx2(const int16_t *in,
+                                          const int32_t taps[5], int64_t h[576],
+                                          int64_t peaks[9]) {
+  __m256i high_taps[5], low_taps[5];
+
+  for (int j = 0; j < 5; j++) {
+    high_taps[j] = _mm256_set1_epi32(taps[j] / 256);
+    low_taps[j] = _mm256_set1_epi32(taps[j] % 256);
+  }
+  for (int run = 0; run < 9; run++) {
+    __m256i highest = _mm256_setzero_si256(), negated_lowest = highest;
+
+    for (int n = 64 * run; n < 64 * run + 64; n += 8) {
+      __m256i out[2];
+
+      attack_filter_run_avx2(&in[n], high_taps, low_taps, out);
+      for (int half = 0; half < 2; half++) {
+        _mm256_storeu_si256((__m256i *)&h[n + 4 * half], out[half]);
+        highest = max_epi64_avx2(highest, out[half]);
+        negated_lowest =
+            max_epi64_avx2(negated_lowest,
+                           _mm256_sub_epi64(_mm256_setzero_si256(), out[half]));
+      }
+    }
+    peaks[run] = largest_lane_avx2(max_epi64_avx2(highest, negated_lowest));
+  }
+}
+
 static const shine_kernels_t kernels_avx2 = {
     .filter = filter_avx2,
     .mdct = mdct_avx2,
-    .ix_max_nonzero = ix_max_nonzero_avx2};
+    .ix_max_nonzero = ix_max_nonzero_avx2,
+    .attack_peaks = attack_peaks_avx2};
 
 const shine_kernels_t *shine_kernels_avx2(void) {
   __builtin_cpu_init();
