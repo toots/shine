@@ -116,18 +116,60 @@ static int energy_shift(uint64_t peak) {
   return bits > ENERGY_BITS ? bits - ENERGY_BITS : 0;
 }
 
+/* Coefficients are below 2^31 in magnitude. */
+static uint64_t largest_square(const int64_t *x, int lines) {
+  uint64_t largest = 0;
+
+  for (int k = 0; k < lines; k++) {
+    uint64_t magnitude = (uint64_t)(x[k] < 0 ? -x[k] : x[k]);
+
+    largest = magnitude > largest ? magnitude : largest;
+  }
+  return largest * largest;
+}
+
+/* A 32-bit multiply, which vectorises. */
+static uint64_t square_of(int64_t x) {
+  const int32_t value = (int32_t)x;
+
+  return (uint64_t)((int64_t)value * value);
+}
+
+/* §spectral-analysis 1.1, 1.2: the line energies at scale 2^-shift, which
+ * replace those of the granule before, and the sums of both at scale
+ * 2^-shift_t, the granule before being at 2^-(shift_t - rescale). */
+static void line_energies(const int64_t *x, int lines, int shift, int shift_t,
+                          int rescale, uint64_t *energy, uint64_t *energy_t) {
+  for (int k = 0; k < lines; k++) {
+    uint64_t square = square_of(x[k]);
+
+    energy_t[k] = (square >> shift_t) + (energy[k] >> rescale);
+    energy[k] = square >> shift;
+  }
+}
+
+/* The line energies of a channel's first granule, which counts twice in
+ * the tonality sums. */
+static void first_line_energies(const int64_t *x, int lines, int shift,
+                                uint64_t *energy, uint64_t *energy_t) {
+  for (int k = 0; k < lines; k++) {
+    uint64_t square = square_of(x[k]);
+
+    energy[k] = square >> shift;
+    energy_t[k] = energy[k] + energy[k];
+  }
+}
+
 /* §spectral-analysis 1, 3: line energies, partition sums and tonality.
  * Returns the log2 total energy. */
 static int32_t analyse_in(const psy_layout_t *layout, psy_channel_t *channel,
                           const int64_t *x, psy_partitions_t *parts) {
   const int16_t *start = layout->start;
-  uint64_t max_t[PSY_NPART_MAX], avg_t[PSY_NPART_MAX], peak = 0, total = 0;
+  uint64_t max_t[PSY_NPART_MAX], avg_t[PSY_NPART_MAX], total = 0;
+  uint64_t *energy = channel->last_energy, energy_t[GRANULE_SIZE];
   int shift, shift_t, last_shift = channel->last_shift;
 
-  for (int k = 0; k < layout->lines; k++)
-    if ((uint64_t)(x[k] * x[k]) > peak)
-      peak = (uint64_t)(x[k] * x[k]);
-  shift = energy_shift(peak);
+  shift = energy_shift(largest_square(x, layout->lines));
   if (!channel->granules_seen)
     last_shift = shift;
   /* §1.2, as a sum of the two granules at a common scale: the index is a
@@ -135,23 +177,20 @@ static int32_t analyse_in(const psy_layout_t *layout, psy_channel_t *channel,
   shift_t = shift > last_shift ? shift : last_shift;
   parts->shift = shift;
   parts->unit = layout->log2_k + shift * ONE;
+  if (channel->granules_seen)
+    line_energies(x, layout->lines, shift, shift_t, shift_t - last_shift,
+                  energy, energy_t);
+  else
+    first_line_energies(x, layout->lines, shift, energy, energy_t);
 
   for (int b = 0; b < layout->npart; b++) {
     uint64_t sum = 0, max = 0, sum_t = 0, peak_t = 0;
 
     for (int k = start[b]; k < start[b + 1]; k++) {
-      uint64_t square = (uint64_t)(x[k] * x[k]), energy = square >> shift;
-      uint64_t last = channel->granules_seen ? channel->last_energy[k] : energy;
-      uint64_t energy_t =
-          (square >> shift_t) + (last >> (shift_t - last_shift));
-
-      channel->last_energy[k] = energy;
-      sum += energy;
-      if (energy > max)
-        max = energy;
-      sum_t += energy_t;
-      if (energy_t > peak_t)
-        peak_t = energy_t;
+      sum += energy[k];
+      max = energy[k] > max ? energy[k] : max;
+      sum_t += energy_t[k];
+      peak_t = energy_t[k] > peak_t ? energy_t[k] : peak_t;
     }
     parts->eb_raw[b] = sum;
     parts->eb[b] = scale(shine_psy_log2(sum), parts->unit);
