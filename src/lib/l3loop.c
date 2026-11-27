@@ -208,20 +208,28 @@ static int exact_index(int ln, int64_t x_q8) {
   return shine_quant_base[ln] + (x_q8 >= shine_quant_split[ln]);
 }
 
+static int coarse_index(int32_t xrabs, uint64_t fraction) {
+  /* Rounded xrabs * 2**(-stepsize/4) / 2**31: at most 1. */
+  int ln = (int)(((uint64_t)xrabs * fraction + (1ULL << 62)) >> 63);
+
+  return exact_index(
+      ln, (int64_t)(((uint64_t)xrabs * fraction + (1ULL << 54)) >> 55));
+}
+
+/* The quantiser does not decrease with the magnitude: lines whose peak
+ * quantises to 0 all do. */
 static int quantize_coarse(int ix[GRANULE_SIZE], int begin, int end,
-                           int stepsize, shine_global_config *config) {
+                           int stepsize, int32_t peak,
+                           shine_global_config *config) {
   uint64_t fraction = shine_steptab_fraction[stepsize];
   int max = 0;
 
+  if (!coarse_index(peak, fraction)) {
+    memset(&ix[begin], 0, (size_t)(end - begin) * sizeof(*ix));
+    return 0;
+  }
   for (int i = begin; i < end; i++) {
-    /* Rounded xrabs * 2**(-stepsize/4) / 2**31: at most 1. */
-    int ln =
-        (int)(((uint64_t)config->l3loop.xrabs[i] * fraction + (1ULL << 62)) >>
-              63);
-    ix[i] = exact_index(
-        ln, (int64_t)(((uint64_t)config->l3loop.xrabs[i] * fraction +
-                       (1ULL << 54)) >>
-                      55));
+    ix[i] = coarse_index(config->l3loop.xrabs[i], fraction);
     if (max < ix[i])
       max = ix[i];
   }
@@ -310,7 +318,7 @@ static int quantize_range(int ix[GRANULE_SIZE], int begin, int end,
   const uint32_t *threshold;
 
   if (stepsize > 0)
-    return quantize_coarse(ix, begin, end, stepsize, config);
+    return quantize_coarse(ix, begin, end, stepsize, xrmax, config);
 
   threshold = config->l3loop.quant_threshold[stepsize + 127];
   if ((uint32_t)xrmax < threshold[QUANT_DIRECT_LEVELS])
