@@ -3,10 +3,22 @@
  *   LANES       inputs transformed together
  *   LANE_T      one 32-bit value per lane, WIDE_T one 64-bit value per lane
  *   WIDEN(x)    LANE_T to WIDE_T, NARROW(x) the low 32 bits of WIDE_T
+ * and, where the lane type has a quicker way than the generic one:
+ *   MULTIPLY(x, f)  the WIDE_T products of the LANE_T x and the int32_t f
+ *   SHIFT_NARROW(x, shift)  the low 32 bits of the WIDE_T x >> shift
+ *   TRANSPOSE(v)  lane l of v[i] and lane i of v[l] swapped, for the
+ *               array of LANES LANE_T v
  *   LANE(v, l)  lane l of the LANE_T v
  *   FN(name)    the name of a function or type for this lane type
  * Every lane goes through the same integer operations in the same order
  * whatever the lane type, so its result does not depend on LANES. */
+
+#ifndef MULTIPLY
+#define MULTIPLY(x, f) (WIDEN(x) * (f))
+#endif
+#ifndef SHIFT_NARROW
+#define SHIFT_NARROW(x, shift) NARROW((x) >> (shift))
+#endif
 
 typedef struct {
   LANE_T re, im;
@@ -27,7 +39,16 @@ KERNEL_BODY void FN(store_lines)(const LANE_T *lines, int n, int32_t *out,
                                  int stride, int count) {
   int k = 0;
 
-  for (; k + LANES <= n; k += LANES)
+  for (; k + LANES <= n; k += LANES) {
+#ifdef TRANSPOSE
+    LANE_T runs[LANES];
+
+    for (int i = 0; i < LANES; i++)
+      runs[i] = lines[k + i];
+    TRANSPOSE(runs);
+    for (int l = 0; l < count; l++)
+      memcpy(&out[l * stride + k], &runs[l], sizeof(runs[l]));
+#else
     for (int l = 0; l < count; l++) {
       LANE_T run = {0};
 
@@ -35,13 +56,15 @@ KERNEL_BODY void FN(store_lines)(const LANE_T *lines, int n, int32_t *out,
         LANE(run, i) = LANE(lines[k + i], l);
       memcpy(&out[l * stride + k], &run, sizeof(run));
     }
+#endif
+  }
   for (; k < n; k++)
     for (int l = 0; l < count; l++)
       out[l * stride + k] = LANE(lines[k], l);
 }
 
 KERNEL_BODY LANE_T FN(round_shift)(WIDE_T value, int shift) {
-  return NARROW((value + ((int64_t)1 << (shift - 1))) >> shift);
+  return SHIFT_NARROW(value + ((int64_t)1 << (shift - 1)), shift);
 }
 
 KERNEL_BODY FN(complex_t) FN(add)(FN(complex_t) a, FN(complex_t) b) {
@@ -63,8 +86,9 @@ KERNEL_BODY FN(complex_t) FN(times_minus_i)(FN(complex_t) a) {
 KERNEL_BODY FN(complex_t)
     FN(rotate)(LANE_T re, LANE_T im, const int32_t turn[2], int shift) {
   FN(complex_t)
-  rotated = {FN(round_shift)(WIDEN(re) * turn[0] + WIDEN(im) * turn[1], shift),
-             FN(round_shift)(WIDEN(im) * turn[0] - WIDEN(re) * turn[1], shift)};
+  rotated = {
+      FN(round_shift)(MULTIPLY(re, turn[0]) + MULTIPLY(im, turn[1]), shift),
+      FN(round_shift)(MULTIPLY(im, turn[0]) - MULTIPLY(re, turn[1]), shift)};
   return rotated;
 }
 
@@ -75,8 +99,8 @@ KERNEL_BODY void FN(dft3)(FN(complex_t) * x0, FN(complex_t) * x1,
   middle = {x0->re - FN(round_shift)(WIDEN(sum.re), 1),
             x0->im - FN(round_shift)(WIDEN(sum.im), 1)};
   FN(complex_t)
-  side = {FN(round_shift)(WIDEN(difference.re) * SIN_PI_3, 31),
-          FN(round_shift)(WIDEN(difference.im) * SIN_PI_3, 31)};
+  side = {FN(round_shift)(MULTIPLY(difference.re, SIN_PI_3), 31),
+          FN(round_shift)(MULTIPLY(difference.im, SIN_PI_3), 31)};
 
   *x0 = FN(add)(*x0, sum);
   x1->re = middle.re + side.im;
@@ -161,10 +185,12 @@ KERNEL_BODY void FN(dct4)(const LANE_T *in, int stride, int n,
   for (int k = 0; k < n / 2; k++) {
     FN(complex_t) z = spectrum[k];
 
-    out[2 * k] = FN(round_shift)(
-        WIDEN(z.re) * twiddle[k][0] + WIDEN(z.im) * twiddle[k][1], post_shift);
-    out[n - 1 - 2 * k] = FN(round_shift)(
-        WIDEN(z.re) * twiddle[k][1] - WIDEN(z.im) * twiddle[k][0], post_shift);
+    out[2 * k] = FN(round_shift)(MULTIPLY(z.re, twiddle[k][0]) +
+                                     MULTIPLY(z.im, twiddle[k][1]),
+                                 post_shift);
+    out[n - 1 - 2 * k] = FN(round_shift)(MULTIPLY(z.re, twiddle[k][1]) -
+                                             MULTIPLY(z.im, twiddle[k][0]),
+                                         post_shift);
   }
 }
 
@@ -172,10 +198,10 @@ KERNEL_BODY void FN(dct4)(const LANE_T *in, int stride, int n,
 KERNEL_BODY void FN(cosine_product)(const LANE_T *in, int stride, int n,
                                     const int32_t *table, LANE_T *out) {
   for (int k = 0; k < n; k++) {
-    WIDE_T sum = WIDEN(in[0]) * table[n * k];
+    WIDE_T sum = MULTIPLY(in[0], table[n * k]);
 
     for (int m = 1; m < n; m++)
-      sum += WIDEN(in[stride * m]) * table[n * k + m];
+      sum += MULTIPLY(in[stride * m], table[n * k + m]);
     out[k] = FN(round_shift)(sum, 32);
   }
 }
@@ -280,8 +306,17 @@ KERNEL_BODY void FN(filter_dct3_batch)(const int32_t folded[18][FOLDED_WIDTH],
                                        int step, int count, int32_t s[18][32]) {
   LANE_T a[32], subbands[32];
 
+#ifdef TRANSPOSE
+  /* Lanes past `count` repeat the first step. */
+  for (int n = 0; n < 32; n += LANES) {
+    for (int l = 0; l < LANES; l++)
+      a[n + l] = FN(load)(&folded[step + (l < count ? l : 0)][n]);
+    TRANSPOSE(&a[n]);
+  }
+#else
   for (int n = 0; n < 32; n++)
     a[n] = FN(load_column)(&folded[step][n], FOLDED_WIDTH, count);
+#endif
   FN(filter_dct3_32)(a, subbands);
   FN(store_lines)(subbands, 32, s[step], 32, count);
 }
@@ -309,13 +344,13 @@ KERNEL_BODY void FN(mdct_fold)(const LANE_T *in, const int32_t *window, int n,
   const int quarter = n / 4, mirror = 3 * n / 4 - 1;
 
   for (int k = 0; k < quarter; k++)
-    u[k] =
-        FN(round_shift)(-WIDEN(in[mirror - k]) * window[mirror - k] -
-                            WIDEN(in[mirror + 1 + k]) * window[mirror + 1 + k],
-                        32);
+    u[k] = FN(round_shift)(
+        -MULTIPLY(in[mirror - k], window[mirror - k]) -
+            MULTIPLY(in[mirror + 1 + k], window[mirror + 1 + k]),
+        32);
   for (int k = quarter; k < n / 2; k++)
-    u[k] = FN(round_shift)(WIDEN(in[k - quarter]) * window[k - quarter] -
-                               WIDEN(in[mirror - k]) * window[mirror - k],
+    u[k] = FN(round_shift)(MULTIPLY(in[k - quarter], window[k - quarter]) -
+                               MULTIPLY(in[mirror - k], window[mirror - k]),
                            32);
 }
 
@@ -355,5 +390,8 @@ KERNEL_BODY void FN(mdct_bands)(const int32_t previous[18][32],
 #undef WIDE_T
 #undef WIDEN
 #undef NARROW
+#undef MULTIPLY
+#undef SHIFT_NARROW
+#undef TRANSPOSE
 #undef LANE
 #undef FN
