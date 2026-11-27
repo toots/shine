@@ -524,6 +524,13 @@ static int count1_region(int ix[GRANULE_SIZE], int end, gr_info *cod_info) {
   return sum0 < sum1 ? sum0 : sum1;
 }
 
+/* A region ends at the big values at the latest, as decoders read it
+ * (ISO 11172-3 2.4.2.7): the lines after them are count1 quadruples. */
+static unsigned region_end(int band_edge, int bigvalues_region) {
+  return (unsigned)(band_edge < bigvalues_region ? band_edge
+                                                 : bigvalues_region);
+}
+
 /*
  * subdivide:
  * ----------
@@ -596,7 +603,8 @@ void subdivide(gr_info *cod_info, shine_global_config *config) {
         break;
     }
     cod_info->region0_count = thiscount;
-    cod_info->address1 = scalefac_band_long[thiscount + 1];
+    cod_info->address1 =
+        region_end(scalefac_band_long[thiscount + 1], bigvalues_region);
 
     scalefac_band_long += cod_info->region0_count + 1;
 
@@ -606,7 +614,8 @@ void subdivide(gr_info *cod_info, shine_global_config *config) {
         break;
     }
     cod_info->region1_count = thiscount;
-    cod_info->address2 = scalefac_band_long[thiscount + 1];
+    cod_info->address2 =
+        region_end(scalefac_band_long[thiscount + 1], bigvalues_region);
 
     cod_info->address3 = bigvalues_region;
   }

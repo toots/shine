@@ -68,6 +68,7 @@ enum {
   SHORT_PREECHO,            /* block-switching §1.6, §4 */
   HUFFMAN_TABLE,            /* ISO 11172-3 2.4.2.7: cheapest table per region */
   REGION_SPLIT,             /* noise-allocation §4.2 */
+  REGION_ENDS,              /* noise-allocation §4.2 */
   GRANULE_BITS,             /* reservoir §3, KC 21 */
   PE_SMOOTHING,             /* perceptual-entropy §3, KC 21 */
   RESERVOIR_STEADY,         /* reservoir §3 */
@@ -126,6 +127,7 @@ static const char *check_names[CHECK_COUNT] = {
     [SHORT_PREECHO] = "short pre-echo control",
     [HUFFMAN_TABLE] = "cheapest Huffman table",
     [REGION_SPLIT] = "cheapest region split",
+    [REGION_ENDS] = "bits counted are the bits read",
     [QUANTISER] = "quantiser rounding",
     [LOWPASS] = "lowpass",
     [LOW_MONO] = "MASK_ADJUST of low-rate mono",
@@ -1595,6 +1597,81 @@ static void check_region_split(shine_t e, int gr, int ch, const char *name) {
   check(REGION_SPLIT, chosen == best,
         "%s gr %d ch %d: split %u, %u takes %d bits, the cheapest %d", name, gr,
         ch, gi->region0_count, gi->region1_count, chosen, best);
+}
+
+/* Bits of the quadruples [begin, end) in count1 table `select`. */
+static int count1_bits(const int *ix, int begin, int end, unsigned select) {
+  const struct huffcodetab *h = &shine_huffman_table[32 + select];
+  int bits = 0;
+
+  for (int i = begin; i < end; i += 4) {
+    unsigned p = 0;
+
+    for (int k = 0; k < 4; k++) {
+      p |= (unsigned)(ix[i + k] != 0) << k;
+      bits += ix[i + k] != 0;
+    }
+    bits += h->hlen[p];
+  }
+  return bits;
+}
+
+/* Huffman bits of a long granule as a decoder reads them: regions from the
+ * counts of the side info, ending at the big values at the latest
+ * (ISO 11172-3 2.4.2.7). -1 if a region's table cannot code it. */
+static int bits_read(shine_t e, const gr_info *gi, const int *ix) {
+  const int *sfb = shine_scale_fact_band_index[e->mpeg.samplerate_index];
+  const int end = (int)gi->big_values << 1;
+  const int starts[2] = {sfb[gi->region0_count + 1],
+                         sfb[gi->region0_count + gi->region1_count + 2]};
+  const int bounds[4] = {0, starts[0] < end ? starts[0] : end,
+                         starts[1] < end ? starts[1] : end, end};
+  int bits =
+      count1_bits(ix, end, end + 4 * (int)gi->count1, gi->count1table_select);
+
+  for (int region = 0; region < 3; region++) {
+    int region_bits;
+
+    if (bounds[region + 1] <= bounds[region])
+      continue;
+    region_bits = table_bits(ix, bounds[region], bounds[region + 1],
+                             (int)gi->table_select[region]);
+    if (region_bits < 0)
+      return -1;
+    bits += region_bits;
+  }
+  return bits;
+}
+
+/* noise-allocation §4.2: the count of a long granule whose big values, 1
+ * to 6 pairs, end within its first two sfbs at most rates, followed by
+ * count1 quadruples, is what a decoder reads. */
+static void check_region_ends(void) {
+  for (int r = 0; r < 9; r++) {
+    shine_t e = open_encoder(rates[r], 1, SHINE_MONO, lowest_bitrate(rates[r]));
+
+    for (int pairs = 1; pairs <= 6; pairs++)
+      for (int quads = 0; quads <= 3; quads++) {
+        int ix[GRANULE_SIZE] = {0}, bits, read;
+        gr_info gi = e->side_info.gr[0].ch[0].tt;
+
+        for (int i = 0; i < 2 * pairs; i++)
+          ix[i] = 2 + (i + pairs) % 3;
+        for (int q = 0; q < quads; q++)
+          ix[2 * pairs + 4 * q + (q + pairs) % 4] = 1;
+        gi.block_type = 0;
+        bits = shine_count_bits(ix, &gi, e);
+        read = bits_read(e, &gi, ix);
+        check(REGION_ENDS,
+              bits == read && gi.address1 <= 2 * gi.big_values &&
+                  gi.address2 <= 2 * gi.big_values,
+              "%d Hz, %d pairs, %d quadruples: %d bits counted, %d read, "
+              "regions end at %u, %u of %u",
+              rates[r], pairs, quads, bits, read, gi.address1, gi.address2,
+              2 * gi.big_values);
+      }
+    shine_close(e);
+  }
 }
 
 /* Short granules checked, and those with a scalefactor above 0, by MPEG
@@ -3083,6 +3160,7 @@ int main(void) {
   check_allocation_bounds();
   check_allocation_best();
   check_step_search();
+  check_region_ends();
   check_allocation_silence();
   check_amplify();
   check_noise_measure();

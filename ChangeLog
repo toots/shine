@@ -24,6 +24,11 @@
   between 1 and 2 from 1.86 to 1.5.
 * Fix band 18 of the 24 kHz long scalefactor band table (332, not 330).
 * Fix the end of region 0 in short granules at 8 kHz: 72 lines, not 36.
+* Fix the Huffman bits counted for a long granule whose big values end in
+  its first two scalefactor bands: its regions ran past them over the
+  count1 quadruples. At quality 0 the bits counted but not written were
+  padding inside `part2_3_length`; at quality 1 the step size search could
+  reject a step that fits.
 * shineenc: two channels are coded as joint stereo by default; `-s` asks for
   plain stereo.
 * API: public names are prefixed, and config fields spelled out:
