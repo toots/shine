@@ -4,11 +4,11 @@
 #include <stdint.h>
 
 /* The filter bank's inner loops, chosen once per encoder. On x86-64 with
- * GCC or clang they are also built for AVX2, which the compiler vectorizes:
- * the baseline instruction set has no signed 32x32->64-bit vector multiply.
- * Every build gives the same output: the sums of products are exact in 64
- * bits, in any order, and each is rounded once. */
-#if defined(__x86_64__) && (defined(__GNUC__) || defined(__clang__))
+ * GCC or clang they are also built on vectors of 4 lanes for AVX2, whose
+ * vpmuldq gives the signed 32x32->64-bit products the baseline instruction
+ * set lacks. Every build gives the same output: the sums of products are
+ * exact in 64 bits, in any order, and each is rounded once. */
+#if defined(__x86_64__) && (defined(__clang__) || __GNUC__ >= 9)
 #define SHINE_KERNELS_AVX2 1
 #endif
 

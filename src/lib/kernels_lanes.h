@@ -8,6 +8,7 @@
  *   SHIFT_NARROW(x, shift)  the low 32 bits of the WIDE_T x >> shift
  *   TRANSPOSE(v)  lane l of v[i] and lane i of v[l] swapped, for the
  *               array of LANES LANE_T v
+ *   FILTER_FOLD(x, folded)  folded[step][1..32] of filter_fold_run
  *   LANE(v, l)  lane l of the LANE_T v
  *   FN(name)    the name of a function or type for this lane type
  * Every lane goes through the same integer operations in the same order
@@ -328,8 +329,12 @@ KERNEL_BODY void FN(filter_granule)(const int32_t *x, int32_t s[18][32]) {
   int32_t folded[18][FOLDED_WIDTH];
 
   FN(filter_fold_centre)(x, folded);
+#ifdef FILTER_FOLD
+  FILTER_FOLD(x, folded);
+#else
   for (int first = 1; first <= 32; first += LANES)
     FN(filter_fold_run)(x, first, folded);
+#endif
   for (int step = 0; step < full; step += LANES)
     FN(filter_dct3_batch)(folded, step, LANES, s);
   if (full < 18)
@@ -393,5 +398,6 @@ KERNEL_BODY void FN(mdct_bands)(const int32_t previous[18][32],
 #undef MULTIPLY
 #undef SHIFT_NARROW
 #undef TRANSPOSE
+#undef FILTER_FOLD
 #undef LANE
 #undef FN
