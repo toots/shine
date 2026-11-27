@@ -2003,18 +2003,31 @@ static void check_allocation_best(void) {
         for (int gr = 0; gr < e->mpeg.granules_per_frame; gr++)
           for (int ch = 0; ch < 2; ch++) {
             gr_info *gi = &e->side_info.gr[gr].ch[ch].tt;
-            scalefactors_t zero, chosen;
-            int q0, chosen_q;
+            scalefactors_t start, chosen;
+            unsigned compress;
+            int q0, chosen_q, part2;
             int64_t d0, d;
 
+            /* Attempt 0: scalefactors 0 with the granule's preflag, or
+             * those a SHORT granule starts from (§6.1). */
             prepare(e, gr, ch);
-            memset(&zero, 0, sizeof(zero));
-            zero.pre = e->psy->bands.preflag;
+            memset(&start, 0, sizeof(start));
+            start.pre = e->psy->bands.preflag;
             max_bits = shine_psy_channel_bits(e, gr, ch);
-            if (fit(e, e->l3_enc[ch][gr], gi, max_bits, &zero, largest_step(gi),
-                    &q0) < 0)
+            if (e->psy->bands.is_short && !e->psy->bands.lsf) {
+              short_start(e, e->l3_enc[ch][gr], gi, &start);
+              if (!fits(e, e->l3_enc[ch][gr], gi, &e->psy->bands, &start,
+                        max_bits, largest_step(gi)))
+                memset(&start, 0, sizeof(start));
+            }
+            part2 =
+                scalefactor_coding(&e->psy->bands, &start,
+                                   e->mpeg.version == SHINE_MPEG_I, &compress);
+            if (part2 > max_bits ||
+                fit(e, e->l3_enc[ch][gr], gi, max_bits - part2, &start,
+                    largest_step(gi), &q0) < 0)
               continue;
-            d0 = distortion(e, gr, ch, &zero, q0);
+            d0 = distortion(e, gr, ch, &start, q0);
 
             shine_psy_allocate(e, e->l3_enc[ch][gr], gr, ch, max_bits);
             chosen_scalefactors(e, gr, ch, &chosen);

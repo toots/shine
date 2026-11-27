@@ -1502,6 +1502,88 @@ static void band_noise(shine_global_config *config, psy_model_t *model,
   }
 }
 
+/* Whether the granule fits max_bits at some step with scalefactors s, from
+ * a search started at `start`. */
+static int fits(shine_global_config *config, int *ix, gr_info *gi,
+                const psy_bands_t *bands, const scalefactors_t *s, int max_bits,
+                int start) {
+  unsigned compress;
+  const int part2 = scalefactor_coding(
+      bands, s, config->mpeg.version == SHINE_MPEG_I, &compress);
+  int q;
+
+  return part2 <= max_bits &&
+         fit(config, ix, gi, max_bits - part2, s, start, &q) >= 0;
+}
+
+/* §6.1: the largest step at which band sb alone keeps its noise within its
+ * allowed distortion. A step too small for IX_MAX counts as keeping it. */
+static int band_need(shine_global_config *config, int *ix, int sb,
+                     int largest) {
+  const psy_bands_t *bands = &config->psy->bands;
+  int low = STEP_MIN, high = largest + 1;
+
+  while (high - low > 1) {
+    const int middle = low + (high - low) / 2;
+    const int max = quantize_band(config, ix, sb, middle);
+
+    if (max > PSY_IX_MAX ||
+        measure_noise(config, bands, ix, sb, middle) <= bands->xmin[sb])
+      low = middle;
+    else
+      high = middle;
+  }
+  return low;
+}
+
+/* A band that cannot be over has no need. */
+#define NEED_NONE INT32_MIN
+
+/* §6.1: SHORT_START = 1/2 of the amplification that levels the bands, at
+ * the scalefac_scale of s. Returns whether a scalefactor was cut to its
+ * largest value. */
+static int scalefactors_from_needs(const psy_bands_t *bands, const int *need,
+                                   int reference, scalefactors_t *s) {
+  const int unit = 2 * (1 + s->scale);
+  int cut = 0;
+
+  for (int sb = 0; sb < bands->shaped; sb++) {
+    const int largest = largest_scalefactor(bands, sb);
+
+    s->sf[sb] =
+        need[sb] == NEED_NONE ? 0 : (reference - need[sb] + unit) / (2 * unit);
+    if (s->sf[sb] > largest) {
+      s->sf[sb] = largest;
+      cut = 1;
+    }
+  }
+  return cut;
+}
+
+/* §6.1: the scalefactors a SHORT granule starts its outer loop from. */
+static void short_start(shine_global_config *config, int *ix, const gr_info *gi,
+                        scalefactors_t *s) {
+  const psy_bands_t *bands = &config->psy->bands;
+  int need[PSY_ALLOCATION_BANDS], reference = STEP_MIN, any = 0;
+
+  for (int sb = 0; sb < bands->shaped; sb++) {
+    need[sb] = NEED_NONE;
+    if (bands->xmin[sb] >= bands->en[sb])
+      continue;
+    need[sb] = band_need(config, ix, sb, largest_step(gi));
+    if (need[sb] > reference)
+      reference = need[sb];
+    any = 1;
+  }
+  if (!any)
+    return;
+  s->scale = 0;
+  if (scalefactors_from_needs(bands, need, reference, s)) {
+    s->scale = 1;
+    scalefactors_from_needs(bands, need, reference, s);
+  }
+}
+
 /* §4: raises every band that is over and can be amplified, switching to
  * scalefac_scale = 1 when one reaches its largest scalefactor. Returns the
  * number of bands raised. */
@@ -1641,6 +1723,11 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
   memset(best_ix, 0, sizeof(best_ix));
   best_q = largest_step(gi);
   q = model->last_step[ch] < best_q ? model->last_step[ch] : best_q;
+  if (map->is_short && !map->lsf) {
+    short_start(config, ix, gi, &s);
+    if (!fits(config, ix, gi, map, &s, max_bits, q))
+      memset(&s, 0, sizeof(s));
+  }
   for (int attempt = 0; attempt < OUTER_ATTEMPTS; attempt++) {
     int32_t noise[PSY_ALLOCATION_BANDS];
     int over[PSY_ALLOCATION_BANDS], any_over = 0, all_amplified = 1, bits;
