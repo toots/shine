@@ -1497,6 +1497,31 @@ static void check_huffman_tables(shine_t e, int gr, int ch, const char *name) {
   }
 }
 
+/* Granules checked without and with preflag. */
+static long preflag_granules[2];
+
+/* noise-allocation §5.1: preflag on the long MPEG-1 granules with 0.8 of
+ * their bands from 11 up able to be over, and on no other. The band map is
+ * the granule's (prepare). */
+static void check_preflag(shine_t e, int gr, int ch, const char *name) {
+  const gr_info *gi = &e->side_info.gr[gr].ch[ch].tt;
+  const psy_bands_t *bands = &e->psy->bands;
+  int audible = 0, expected = 0;
+
+  if (!e->l3loop.xrmax)
+    return;
+  if (!bands->is_short && e->mpeg.version == SHINE_MPEG_I &&
+      bands->shaped > 11) {
+    for (int b = 11; b < bands->shaped; b++)
+      audible += bands->xmin[b] < bands->en[b];
+    expected = audible >= 0.8 * (bands->shaped - 11);
+  }
+  preflag_granules[expected]++;
+  check(ALLOCATION_BOUNDS, (int)gi->preflag == expected,
+        "%s gr %d ch %d: preflag %u with %d of %d upper bands audible", name,
+        gr, ch, gi->preflag, audible, bands->shaped - 11);
+}
+
 /* The bits of [begin, end) in its cheapest table. */
 static int cheapest_table_bits(const int *ix, int begin, int end) {
   int cheapest = -1;
@@ -1665,6 +1690,7 @@ static void chosen_scalefactors(shine_t e, int gr, int ch, scalefactors_t *s) {
 
   memset(s, 0, sizeof(*s));
   s->scale = (int)gi->scalefac_scale;
+  s->pre = (int)gi->preflag;
   if (gi->block_type == BLOCK_SHORT)
     for (int sb = 0; sb < PSY_SHORT_BANDS; sb++)
       for (int window = 0; window < 3; window++)
@@ -1888,6 +1914,7 @@ static void check_granule(shine_t e) {
                 "energy allowed",
                 name, gr, ch, b, chosen.sf[b]);
       check_scalefactors(e, gr, ch, name);
+      check_preflag(e, gr, ch, name);
       check_huffman_tables(e, gr, ch, name);
       check_region_split(e, gr, ch, name);
     }
@@ -1970,6 +1997,7 @@ static void check_allocation_best(void) {
 
             prepare(e, gr, ch);
             memset(&zero, 0, sizeof(zero));
+            zero.pre = uses_preflag(e, &e->psy->bands);
             max_bits = shine_psy_channel_bits(e, gr, ch);
             if (fit(e, e->l3_enc[ch][gr], gi, max_bits, &zero, largest_step(gi),
                     &q0) < 0)
@@ -2176,20 +2204,28 @@ static void check_noise_measure(void) {
     check(NOISE_MEASURE, bands->is_short == is_short,
           "%d Hz: granule 0 is not %s", rates[r % 9],
           is_short ? "short" : "long");
-    for (int scale = 0; scale < 2; scale++)
+    for (int scale = 0; scale < 4; scale++)
       for (int q = -40; q <= 10; q += 7) {
         scalefactors_t s;
         int32_t noise[PSY_ALLOCATION_BANDS];
 
+        /* Bit 1 of the loop: with preflag, on long granules. */
+        if ((scale & 2) && is_short)
+          continue;
         memset(&s, 0, sizeof(s));
-        s.scale = scale;
+        s.scale = scale & 1;
+        s.pre = scale >> 1;
         for (int b = 0; b < bands->shaped; b++)
           s.sf[b] = b % 4;
         if (quantize_granule(e, e->l3_enc[0][0], q, &s) > PSY_IX_MAX)
           continue;
         band_noise(e, e->psy, e->l3_enc[0][0], q, &s, noise);
         for (int b = 0; b < bands->shaped; b++) {
-          double step = q - 2 * (1 + scale) * s.sf[b], sum = 0;
+          static const int table[22] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                        1, 1, 1, 1, 2, 2, 3, 3, 3, 2, 0};
+          double step =
+                     q - 2 * (1 + s.scale) * (s.sf[b] + (s.pre ? table[b] : 0)),
+                 sum = 0;
           int first, last;
 
           band_lines(r % 9, is_short, b, &first, &last);
@@ -2944,6 +2980,9 @@ int main(void) {
     if (failures[i] || !runs[i])
       status = 1;
   }
+  check(ALLOCATION_BOUNDS, preflag_granules[0] > 0 && preflag_granules[1] > 0,
+        "preflag checked on %ld granules without and %ld with",
+        preflag_granules[0], preflag_granules[1]);
   printf("%d checks\n", total);
   return status;
 }

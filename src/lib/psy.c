@@ -1141,6 +1141,7 @@ int shine_psy_initialise(shine_global_config *config) {
 typedef struct {
   int sf[PSY_ALLOCATION_BANDS];
   int scale; /* scalefac_scale */
+  int pre;   /* preflag: long granules only */
 } scalefactors_t;
 
 /* §5, §6: both formats code up to 15 in long bands 0..10 and 7 in bands
@@ -1275,8 +1276,28 @@ static int largest_step(const gr_info *gi) {
          (gi->block_type == BLOCK_SHORT ? SHORT_HEADROOM_STEPS : 0);
 }
 
+/* §1: what preflag adds to the scalefactors of the long bands
+ * (ISO 11172-3 table B.6). */
+static const uint8_t pretab[PSY_LONG_BANDS] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                               1, 1, 1, 1, 2, 2, 3, 3, 3, 2, 0};
+
 static int band_step(int q, const scalefactors_t *s, int sb) {
-  return q - 2 * (1 + s->scale) * s->sf[sb];
+  return q - 2 * (1 + s->scale) * (s->sf[sb] + (s->pre ? pretab[sb] : 0));
+}
+
+/* §5.1: PREFLAG_SHARE = 4/5 of the bands from this one up can be over. */
+#define PREFLAG_FIRST_BAND 11
+
+static int uses_preflag(const shine_global_config *config,
+                        const psy_bands_t *bands) {
+  int audible = 0;
+
+  if (bands->is_short || config->mpeg.version != SHINE_MPEG_I ||
+      bands->shaped <= PREFLAG_FIRST_BAND)
+    return 0;
+  for (int sb = PREFLAG_FIRST_BAND; sb < bands->shaped; sb++)
+    audible += bands->xmin[sb] < bands->en[sb];
+  return 5 * audible >= 4 * (bands->shaped - PREFLAG_FIRST_BAND);
 }
 
 static int step_slot(int step) { return step & (PSY_STEP_SLOTS - 1); }
@@ -1597,6 +1618,7 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
   int64_t best_distortion = -1;
 
   memset(&s, 0, sizeof(s));
+  s.pre = uses_preflag(config, map);
   best_s = s;
   best_gi = *gi;
   /* Kept only if no attempt can be made: silence at the largest step. */
@@ -1675,6 +1697,7 @@ int shine_psy_allocate(shine_global_config *config, int ix[GRANULE_SIZE],
     best_bits = shine_count_bits_split(ix, gi, config, model->region_sums);
   gi->quantizerStepSize = best_q;
   gi->scalefac_scale = (unsigned)best_s.scale;
+  gi->preflag = (unsigned)best_s.pre;
   gi->scalefac_compress = best_compress;
   gi->part2_length = (unsigned)best_part2;
   for (int sb = 0; sb < PSY_LONG_BANDS; sb++)
