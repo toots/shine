@@ -337,6 +337,8 @@ void shine_quantize_initialise(shine_global_config *config) {
 static int quantize_direct(int ix[GRANULE_SIZE], int begin, int end,
                            uint32_t peak, const uint32_t *threshold,
                            const int32_t *xrabs) {
+  /* A copy of the thresholds, which stores to ix could otherwise change. */
+  uint32_t level[QUANT_DIRECT_LEVELS];
   int max = 0;
 
   while (max < QUANT_DIRECT_LEVELS && peak >= threshold[max])
@@ -345,11 +347,13 @@ static int quantize_direct(int ix[GRANULE_SIZE], int begin, int end,
     memset(&ix[begin], 0, (size_t)(end - begin) * sizeof(*ix));
     return 0;
   }
+  for (int l = 0; l < QUANT_DIRECT_LEVELS; l++)
+    level[l] = threshold[l];
   for (int i = begin; i < end; i++) {
     int count = 0;
 
-    for (int level = 0; level < QUANT_DIRECT_LEVELS; level++)
-      count += (uint32_t)xrabs[i] >= threshold[level];
+    for (int l = 0; l < QUANT_DIRECT_LEVELS; l++)
+      count += (uint32_t)xrabs[i] >= level[l];
     ix[i] = count;
   }
   return max;
