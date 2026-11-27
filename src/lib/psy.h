@@ -76,6 +76,22 @@ typedef struct {
   int32_t peak[PSY_ALLOCATION_BANDS]; /* largest magnitude of each band */
 } psy_bands_t;
 
+/* Slots of a band in the step cache, indexed by step mod PSY_STEP_SLOTS:
+ * the steps an allocation tries for a band are a few apart. */
+#define PSY_STEP_SLOTS 16
+
+enum { PSY_STEP_EMPTY, PSY_STEP_QUANTISED, PSY_STEP_MEASURED };
+
+/* Bands as quantised at a step, and their noise once measured, during the
+ * allocation of one channel: its search revisits most (band, step) pairs. */
+typedef struct {
+  int step[PSY_ALLOCATION_BANDS][PSY_STEP_SLOTS];
+  int max[PSY_ALLOCATION_BANDS][PSY_STEP_SLOTS]; /* largest ix of the band */
+  int32_t noise[PSY_ALLOCATION_BANDS][PSY_STEP_SLOTS];
+  uint8_t state[PSY_ALLOCATION_BANDS][PSY_STEP_SLOTS];
+  uint16_t ix[PSY_STEP_SLOTS][GRANULE_SIZE]; /* each band at its lines */
+} psy_step_cache_t;
+
 typedef struct psy_model {
   int rate; /* samplerate index */
   int npart;
@@ -137,6 +153,7 @@ typedef struct psy_model {
   int32_t ath_band_s[PSY_SHORT_BANDS];
   int xmin_bands_s;  /* short bands with an allowed distortion */
   psy_bands_t bands; /* of the channel being allocated */
+  psy_step_cache_t steps;
   /* Short band energies and thresholds, per window, after the short
    * pre-echo control (doc/psy/block-switching.md §4). */
   int32_t en_s[MAX_GRANULES][PSY_CHANNELS][3][PSY_SHORT_BANDS];

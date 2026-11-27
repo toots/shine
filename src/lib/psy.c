@@ -1172,9 +1172,12 @@ static void select_band_layout(shine_global_config *config, int gr, int ch) {
   bands->edge[3 * PSY_SHORT_BANDS] = GRANULE_SIZE;
 }
 
+/* Also empties the step cache, which holds the bands of one channel. */
 static void select_bands(shine_global_config *config, int gr, int ch) {
   psy_bands_t *bands = &config->psy->bands;
 
+  memset(config->psy->steps.state, PSY_STEP_EMPTY,
+         sizeof(config->psy->steps.state));
   select_band_layout(config, gr, ch);
   for (int sb = 0; sb < bands->count; sb++)
     bands->peak[sb] =
@@ -1261,6 +1264,43 @@ static int band_step(int q, const scalefactors_t *s, int sb) {
   return q - 2 * (1 + s->scale) * s->sf[sb];
 }
 
+static int step_slot(int step) { return step & (PSY_STEP_SLOTS - 1); }
+
+/* Whether the cache holds band sb at this step. */
+static int step_cached(const psy_step_cache_t *cache, int sb, int step) {
+  const int slot = step_slot(step);
+
+  return cache->state[sb][slot] != PSY_STEP_EMPTY &&
+         cache->step[sb][slot] == step;
+}
+
+/* Quantises band sb at a step, from the cache when it holds it. Returns the
+ * band's largest ix. A band past IX_MAX is not kept: its ix is not valid. */
+static int quantize_band(shine_global_config *config, int *ix, int sb,
+                         int step) {
+  const psy_bands_t *bands = &config->psy->bands;
+  psy_step_cache_t *cache = &config->psy->steps;
+  const int slot = step_slot(step), first = bands->edge[sb],
+            end = bands->edge[sb + 1];
+  int max;
+
+  if (step_cached(cache, sb, step)) {
+    for (int k = first; k < end; k++)
+      ix[k] = cache->ix[slot][k];
+    return cache->max[sb][slot];
+  }
+  max = shine_quantize_band(ix, first, end, step, bands->peak[sb], config);
+  cache->state[sb][slot] = PSY_STEP_EMPTY;
+  if (max > PSY_IX_MAX)
+    return max;
+  for (int k = first; k < end; k++)
+    cache->ix[slot][k] = (uint16_t)ix[k];
+  cache->step[sb][slot] = step;
+  cache->max[sb][slot] = max;
+  cache->state[sb][slot] = PSY_STEP_QUANTISED;
+  return max;
+}
+
 /* §1: every band at its own step. Returns the largest ix, above IX_MAX when
  * a step is too small or below the exact range. */
 static int quantize_granule(shine_global_config *config, int *ix, int q,
@@ -1273,8 +1313,7 @@ static int quantize_granule(shine_global_config *config, int *ix, int q,
 
     if (step < STEP_MIN)
       return PSY_IX_MAX + 1;
-    band_max = shine_quantize_band(ix, bands->edge[sb], bands->edge[sb + 1],
-                                   step, bands->peak[sb], config);
+    band_max = quantize_band(config, ix, sb, step);
     if (band_max > max)
       max = band_max;
   }
@@ -1365,31 +1404,49 @@ static uint64_t reconstruct(int ix, int step) {
   return -shift < 64 ? (product + (1ULL << (-shift - 1))) >> -shift : 0;
 }
 
-/* §2: noise per band, log2 in the energy unit. The errors are below 2^32:
- * each band shifts them so that its largest is below 2^28, and its squares,
- * fewer than 256 of them, add up in 64 bits. */
-static void band_noise(shine_global_config *config, const psy_model_t *model,
+/* §2: the noise of band sb quantised at a step, log2 in the energy unit.
+ * The errors are below 2^32: the band shifts them so that its largest is
+ * below 2^28, and its squares, fewer than 256 of them, add up in 64 bits. */
+static int32_t measure_noise(const shine_global_config *config,
+                             const psy_bands_t *bands, const int *ix, int sb,
+                             int step) {
+  uint64_t error[256], peak = 0, sum = 0;
+  int first = bands->edge[sb], lines = bands->edge[sb + 1] - first, shift;
+
+  for (int k = 0; k < lines; k++) {
+    int64_t difference = (int64_t)config->l3loop.xrabs[first + k] -
+                         (int64_t)reconstruct(ix[first + k], step);
+
+    error[k] = (uint64_t)(difference < 0 ? -difference : difference);
+    if (error[k] > peak)
+      peak = error[k];
+  }
+  shift = peak >> 28 ? highest_bit(peak) - 27 : 0;
+  for (int k = 0; k < lines; k++)
+    sum += (error[k] >> shift) * (error[k] >> shift);
+  return scale(shine_psy_log2(sum), bands->log2_k + 2 * shift * ONE);
+}
+
+/* §2: noise per band of the granule as quantize_granule left it in ix. */
+static void band_noise(shine_global_config *config, psy_model_t *model,
                        const int *ix, int q, const scalefactors_t *s,
                        int32_t *noise) {
   const psy_bands_t *bands = &model->bands;
+  psy_step_cache_t *cache = &model->steps;
 
   for (int sb = 0; sb < bands->shaped; sb++) {
-    int step = band_step(q, s, sb), shift;
-    uint64_t error[256], peak = 0, sum = 0;
-    int first = bands->edge[sb], lines = bands->edge[sb + 1] - first;
+    const int step = band_step(q, s, sb), slot = step_slot(step);
+    const int cached = step_cached(cache, sb, step);
 
-    for (int k = 0; k < lines; k++) {
-      int64_t difference = (int64_t)config->l3loop.xrabs[first + k] -
-                           (int64_t)reconstruct(ix[first + k], step);
-
-      error[k] = (uint64_t)(difference < 0 ? -difference : difference);
-      if (error[k] > peak)
-        peak = error[k];
+    if (cached && cache->state[sb][slot] == PSY_STEP_MEASURED) {
+      noise[sb] = cache->noise[sb][slot];
+      continue;
     }
-    shift = peak >> 28 ? highest_bit(peak) - 27 : 0;
-    for (int k = 0; k < lines; k++)
-      sum += (error[k] >> shift) * (error[k] >> shift);
-    noise[sb] = scale(shine_psy_log2(sum), bands->log2_k + 2 * shift * ONE);
+    noise[sb] = measure_noise(config, bands, ix, sb, step);
+    if (cached) {
+      cache->noise[sb][slot] = noise[sb];
+      cache->state[sb][slot] = PSY_STEP_MEASURED;
+    }
   }
 }
 
@@ -1467,7 +1524,7 @@ static int under_at(shine_global_config *config, int *ix, gr_info *gi, int q,
                     const scalefactors_t *s, const int32_t *xmin,
                     const int32_t *en, int floor_bits, int ceiling_bits,
                     int *bits) {
-  const psy_model_t *model = config->psy;
+  psy_model_t *model = config->psy;
   int32_t noise[PSY_ALLOCATION_BANDS];
 
   if (quantize_granule(config, ix, q, s) > PSY_IX_MAX)
