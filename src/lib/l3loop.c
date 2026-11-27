@@ -418,15 +418,25 @@ static int quantize_range(int ix[GRANULE_SIZE], int begin, int end,
 int quantize(int ix[GRANULE_SIZE], int stepsize, shine_global_config *config,
              int *end) {
   int max = 0;
+  /* Runs whose peak is below quantise to 0. */
+  uint32_t zero_below = 0;
 
-  /* Whether the step is too small, as quantize_range finds for the run of
-   * the largest line. */
-  if (stepsize <= 0 &&
-      mulr(config->l3loop.xrmax, shine_steptabi[stepsize + 127]) > 165140)
-    return 16384;
+  if (stepsize <= 0) {
+    /* Whether the step is too small, as quantize_range finds for the run of
+     * the largest line. */
+    if (mulr(config->l3loop.xrmax, shine_steptabi[stepsize + 127]) > 165140)
+      return 16384;
+    zero_below = config->l3loop.quant_threshold[stepsize + 127][0];
+  }
   *end = 0;
   for (int run = 0; run < GRANULE_SIZE / QUANT_RUN_LINES; run++) {
-    int run_max =
+    int run_max;
+
+    if ((uint32_t)config->l3loop.run_peak[run] < zero_below) {
+      memset(&ix[run * QUANT_RUN_LINES], 0, QUANT_RUN_LINES * sizeof(*ix));
+      continue;
+    }
+    run_max =
         quantize_range(ix, run * QUANT_RUN_LINES, (run + 1) * QUANT_RUN_LINES,
                        stepsize, config->l3loop.run_peak[run], config);
 
