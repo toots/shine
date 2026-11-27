@@ -123,10 +123,15 @@ quality report before the next one starts.
 - [ ] MPEG-2.5 rates as resampling targets: 11.025 kHz gains 1.5 to 1.9
       at 16 and 24 kbps over 16 kHz. `RESAMPLE_MIN_RATE` is a compatibility
       choice (`resampling.md` §1).
-- [ ] Stereo scores 2.4 higher at 64 kbps and 1.2 to 2.0 higher at
-      112 kbps on a 32 kHz stream, with an item or two past the tolerance
-      (a violin, down 6.5 at 64 kbps; clapping and claves, down 6 to 6.7 at
-      112): for a listening round. Mono keeps its rates.
+- [x] Joint stereo at 64 kbps on a 32 kHz stream with MSFIX 1.8
+      (`bandwidth.md` §1): 58.0 to 60.7. Plain stereo and mono keep 24 kHz.
+- [ ] Stereo scores 1.2 to 2.0 higher at 112 kbps on a 32 kHz stream,
+      with clapping and claves down 6 to 6.7: for a listening round.
+- [ ] Rows 64 and 96 are at an optimum of every per-row parameter in
+      joint stereo (masking and ATH offsets, MSFIX, the M/S decision,
+      spreading, tonality, reservoir, attempts, band tilt: none gains
+      0.3). Refuted at 64 kbps: a lowpass on the L/R frames of the 32 kHz
+      stream. Left: `PE_SPLIT_POWER` 2.8 at 64 kbps, +0.4.
 - [ ] Castanets and claves at 128 kbps trail LAME by 6 and 12 points
       (84.9 against 90.6, 84.6 against 96.8), after the start of SHORT
       granules half way to an even noise-to-mask ratio

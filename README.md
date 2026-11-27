@@ -147,7 +147,7 @@ test: differences under 5 points on one item say little.
 | | 44.1 kHz stereo 64 kbps | 96 kbps | 128 kbps | 192 kbps | 44.1 kHz mono 64 kbps |
 |---|---|---|---|---|---|
 | `shineenc -Q 0` | 39.9 | 56.0 | 70.9 | 92.2 | 72.8 |
-| `shineenc -Q 1` | 57.9 | 78.0 | 90.1 | 100.0 | 89.1 |
+| `shineenc -Q 1` | 60.7 | 78.1 | 90.1 | 100.0 | 89.1 |
 | LAME 4.0, default | 56.6 | 77.5 | 90.2 | 99.9 | 88.4 |
 
 From 192 kbps in stereo and 128 kbps in mono, every encoder scores within a
