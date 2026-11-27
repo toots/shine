@@ -20,8 +20,7 @@ static int new_choose_table(int ix[GRANULE_SIZE], unsigned int begin,
                             unsigned int end, int *bits);
 static int bigv_tab_select(int ix[GRANULE_SIZE], gr_info *cod_info, int limit);
 static void subdivide(gr_info *cod_info, shine_global_config *config);
-static int count1_bitcount(int ix[GRANULE_SIZE], gr_info *cod_info);
-static void calc_runlen(int ix[GRANULE_SIZE], gr_info *cod_info);
+static int count1_region(int ix[GRANULE_SIZE], gr_info *cod_info);
 static int quantize(int ix[GRANULE_SIZE], int stepsize,
                     shine_global_config *config);
 
@@ -405,14 +404,9 @@ static inline int ix_max(int ix[GRANULE_SIZE], unsigned int begin,
   return max;
 }
 
-/*
- * calc_runlen:
- * ------------
- * Function: Calculation of rzero, count1, big_values
- * (Partitions ix into big values, quadruples and zeros).
- */
 /* The end of ix without its trailing pairs of zeros. The values are not
- * negative: a group is zero when its bitwise or is. */
+ * negative: a group is zero when its bitwise or is, and at most 1 when its
+ * bitwise or is. */
 static int nonzero_end(const int ix[GRANULE_SIZE]) {
   int i = GRANULE_SIZE;
 
@@ -424,24 +418,6 @@ static int nonzero_end(const int ix[GRANULE_SIZE]) {
   return i;
 }
 
-void calc_runlen(int ix[GRANULE_SIZE], gr_info *cod_info) {
-  int i = nonzero_end(ix);
-
-  cod_info->count1 = 0;
-  for (; i > 3; i -= 4)
-    if (ix[i - 1] <= 1 && ix[i - 2] <= 1 && ix[i - 3] <= 1 && ix[i - 4] <= 1)
-      cod_info->count1++;
-    else
-      break;
-
-  cod_info->big_values = i >> 1;
-}
-
-/*
- * count1_bitcount:
- * ----------------
- * Determines the number of bits to encode the quadruples.
- */
 /* The bits of quadruple p = v + 2w + 4x + 8y, its sign bits included: table
  * 32 (shine_huffman_table[32].hlen) in the low half, table 33, whose codes
  * all have 4 bits, in the high half. A granule has at most 144 quadruples
@@ -454,23 +430,27 @@ static const uint32_t count1_cost[16] = {
     COUNT1_COST(4, 1), COUNT1_COST(5, 2), COUNT1_COST(5, 2), COUNT1_COST(6, 3),
     COUNT1_COST(5, 2), COUNT1_COST(6, 3), COUNT1_COST(6, 3), COUNT1_COST(6, 4)};
 
-int count1_bitcount(int ix[GRANULE_SIZE], gr_info *cod_info) {
-  const int *quad = ix + (cod_info->big_values << 1);
+/* Partitions ix into big values, quadruples of values up to 1 and zeros.
+ * Returns the bits of the quadruples, choosing their table. */
+static int count1_region(int ix[GRANULE_SIZE], gr_info *cod_info) {
+  int i = nonzero_end(ix), sum0, sum1;
+  unsigned int count1 = 0;
   uint32_t sums = 0;
-  int sum0, sum1;
 
-  for (unsigned int k = 0; k < cod_info->count1; k++, quad += 4)
+  for (; i > 3; i -= 4, count1++) {
+    const int *quad = &ix[i - 4];
+
+    if ((quad[0] | quad[1] | quad[2] | quad[3]) > 1)
+      break;
     sums +=
         count1_cost[quad[0] + (quad[1] << 1) + (quad[2] << 2) + (quad[3] << 3)];
+  }
+  cod_info->count1 = count1;
+  cod_info->big_values = (unsigned int)i >> 1;
   sum0 = (int)(sums & 0xffff);
   sum1 = (int)(sums >> 16);
-  if (sum0 < sum1) {
-    cod_info->count1table_select = 0;
-    return sum0;
-  } else {
-    cod_info->count1table_select = 1;
-    return sum1;
-  }
+  cod_info->count1table_select = sum0 < sum1 ? 0 : 1;
+  return sum0 < sum1 ? sum0 : sum1;
 }
 
 /*
@@ -739,8 +719,7 @@ int shine_count_bits_up_to(int ix[GRANULE_SIZE], gr_info *cod_info,
                            shine_global_config *config, int limit) {
   int bits;
 
-  calc_runlen(ix, cod_info);
-  bits = count1_bitcount(ix, cod_info);
+  bits = count1_region(ix, cod_info);
   if (bits > limit)
     return bits;
   subdivide(cod_info, config);
@@ -965,8 +944,7 @@ int shine_count_bits_split(int ix[GRANULE_SIZE], gr_info *gi,
   region_split_t split;
   region_classes_t classes;
 
-  calc_runlen(ix, gi);
-  bits = count1_bitcount(ix, gi);
+  bits = count1_region(ix, gi);
   bigvalues = (int)gi->big_values << 1;
   if (gi->block_type || !bigvalues) {
     subdivide(gi, config);
