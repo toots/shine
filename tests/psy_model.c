@@ -2090,6 +2090,9 @@ static double expected_cutoff(int samplerate, int channels, int bitrate) {
                                  (kbps[i] - kbps[i - 1]);
         break;
       }
+  /* LOWPASS_FREE_RATE */
+  if (samplerate <= 32000)
+    return 0;
   return cutoff >= 0.95 * samplerate / 2 ? 0 : cutoff;
 }
 
@@ -2152,7 +2155,7 @@ static void check_lowpass(void) {
               channels, bitrates[b], fc);
         shine_close(e);
       }
-  check(LOWPASS, filtered > 20, "only %d configurations filtered", filtered);
+  check(LOWPASS, filtered > 10, "only %d configurations filtered", filtered);
 }
 
 static void check_noise_measure(void) {

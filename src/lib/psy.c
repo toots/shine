@@ -818,9 +818,15 @@ int shine_psy_cutoff(int bitrate, int channels) {
   return cutoff;
 }
 
+/* §bandwidth 1: a stream up to this rate codes its whole band. */
+#define LOWPASS_FREE_RATE 32000
+
 /* §bandwidth 1: the cutoff of the stream in Hz, 0 for none. */
 static int lowpass_cutoff(const shine_global_config *config) {
   int cutoff = shine_psy_cutoff(config->mpeg.bitrate, config->wave.channels);
+
+  if (config->wave.samplerate <= LOWPASS_FREE_RATE)
+    return 0;
 
   /* LOWPASS_NYQUIST_FRACTION = 0.95 of fs / 2. */
   return 40LL * cutoff >= 19LL * config->wave.samplerate ? 0 : cutoff;
