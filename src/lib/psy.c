@@ -445,9 +445,10 @@ static int32_t loudness(const psy_model_t *model, const int32_t *x) {
   if (!peak)
     return ZERO;
   shift = highest_bit(peak) >= 30 ? highest_bit(peak) - 29 : 0;
+  /* Each scaled energy is below 2^30. */
   for (int k = 0; k < GRANULE_SIZE; k++)
-    sum +=
-        ((uint64_t)((int64_t)x[k] * x[k]) >> shift) * model->loudness_weight[k];
+    sum += (uint64_t)(uint32_t)((uint64_t)((int64_t)x[k] * x[k]) >> shift) *
+           model->loudness_weight[k];
   return scale(shine_psy_log2(sum),
                (shift - 32) * ONE + PSY_LOG2_K_LONG + PSY_LOG2_K_LOUD);
 }
