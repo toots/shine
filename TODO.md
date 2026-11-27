@@ -103,16 +103,36 @@ quality report before the next one starts.
 - [x] Retune the per-bitrate table on the 2f score, on two thirds of the
       corpus sources with one third held out: cutoffs, `MASK_ADJUST` and
       `MSFIX`. `ATH_LOWER` and `ATH_CURVE` move no score by more than 0.1.
-- [ ] 96 kbps stereo is the largest gap to LAME (6 points): its row is
-      unchanged, since a cutoff above 14.7 kHz keeps the stream at 44.1 kHz.
-      Retune it, or let 32 kHz take a higher cutoff (`resampling.md`,
-      `bandwidth.md`).
+- [x] 96 kbps stereo trailed LAME by 6 points: its stream is at 32 kHz and
+      was cut at 14.5 kHz. A stream at 32 kHz or below now codes its whole
+      band (`bandwidth.md` §1); the cutoff only chooses its rate.
 - [x] `TONALITY_SCALE` tuned on the 2f score: 15.
-- [ ] `scfsi` and `preflag`, to save bits.
-- [ ] Exact search of the Huffman region boundaries, and dropping the
-      count1 values that cost more than they are worth.
-- [ ] A look-ahead bit reservoir aiming at an even noise-to-mask ratio
-      across frames.
+- [x] A granule's bits are shared between its channels by PE to a power
+      set per bitrate (`noise-allocation.md` §3.1), and `MASK_ADJUST` has a
+      value per channel count.
+- [x] The cheapest Huffman region split of the final quantisation
+      (`noise-allocation.md` §4.2): 1.1 to 1.7% of the bits.
+- [x] `preflag` on the long granules whose upper bands are audible
+      (`noise-allocation.md` §5.1), in MPEG-2 and 2.5 up to 40 kbps.
+- [ ] Measured and not worth their code: `scfsi` would save 0.1% of the
+      bits; a tax on steady granules to fill the reservoir, more outer
+      attempts, a closed-loop split of the bits between channels, a wider
+      quantiser dead zone, a smoothing of the thresholds over time and a
+      margin under the thresholds before bits are given back all lose or
+      gain nothing.
+- [ ] MPEG-2.5 rates as resampling targets: 11.025 kHz gains 1.5 to 1.9
+      at 16 and 24 kbps over 16 kHz. `RESAMPLE_MIN_RATE` is a compatibility
+      choice (`resampling.md` §1).
+- [ ] Stereo at 64 and 112 kbps scores 1.2 to 2.1 higher on a 32 kHz
+      stream, with one item past the tolerance each (a violin at 64 kbps,
+      clapping at 112 on 48 kHz input): for a listening round.
+- [ ] Castanets and claves at 128 kbps trail LAME by 10 and 13 points.
+      The noise is flatter than the signal when every band is over: 14 dB
+      of SNR under 1 kHz against LAME's 24, more than LAME at 2 to 6 kHz.
+      Amplifying only the worst bands gains 8 on castanets and loses 0.5
+      to 3 on most other items; the allocation's own distortion measure
+      prefers shapes the score rates lower.
+- [ ] Dropping the count1 values that cost more than they are worth.
 - [x] Masking spread as a plain sum of energies, in the linear domain.
 - [x] The step size search starts where the previous attempt ended.
 - [x] Resampling at low bitrates, in the library (`doc/psy/resampling.md`).
@@ -134,10 +154,17 @@ quality report before the next one starts.
       report; formula checks in `tests/psy_model.c` cover phase 4.
 - [ ] Phase 5 lowpass (`doc/psy/bandwidth.md`): cutoffs retuned on the 2f
       score, which follows band limitation closely and may favour bandwidth
-      more than listeners do. Round 4 checks them.
+      more than listeners do. Round 4 preferred the retuned cutoffs from 48
+      to 80 kbps. The full band of streams at 32 kHz and below is not
+      heard yet, and under 32 kbps the score is outside the range it was
+      compared with listeners in.
 - [ ] `subblock_gain` is always 0 (`doc/psy/noise-allocation.md` §6).
 - [ ] A listening round on transients with the reservoir and short blocks,
       and on the items the metric gate flagged.
+- [ ] A listening round on the stereo image of wide mixes up to 96 kbps:
+      `PE_SPLIT_POWER` takes bits from the side channel, and the score
+      rates each channel by itself. It is capped at 2.4; the score asks
+      for 3.2 under 64 kbps.
 - [ ] A build option to leave the model out of the library, for small
       targets: quality 0 does not use it.
 
