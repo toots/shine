@@ -120,8 +120,11 @@ Indexed by the tonality index `k` in 0..8 ([masking.md](masking.md) §1).
 
 | k | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
 |---|---|---|---|---|---|---|---|---|---|
-| `tab[k]` | 1.0 | 0.79433 | 0.63096 | 0.63096 | 0.63096 | 0.63096 | 0.63096 | 0.25119 | 0.11749 |
-| dB | 0 | −1 | −2 | −2 | −2 | −2 | −2 | −6 | −9.3 |
+| `tab[k]` | 1.0 | 0.79433 | 0.63096 | 0.63096 | 0.63096 | 0.63096 | 0.63096 | 0.50119 | 0.23442 |
+| dB | 0 | −1 | −2 | −2 | −2 | −2 | −2 | −3 | −6.3 |
 
-`tab` goes from 0 dB for a noise-like masker to −9.3 dB for a tonal one. A
+`tab` goes from 0 dB for a noise-like masker to −6.3 dB for a tonal one. A
 tonal masker masks noise less than a noise-like masker of the same energy.
+The two tonal entries were 3 dB lower: on the score the present values
+gain 0.04 to 0.40 at every bitrate and rate measured, and more than 3 dB
+gains nothing further.
