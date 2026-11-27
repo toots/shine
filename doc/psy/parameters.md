@@ -12,25 +12,31 @@ which is which. A value with no stated derivation is tuning.
 The bitrate selects a row: the nearest table bitrate, with ties going to the
 higher one. All columns are **tuning**.
 
-| kbps | `MSFIX` | `ATTACK_RATIO` | `ATTACK_RATIO_SIDE` | `MASK_ADJUST` (dB) | `ATH_LOWER` (dB) | `ATH_CURVE` | `PE_SPLIT_POWER` |
-|---|---|---|---|---|---|---|---|
-| 8 | 3.5 | 6.60 | 145 | 0 | −30 | 11 | 2.4 |
-| 16 | 3.5 | 6.60 | 145 | 0 | −25 | 11 | 2.4 |
-| 24 | 3.5 | 6.60 | 145 | 0 | −20 | 11 | 2.4 |
-| 32 | 3.5 | 6.60 | 145 | 6 | −15 | 11 | 2.4 |
-| 40 | 3.5 | 6.60 | 145 | 6 | −10 | 11 | 2.4 |
-| 48 | 3.5 | 6.60 | 145 | 5 | −10 | 11 | 2.4 |
-| 56 | 3.5 | 6.60 | 145 | 6 | −6 | 11 | 2.4 |
-| 64 | 3.5 | 6.60 | 145 | 5 | −2 | 11 | 2.4 |
-| 80 | 3.5 | 6.60 | 145 | 0.5 | 0 | 8 | 2.4 |
-| 96 | 2.50 | 6.60 | 145 | 0 | 1 | 5.5 | 1.8 |
-| 112 | 1.80 | 6.60 | 145 | 0 | 2 | 4.5 | 1.4 |
-| 128 | 1.41 | 6.40 | 140 | 0 | 3 | 4 | 1.4 |
-| 160 | 1.13 | 6.00 | 135 | −2 | 5 | 3.5 | 1 |
-| 192 | 1.49 | 5.60 | 125 | −4 | 7 | 3 | 1 |
-| 224 | 1.25 | 5.20 | 125 | −6 | 9 | 2 | 1 |
-| 256 | 0.97 | 5.20 | 125 | −8 | 10 | 1 | 1 |
-| 320 | 0.90 | 5.20 | 125 | −10 | 12 | 0 | 1 |
+| kbps | `MSFIX` | `ATTACK_RATIO` | `ATTACK_RATIO_SIDE` | `MASK_ADJUST` (dB), 1 channel | 2 channels | `ATH_LOWER` (dB) | `ATH_CURVE` | `PE_SPLIT_POWER` |
+|---|---|---|---|---|---|---|---|---|
+| 8 | 3.5 | 6.60 | 145 | 0 | 0 | −30 | 11 | 2.4 |
+| 16 | 3.5 | 6.60 | 145 | 0 | 0 | −25 | 11 | 2.4 |
+| 24 | 3.5 | 6.60 | 145 | 0 | 0 | −20 | 11 | 2.4 |
+| 32 | 3.5 | 6.60 | 145 | 6 | 3 | −15 | 11 | 2.4 |
+| 40 | 3.5 | 6.60 | 145 | 6 | 3 | −10 | 11 | 2.4 |
+| 48 | 3.5 | 6.60 | 145 | 5 | 3.5 | −10 | 11 | 2.4 |
+| 56 | 3.5 | 6.60 | 145 | 6 | 3 | −6 | 11 | 2.4 |
+| 64 | 3.5 | 6.60 | 145 | 5 | 3.5 | −2 | 11 | 2.4 |
+| 80 | 3.5 | 6.60 | 145 | 0.5 | 0.5 | 0 | 8 | 2.4 |
+| 96 | 2.50 | 6.60 | 145 | 0 | 0 | 1 | 5.5 | 1.8 |
+| 112 | 1.80 | 6.60 | 145 | 0 | 0 | 2 | 4.5 | 1.4 |
+| 128 | 1.41 | 6.40 | 140 | 0 | 0 | 3 | 4 | 1.4 |
+| 160 | 1.13 | 6.00 | 135 | −2 | −2 | 5 | 3.5 | 1 |
+| 192 | 1.49 | 5.60 | 125 | −4 | −4 | 7 | 3 | 1 |
+| 224 | 1.25 | 5.20 | 125 | −6 | −6 | 9 | 2 | 1 |
+| 256 | 0.97 | 5.20 | 125 | −8 | −8 | 10 | 1 | 1 |
+| 320 | 0.90 | 5.20 | 125 | −10 | −10 | 12 | 0 | 1 |
+
+`MASK_ADJUST` has a value for streams of one channel and one for two: at
+one bitrate, a mono stream has twice the bits per channel of a stereo one.
+From 32 to 64 kbps the two differ: the stereo values score 0.2 to 1.2
+higher over the corpus than the mono ones do on stereo, and the mono
+values up to 3 higher on mono than the stereo ones.
 
 `PE_SPLIT_POWER` ([noise-allocation.md](noise-allocation.md) §3.1) was
 chosen on the score among 1, 1.4, 1.8, 2.4 and 3.2 at each bitrate, and
