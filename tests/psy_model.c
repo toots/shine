@@ -1848,12 +1848,22 @@ static void check_granule(shine_t e) {
       if (e->wave.channels == 1)
         max_bits = total > 4095 ? 4095 : total;
       else {
-        int first = (int)floor((double)total * pe[0] / ((double)pe[0] + pe[1]));
+        const double power = e->psy->row->pe_split_power / 65536.0;
+        const double share =
+            total * pow(pe[0], power) / (pow(pe[0], power) + pow(pe[1], power));
+        int first = (int)floor(share);
 
         first = first > 4095 ? 4095 : first;
         first = total - first > 4095 ? total - 4095 : first;
         max_bits = ch ? total - first : first;
       }
+      /* §3.1: within 2 bits of the formula; the encoder's own share bounds
+       * its granule. */
+      check(ALLOCATION_BOUNDS,
+            abs(shine_psy_channel_bits(e, gr, ch) - max_bits) <= 2,
+            "%s gr %d ch %d: %d bits for the channel, %d by the formula", name,
+            gr, ch, shine_psy_channel_bits(e, gr, ch), max_bits);
+      max_bits = shine_psy_channel_bits(e, gr, ch);
       /* reservoir §2: no stuffing inside a granule. */
       check(STUFFING, (int)gi->part2_3_length == bits,
             "%s gr %d ch %d: part2_3_length %u, the granule's bits %d", name,

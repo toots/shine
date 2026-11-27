@@ -403,6 +403,7 @@ static void bitrate_rows(void) {
          "  int32_t log2_mask_adjust_short; /* MASK_ADJUST_SHORT */\n"
          "  int32_t attack_ratio;    /* ATTACK_RATIO, Q16 */\n"
          "  int32_t attack_ratio_side; /* ATTACK_RATIO_SIDE, Q16 */\n"
+         "  int32_t pe_split_power;  /* PE_SPLIT_POWER, Q16 */\n"
          "} psy_bitrate_row_t;\n");
   printf("#define PSY_BITRATE_ROWS %d\n", count);
   printf("static const psy_bitrate_row_t psy_bitrate_rows[PSY_BITRATE_ROWS] = "
@@ -422,16 +423,17 @@ static void bitrate_rows(void) {
                     : k == 192 ? 5.60
                                : 5.20;
     double side = k <= 112 ? 145 : k == 128 ? 140 : k == 160 ? 135 : 125;
+    double split = k <= 80 ? 2.4 : k == 96 ? 1.8 : k <= 128 ? 1.4 : 1;
 
     double adjust = rows[i].mask_adjust;
 
-    printf("{%d, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld},\n", rows[i].kbps,
-           log_q16(2 * rows[i].msfix), db_q16(rows[i].mask_adjust),
-           db_q16(-rows[i].ath_lower), fixed(c, LOG_ONE),
-           db_q16(ath_min - ATH_FS_SPL - rows[i].ath_lower),
+    printf("{%d, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld},\n",
+           rows[i].kbps, log_q16(2 * rows[i].msfix),
+           db_q16(rows[i].mask_adjust), db_q16(-rows[i].ath_lower),
+           fixed(c, LOG_ONE), db_q16(ath_min - ATH_FS_SPL - rows[i].ath_lower),
            fixed(5.0 * rows[i].kbps / 320, LOG_ONE),
            db_q16(adjust > 0 ? 0.9 * adjust : 1.1 * adjust),
-           fixed(attack, LOG_ONE), fixed(side, LOG_ONE));
+           fixed(attack, LOG_ONE), fixed(side, LOG_ONE), fixed(split, LOG_ONE));
   }
   printf("};\n\n");
 }

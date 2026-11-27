@@ -1501,6 +1501,34 @@ void shine_psy_granule_bits(shine_global_config *config, int gr) {
     model->granule_bits[gr] = channels * PART2_3_MAX;
 }
 
+/* §3.1: the weights of the channels are compared 30 octaves down from the
+ * larger one, where the other gets no bits to speak of. */
+#define SPLIT_OCTAVES 30
+
+/* pe^PE_SPLIT_POWER, from its log2, as a fraction of the larger weight of
+ * the two: 2^SPLIT_OCTAVES for that one. */
+static uint64_t split_weight(int64_t log2_weight, int64_t largest) {
+  const int64_t above_floor = log2_weight - largest + SPLIT_OCTAVES * ONE;
+
+  return above_floor < 0 ? 0 : linear_energy((int32_t)above_floor);
+}
+
+/* §3.1: the bits of the first of two channels. */
+static int first_channel_bits(int granule_bits, const int32_t *pe,
+                              int32_t power) {
+  int64_t log2_weight[2], largest;
+  uint64_t weight[2];
+
+  if (power == ONE)
+    return (int)((int64_t)granule_bits * pe[0] / ((int64_t)pe[0] + pe[1]));
+  for (int c = 0; c < 2; c++)
+    log2_weight[c] = ((int64_t)log2_q16((uint64_t)pe[c]) * power) >> 16;
+  largest = log2_weight[0] > log2_weight[1] ? log2_weight[0] : log2_weight[1];
+  for (int c = 0; c < 2; c++)
+    weight[c] = split_weight(log2_weight[c], largest);
+  return (int)((uint64_t)granule_bits * weight[0] / (weight[0] + weight[1]));
+}
+
 /* §3.1: the granule's bits, shared by perceptual entropy. */
 int shine_psy_channel_bits(const shine_global_config *config, int gr, int ch) {
   const psy_model_t *model = config->psy;
@@ -1509,7 +1537,7 @@ int shine_psy_channel_bits(const shine_global_config *config, int gr, int ch) {
 
   if (config->wave.channels == 1)
     return granule_bits;
-  first = (int)((int64_t)granule_bits * pe[0] / ((int64_t)pe[0] + pe[1]));
+  first = first_channel_bits(granule_bits, pe, model->row->pe_split_power);
   if (first > PART2_3_MAX)
     first = PART2_3_MAX;
   if (granule_bits - first > PART2_3_MAX)
