@@ -333,7 +333,6 @@ static int32_t mask_adjust(const psy_model_t *model, int is_long) {
 /* §masking 2-3: spreading, pre-echo limit, tonal ceiling, lowering. */
 static void threshold_in(psy_model_t *model, const psy_layout_t *layout,
                          psy_channel_t *channel, psy_partitions_t *parts) {
-  const int16_t *start = layout->start;
   const int32_t adjust = mask_adjust(model, layout->preecho);
   /* §3.1: every granule is NORM before short blocks, so both limits; the
    * second is dropped after a granule that is not NORM. §3.2: no pre-echo
@@ -362,8 +361,7 @@ static void threshold_in(psy_model_t *model, const psy_layout_t *layout,
     channel->nb_1[b] = ecb;
 
     /* §3.3 */
-    if (start[b + 1] - start[b] >= 2)
-      thr = min32(thr, scale(parts->max[b], layout->minval[b] + avg_mask));
+    thr = min32(thr, scale(parts->max[b], layout->minval[b] + avg_mask));
 
     /* §3.4 */
     lowering = layout->masking_lower[b] + adjust;
@@ -433,10 +431,11 @@ static void band_sums_in(const psy_layout_t *layout,
                          const psy_partitions_t *parts, int32_t *en,
                          int32_t *thm) {
   for (int sb = 0; sb < layout->bands; sb++) {
-    uint64_t energy = 0;
-    int32_t threshold = ZERO;
+    const int first = layout->band_part[sb];
+    uint64_t energy = parts->eb_raw[first];
+    int32_t threshold = parts->thr[first];
 
-    for (int b = layout->band_part[sb]; b < layout->band_part[sb + 1]; b++) {
+    for (int b = first + 1; b < layout->band_part[sb + 1]; b++) {
       energy += parts->eb_raw[b];
       threshold = shine_psy_log_add(threshold, parts->thr[b]);
     }
@@ -1161,6 +1160,24 @@ static void tonal_lines(int npart, const int16_t *start, int16_t *lines) {
     lines[b] = (int16_t)(start[b + 2] - start[b - 1] - 1);
 }
 
+/* A tonal ceiling above any threshold. */
+#define NO_CEILING (1 << 28)
+
+/* §masking 3.3: the tonal ceiling of a partition of lines lines at x dB,
+ * relative to its peak. A partition of one line has none: its peak is its
+ * energy, so a peak of 0 only takes the threshold where the energy bound
+ * of §3.4 does. */
+static int32_t minval(int32_t x, int lines, int32_t depth) {
+  if (lines == 1)
+    return NO_CEILING;
+  if (x > 6 * ONE)
+    x = 30 * ONE;
+  if (x < -depth)
+    x = -depth;
+  return (int32_t)(((int64_t)(x - 8 * ONE) * PSY_DB_TO_LOG2) >> 16) +
+         shine_psy_log2((uint64_t)lines);
+}
+
 /* The spreading rows of a layout, from the first partition each spans,
  * padded with zeros. */
 static void pad_spreading(int npart, const uint8_t *lo, const uint8_t *hi,
@@ -1228,13 +1245,7 @@ int shine_psy_initialise(shine_global_config *config) {
     int32_t x = 2 * psy_part_bval[rate][b] - 20 * ONE;
     int32_t ath = ZERO;
 
-    if (x > 6 * ONE)
-      x = 30 * ONE;
-    if (x < -model->row->minval_depth)
-      x = -model->row->minval_depth;
-    model->minval[b] =
-        (int32_t)(((int64_t)(x - 8 * ONE) * PSY_DB_TO_LOG2) >> 16) +
-        shine_psy_log2((uint64_t)lines);
+    model->minval[b] = minval(x, lines, model->row->minval_depth);
 
     for (int k = start[b]; k < start[b + 1]; k++)
       if (ath == ZERO || ath_line[k] < ath)
@@ -1283,13 +1294,8 @@ int shine_psy_initialise(shine_global_config *config) {
       /* §masking 3.3, short. */
       int32_t x = psy_part_minval_x_s[rate][b], ath = ath_s[start_s[b]];
 
-      if (x > 6 * ONE)
-        x = 30 * ONE;
-      if (x < -model->row->minval_depth)
-        x = -model->row->minval_depth;
       model->minval_s[b] =
-          (int32_t)(((int64_t)(x - 8 * ONE) * PSY_DB_TO_LOG2) >> 16) +
-          shine_psy_log2((uint64_t)(start_s[b + 1] - start_s[b]));
+          minval(x, start_s[b + 1] - start_s[b], model->row->minval_depth);
       for (int k = start_s[b] + 1; k < start_s[b + 1]; k++)
         ath = min32(ath, ath_s[k]);
       model->ath_part_s[b] = ath + model->row->log2_ath_offset;
