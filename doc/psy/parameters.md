@@ -12,31 +12,35 @@ which is which. A value with no stated derivation is tuning.
 The bitrate selects a row: the nearest table bitrate, with ties going to the
 higher one. All columns are **tuning**.
 
-| kbps | `MSFIX` | `ATTACK_RATIO` | `ATTACK_RATIO_SIDE` | `MASK_ADJUST` (dB), 1 channel | 2 channels | `ATH_LOWER` (dB) | `ATH_CURVE` | `PE_SPLIT_POWER` |
-|---|---|---|---|---|---|---|---|---|
-| 8 | 3.5 | 6.60 | 145 | 0 | 0 | −30 | 11 | 2.4 |
-| 16 | 3.5 | 6.60 | 145 | 0 | 0 | −25 | 11 | 2.4 |
-| 24 | 3.5 | 6.60 | 145 | 0 | 0 | −20 | 11 | 2.4 |
-| 32 | 3.5 | 6.60 | 145 | 6 | 3 | −15 | 11 | 2.4 |
-| 40 | 3.5 | 6.60 | 145 | 6 | 3 | −10 | 11 | 2.4 |
-| 48 | 3.5 | 6.60 | 145 | 5 | 3.5 | −10 | 11 | 2.4 |
-| 56 | 3.5 | 6.60 | 145 | 5 | 3 | −6 | 11 | 2.4 |
-| 64 | 3.5 | 6.60 | 145 | 4 | 3.5 | −2 | 11 | 2.4 |
-| 80 | 3.5 | 6.60 | 145 | 0.5 | 0.5 | 0 | 8 | 2.4 |
-| 96 | 1.50 | 6.60 | 145 | 0 | 0 | 1 | 5.5 | 1.8 |
-| 112 | 1.25 | 6.60 | 145 | 0 | 0 | 2 | 4.5 | 1.4 |
-| 128 | 1.25 | 6.40 | 140 | 0 | 0 | 3 | 4 | 1.4 |
-| 160 | 0.95 | 6.00 | 135 | −2 | −2 | 5 | 3.5 | 1 |
-| 192 | 1.49 | 5.60 | 125 | −4 | −4 | 7 | 3 | 1 |
-| 224 | 1.25 | 5.20 | 125 | −6 | −6 | 9 | 2 | 1 |
-| 256 | 0.97 | 5.20 | 125 | −8 | −8 | 10 | 1 | 1 |
-| 320 | 0.90 | 5.20 | 125 | −10 | −10 | 12 | 0 | 1 |
+| kbps | `MSFIX` | `ATTACK_RATIO` | `ATTACK_RATIO_SIDE` | `MASK_ADJUST` (dB), 1 channel | 2 channels, joint | 2 channels, no M/S | `ATH_LOWER` (dB) | `ATH_CURVE` | `PE_SPLIT_POWER` |
+|---|---|---|---|---|---|---|---|---|---|
+| 8 | 3.5 | 6.60 | 145 | 0 | 0 | 0 | −30 | 11 | 2.4 |
+| 16 | 3.5 | 6.60 | 145 | 0 | 0 | 0 | −25 | 11 | 2.4 |
+| 24 | 3.5 | 6.60 | 145 | 0 | 0 | 0 | −20 | 11 | 2.4 |
+| 32 | 3.5 | 6.60 | 145 | 6 | 3 | 3 | −15 | 11 | 2.4 |
+| 40 | 3.5 | 6.60 | 145 | 6 | 3 | 3 | −10 | 11 | 2.4 |
+| 48 | 3.5 | 6.60 | 145 | 5 | 3.5 | 6.5 | −10 | 11 | 2.4 |
+| 56 | 3.5 | 6.60 | 145 | 5 | 3 | 7.5 | −6 | 11 | 2.4 |
+| 64 | 3.5 | 6.60 | 145 | 4 | 3.5 | 4.25 | −2 | 11 | 2.4 |
+| 80 | 3.5 | 6.60 | 145 | 0.5 | 0.5 | 5 | 0 | 8 | 2.4 |
+| 96 | 1.50 | 6.60 | 145 | 0 | 0 | 4.5 | 1 | 5.5 | 1.8 |
+| 112 | 1.25 | 6.60 | 145 | 0 | 0 | 1.5 | 2 | 4.5 | 1.4 |
+| 128 | 1.25 | 6.40 | 140 | 0 | 0 | 0 | 3 | 4 | 1.4 |
+| 160 | 0.95 | 6.00 | 135 | −2 | −2 | −2 | 5 | 3.5 | 1 |
+| 192 | 1.49 | 5.60 | 125 | −4 | −4 | −4 | 7 | 3 | 1 |
+| 224 | 1.25 | 5.20 | 125 | −6 | −6 | −6 | 9 | 2 | 1 |
+| 256 | 0.97 | 5.20 | 125 | −8 | −8 | −8 | 10 | 1 | 1 |
+| 320 | 0.90 | 5.20 | 125 | −10 | −10 | −10 | 12 | 0 | 1 |
 
-`MASK_ADJUST` has a value for streams of one channel and one for two: at
-one bitrate, a mono stream has twice the bits per channel of a stereo one.
-From 32 to 64 kbps the two differ: the stereo values score 0.2 to 1.2
-higher over the corpus than the mono ones do on stereo, and the mono
-values up to 3 higher on mono than the stereo ones.
+`MASK_ADJUST` has a value for streams of one channel, one for joint
+stereo and one for two channels coded without M/S (the stereo and dual
+channel modes): at one bitrate, a mono stream has twice the bits per
+channel of a stereo one, and joint stereo codes two channels in fewer
+bits than two channels apart. From 32 to 64 kbps the joint stereo values
+score 0.2 to 1.2 higher over the corpus than the mono ones do on joint
+stereo, and the mono values up to 3 higher on mono. From 48 to 112 kbps
+the values without M/S score 0.3 to 2.7 higher on such streams than the
+joint stereo ones do.
 
 `PE_SPLIT_POWER` ([noise-allocation.md](noise-allocation.md) §3.1) was
 chosen on the score among 1, 1.4, 1.8, 2.4 and 3.2 at each bitrate, and
