@@ -115,10 +115,10 @@ of 5 runs, in multiples of realtime, one thread.
 
 | | 44.1 kHz stereo 128 kbps | 44.1 kHz stereo 192 kbps | 44.1 kHz stereo 320 kbps | 44.1 kHz mono 64 kbps |
 |---|---|---|---|---|
-| `shineenc -Q 0` | 1636x | 1385x | 1125x | 3600x |
-| `shineenc -Q 1` | 346x | 353x | 367x | 947x |
-| WebAssembly, quality 0 (Node 26) | 624x | 555x | 491x | 1230x |
-| WebAssembly, quality 1 (Node 26) | 177x | 178x | 188x | 455x |
+| `shineenc -Q 0` | 2000x | 1636x | 1286x | 4500x |
+| `shineenc -Q 1` | 462x | 462x | 486x | 1125x |
+| WebAssembly, quality 0 (Node 26) | 675x | 603x | 526x | 1319x |
+| WebAssembly, quality 1 (Node 26) | 225x | 228x | 242x | 526x |
 | LAME 4.0 `-q 7` | 310x | 300x | 290x | 643x |
 | LAME 4.0, default | 154x | 158x | 146x | 286x |
 | FDK AAC 2.0, AAC-LC | 240x | 222x | 200x | 474x |
@@ -126,17 +126,24 @@ of 5 runs, in multiples of realtime, one thread.
 Peak memory: 1.6 MB at level 0, 1.9 MB at level 1, 2.1 MB for FDK AAC, 2.7 MB
 for LAME. FDK AAC runs through its library API with the afterburner on, as in
 FFmpeg's `libfdk_aac`; at 64 kbps stereo it runs at 281x in AAC-LC and 205x
-in HE-AAC, where level 1 runs at 419x.
+in HE-AAC, where level 1 runs at 529x.
 `shineenc` is built with `CFLAGS=-O2`; it and LAME, run with `-b <bitrate>`,
 code stereo as joint stereo, their default. Its default quality is `-q 3`; `-q 7` is its fastest
 setting that still uses a psychoacoustic model.
 
-On arm64 the filter bank and MDCT run 4 lanes at a time. On x86-64 the
-filter bank is also built for AVX2 and chosen at run time. On
-an Intel Xeon Platinum 8488C, at 44.1 kHz stereo 128 kbps, level 1 ran at
-88x realtime built with clang 18 and 67x with GCC 13, against 66x for LAME,
-before the filter bank and MDCT got their fast transforms: it is not
-measured again since.
+On arm64 the filter bank and MDCT run 4 lanes at a time; on x86-64 they
+are also built for AVX2 and chosen at run time. On an Intel Xeon Platinum
+8488C (November 2026), the same measure at 44.1 kHz stereo:
+
+| | 128 kbps | 192 kbps | 320 kbps | mono 64 kbps |
+|---|---|---|---|---|
+| `shineenc -Q 0`, clang 18 | 783x | 643x | 514x | 1500x |
+| `shineenc -Q 0`, GCC 13 | 529x | 450x | 367x | 1059x |
+| `shineenc -Q 1`, clang 18 | 161x | 164x | 176x | 400x |
+| `shineenc -Q 1`, GCC 13 | 126x | 127x | 134x | 305x |
+| LAME 3.100 `-q 7` | 146x | 140x | 130x | 316x |
+| LAME 3.100, default | 75x | 76x | 70x | 142x |
+| FDK AAC 2.0, AAC-LC | 109x | 99x | 87x | 212x |
 
 The WebAssembly build is measured through its JavaScript API: see
 [js/README.md](js/README.md), which also measures it in a browser.

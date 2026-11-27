@@ -95,8 +95,8 @@ How fast is it?
 ---------------
 
 On an Apple M5 (`arm64`, November 2026), Node.js 26, encoding 3 minutes of
-44.1 kHz stereo music at 128 kbps: 624x realtime at quality 0 and 177x at
-quality 1, against 1636x and 346x for the native `shineenc`.
+44.1 kHz stereo music at 128 kbps: 675x realtime at quality 0 and 225x at
+quality 1, against 2000x and 462x for the native `shineenc`.
 
 `test/browser` measures the encoding rate in a browser: run `make` there and
 open `http://localhost:8000/test/browser/`. A rate above `1X` means that the
