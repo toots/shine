@@ -530,6 +530,23 @@ static int64_t mid_side(int64_t sum) {
   return (sum * PSY_INV_SQRT2 + (1LL << 30)) >> 31;
 }
 
+/* The spectra of the analysis channels from those of the coded ones,
+ * right NULL for mono. */
+static void analysis_spectra(const psy_model_t *model, const int32_t *left,
+                             const int32_t *right, int lines,
+                             int64_t *x[PSY_CHANNELS]) {
+  for (int k = 0; k < lines; k++)
+    x[0][k] = left[k];
+  if (right)
+    for (int k = 0; k < lines; k++)
+      x[1][k] = right[k];
+  if (model->channels == 4)
+    for (int k = 0; k < lines; k++) {
+      x[2][k] = mid_side((int64_t)left[k] + right[k]);
+      x[3][k] = mid_side((int64_t)left[k] - right[k]);
+    }
+}
+
 /* §perceptual-entropy 3: k[i], Q16. The centre tap is 1. */
 static const int32_t pe_taps[PSY_PE_HISTORY / 2] = {
     -6812, -12400, -14171, -10218, 0, 15327, 33066, 49599, 61308};
@@ -833,15 +850,10 @@ static void short_model(shine_global_config *config, int g, int32_t weight) {
   int64_t x[PSY_CHANNELS][192];
 
   for (int j = 0; j < 3; j++) {
-    for (int k = 0; k < 192; k++) {
-      x[0][k] = model->short_lines[0][g][j][k];
-      if (stereo)
-        x[1][k] = model->short_lines[1][g][j][k];
-      if (model->channels == 4) {
-        x[2][k] = mid_side(x[0][k] + x[1][k]);
-        x[3][k] = mid_side(x[0][k] - x[1][k]);
-      }
-    }
+    int64_t *spectra[PSY_CHANNELS] = {x[0], x[1], x[2], x[3]};
+
+    analysis_spectra(model, model->short_lines[0][g][j],
+                     stereo ? model->short_lines[1][g][j] : NULL, 192, spectra);
     for (int c = 0; c < model->channels; c++) {
       analyse_in(layout, &model->channel_s[c], x[c], &parts[c]);
       threshold_in(model, layout, &model->channel_s[c], &parts[c]);
@@ -1018,15 +1030,10 @@ void shine_psy_frame(shine_global_config *config) {
     const int32_t (*spectrum)[MAX_GRANULES][GRANULE_SIZE] =
         type == BLOCK_SHORT ? model->analysis_long : config->mdct_freq;
 
-    for (int k = 0; k < GRANULE_SIZE; k++) {
-      x[0][k] = spectrum[0][g][k];
-      if (stereo)
-        x[1][k] = spectrum[1][g][k];
-      if (model->channels == 4) {
-        x[2][k] = mid_side(x[0][k] + x[1][k]);
-        x[3][k] = mid_side(x[0][k] - x[1][k]);
-      }
-    }
+    int64_t *spectra[PSY_CHANNELS] = {x[0], x[1], x[2], x[3]};
+
+    analysis_spectra(model, spectrum[0][g], stereo ? spectrum[1][g] : NULL,
+                     GRANULE_SIZE, spectra);
     for (int c = 0; c < model->channels; c++) {
       model->energy[g][c] = analyse(model, &model->channel[c], x[c], &parts[c]);
       threshold(model, &model->channel[c], &parts[c]);
