@@ -24,7 +24,7 @@ void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg) {
   mpeg->emphasis = SHINE_EMPHASIS_NONE;
   mpeg->copyright = 0;
   mpeg->original = 1;
-  mpeg->quality = 0;
+  mpeg->quality = 1;
 }
 
 int shine_mpeg_version(int samplerate_index) {

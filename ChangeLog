@@ -2,7 +2,7 @@
 =====
 New:
 * A psychoacoustic model (`doc/psy/`) behind a quality setting:
-  `mpeg.quality`, 0 to `SHINE_QUALITY_MAX` (1), default 0; `shineenc -Q`;
+  `mpeg.quality`, 0 to `SHINE_QUALITY_MAX` (1), default 1; `shineenc -Q`;
   `quality` in the JavaScript package. Quality 1 adds masking thresholds,
   noise allocation, the bit reservoir, short blocks, M/S per frame, and a
   lowpass and resampling at low bitrates (`shine_samplerate()`,

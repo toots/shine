@@ -98,7 +98,7 @@ static int shineenc(const char *name, const char *options, const wav_t *wav,
 
   snprintf(input, sizeof(input), "wave-%s.wav", name);
   snprintf(output, sizeof(output), "wave-%s.mp3", name);
-  snprintf(arguments, sizeof(arguments), "-q %s '%s' '%s'", options, input,
+  snprintf(arguments, sizeof(arguments), "-q -Q 0 %s '%s' '%s'", options, input,
            output);
 
   if (!write_wav(input, wav))

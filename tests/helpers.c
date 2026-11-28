@@ -188,6 +188,8 @@ static int run_config(config_test_t test, int samplerate, int bitrate,
   config.wave.channels = mode == SHINE_MONO ? 1 : 2;
   config.mpeg.bitrate = bitrate;
   config.mpeg.mode = mode;
+  /* Tests of the stream at the input rate, one frame per call. */
+  config.mpeg.quality = 0;
 
   return test(&config, name);
 }

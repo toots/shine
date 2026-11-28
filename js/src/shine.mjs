@@ -60,7 +60,7 @@ export class Shine {
 
     const mode = stereoMode ?? (channels === 1 ? StereoMode.MONO : StereoMode.JOINT_STEREO);
 
-    this._handle = wasm.shine_js_init(channels, samplerate, mode, bitrate, quality ?? 0);
+    this._handle = wasm.shine_js_init(channels, samplerate, mode, bitrate, quality ?? 1);
     if (!this._handle) throw new Error("Cannot initialise the encoder");
 
     this._channels = channels;

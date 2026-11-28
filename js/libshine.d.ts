@@ -8,7 +8,7 @@ export declare enum StereoMode {
 export class Shine {
   static initialized: Promise<void>;
   static checkConfig(samplerate: number, bitrate: number): boolean;
-  /** quality: 0 (default) runs no psychoacoustic model, 1 runs it. */
+  /** quality: 1 (default) runs the psychoacoustic model, 0 runs none. */
   constructor(args: {
     samplerate: number;
     bitrate: number;

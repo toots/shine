@@ -6,7 +6,7 @@ fixed-point arithmetic. The library can thus be used to perform super fast mp3 e
 without a FPU, such as `armel`, etc.. It is also super fast on architectures with a FPU!
 
 It has two quality levels. Level 0 is the original encoder: no psychoacoustic
-model, and the fastest. Level 1 adds a psychoacoustic model, noise shaping,
+model, and the fastest. Level 1, the default, adds a psychoacoustic model, noise shaping,
 short blocks, mid/side stereo, a lowpass and, at low bitrates, a lower
 samplerate. It is still faster than LAME at its default settings. The model
 is specified in [doc/psy](doc/psy/README.md).
@@ -26,7 +26,7 @@ config.wave.channels = 2;
 config.wave.samplerate = 44100;
 config.mpeg.mode = SHINE_JOINT_STEREO;
 config.mpeg.bitrate = 128;
-config.mpeg.quality = 1; /* 0, the default, runs no psychoacoustic model */
+config.mpeg.quality = 0; /* the default, 1, runs the psychoacoustic model */
 
 /* See if samplerate and bitrate are valid */
 if (shine_check_config(config.wave.samplerate, config.mpeg.bitrate) < 0)

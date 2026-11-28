@@ -68,8 +68,8 @@ const flushed = shine.close();
 ```
 
 `stereoMode` defaults to `MONO` for one channel and `JOINT_STEREO` for two.
-`quality` defaults to 0, which runs no psychoacoustic model: 1 runs it, at
-about a third of the speed. At quality 1 and low bitrates the stream has a
+`quality` defaults to 1, which runs the psychoacoustic model: 0 runs none, at
+about three times the speed. At quality 1 and low bitrates the stream has a
 lower samplerate than the input, and a call to `encode` can return no frame,
 or several.
 

@@ -69,7 +69,7 @@ static void print_usage() {
          "only)\n");
   printf(" -s            encode in plain stereo (stereo data only)\n");
   printf(" -d            encode in dual-channel (stereo data only)\n");
-  printf(" -Q <level>    set the quality level [0-%d], default 0\n",
+  printf(" -Q <level>    set the quality level [0-%d], default 1\n",
          SHINE_QUALITY_MAX);
   printf(" -q            quiet mode\n");
   printf(" -v            verbose mode\n");
