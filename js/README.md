@@ -51,6 +51,7 @@ const shine = new Shine({
   bitrate: 128,
   channels: 2,
   stereoMode: StereoMode.STEREO,
+  quality: 1,
 });
 
 // All the magic happens here
@@ -67,6 +68,10 @@ const flushed = shine.close();
 ```
 
 `stereoMode` defaults to `MONO` for one channel and `JOINT_STEREO` for two.
+`quality` defaults to 0, which runs no psychoacoustic model: 1 runs it, at
+about a third of the speed. At quality 1 and low bitrates the stream has a
+lower samplerate than the input, and a call to `encode` can return no frame,
+or several.
 
 Building
 --------
@@ -89,8 +94,9 @@ otherwise. `--enable-wasm` makes a missing toolchain an error.
 How fast is it?
 ---------------
 
-On a macbook pro (`arm64`/M1 pro), Node.js 26, encoding 285 s of stereo music
-at 128 kbps: about 205x realtime, against about 310x for the native `shineenc`.
+On an Apple M5 (`arm64`, November 2026), Node.js 26, encoding 3 minutes of
+44.1 kHz stereo music at 128 kbps: 675x realtime at quality 0 and 225x at
+quality 1, against 2000x and 462x for the native `shineenc`.
 
 `test/browser` measures the encoding rate in a browser: run `make` there and
 open `http://localhost:8000/test/browser/`. A rate above `1X` means that the

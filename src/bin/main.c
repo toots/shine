@@ -32,7 +32,7 @@ char *infname, *outfname;
 FILE *infile, *outfile;
 int quiet = 0;
 int _verbose = 0;
-int stereo = SHINE_STEREO;
+int stereo = SHINE_JOINT_STEREO;
 int force_mono = 0;
 
 int verbose() { return _verbose; }
@@ -65,8 +65,12 @@ static void print_usage() {
   printf(" -b <bitrate>  set the bitrate [8-320], default 128kbit\n");
   printf(" -m            force encoder to operate in mono\n");
   printf(" -c            set copyright flag, default off\n");
-  printf(" -j            encode in joint stereo (stereo data only)\n");
+  printf(" -j            encode in joint stereo, the default (stereo data "
+         "only)\n");
+  printf(" -s            encode in plain stereo (stereo data only)\n");
   printf(" -d            encode in dual-channel (stereo data only)\n");
+  printf(" -Q <level>    set the quality level [0-%d], default 0\n",
+         SHINE_QUALITY_MAX);
   printf(" -q            quiet mode\n");
   printf(" -v            verbose mode\n");
 }
@@ -100,8 +104,18 @@ static int parse_command(int argc, char **argv, shine_config_t *config) {
       stereo = SHINE_JOINT_STEREO;
       break;
 
+    case 's':
+      stereo = SHINE_STEREO;
+      break;
+
     case 'd':
       stereo = SHINE_DUAL_CHANNEL;
+      break;
+
+    case 'Q':
+      if (++i == argc)
+        return 0;
+      config->mpeg.quality = atoi(argv[i]);
       break;
 
     case 'c':
@@ -131,16 +145,19 @@ static int parse_command(int argc, char **argv, shine_config_t *config) {
 }
 
 /* Print some info about what we're going to encode */
-static void check_config(shine_config_t *config) {
+static void check_config(shine_config_t *config, shine_t s) {
   static char *version_names[4] = {"2.5", "reserved", "II", "I"};
   static char *mode_names[4] = {"stereo", "joint-stereo", "dual-channel",
                                 "mono"};
   static char *demp_names[4] = {"none", "50/15us", "", "CCITT"};
 
   printf("MPEG-%s layer III, %s  Psychoacoustic Model: Shine\n",
-         version_names[shine_check_config(config->wave.samplerate,
+         version_names[shine_check_config(shine_samplerate(s),
                                           config->mpeg.bitrate)],
          mode_names[config->mpeg.mode]);
+  if (shine_samplerate(s) != config->wave.samplerate)
+    printf("Resampling: %d Hz to %d Hz\n", config->wave.samplerate,
+           shine_samplerate(s));
   printf("Bitrate: %d kbps  ", config->mpeg.bitrate);
   printf("De-emphasis: %s   %s %s\n", demp_names[config->mpeg.emphasis],
          ((config->mpeg.original) ? "Original" : ""),
@@ -209,7 +226,7 @@ int main(int argc, char **argv) {
 
   /* Print some info about the file about to be created (optional) */
   if (!quiet)
-    check_config(&config);
+    check_config(&config, s);
 
   samples_per_pass = shine_samples_per_pass(s);
 

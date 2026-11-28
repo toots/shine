@@ -1,5 +1,8 @@
 /* Output level: tones encoded by the library and decoded by FFmpeg come out
- * at the input level. Skipped when ffmpeg is not in the PATH. */
+ * at the input level, after the encoder's delay. At quality 1, tones across the
+ * spectrum check that scalefactors are decoded with the amplification they were
+ * encoded with (doc/psy/tests.md §1). Skipped when ffmpeg is not in the PATH.
+ */
 
 #include "helpers.h"
 
@@ -8,12 +11,15 @@
 #include <string.h>
 
 #define SKIP 77
-#define DECODED_DELAY (528 + MP3_DECODER_DELAY)
+/* The largest encoder delay of a quality level, for buffer sizes. */
+#define MAX_DECODED_DELAY (2048 + MP3_DECODER_DELAY)
 #define TOLERANCE 0.01
 
 typedef struct {
   int samplerate, bitrate;
   enum shine_mode mode;
+  int quality;
+  int64_t step; /* tone frequency, step / 65536 / (2 pi) * samplerate */
 } level_case_t;
 
 /* Magic circle oscillator, as in tests/golden.c. */
@@ -31,11 +37,11 @@ static void tone(int16_t *samples, long count, int channels, int64_t step) {
 /* Least squares gain of decoded against input, on the first channel, away
  * from both ends. */
 static double fit_gain(const int16_t *input, long count, int channels,
-                       const int16_t *decoded, long decoded_count) {
+                       const int16_t *decoded, long decoded_count, int delay) {
   double cross = 0, energy = 0;
 
   for (long i = count / 8; i < count - count / 8; i++) {
-    long j = i + DECODED_DELAY;
+    long j = i + delay;
     if (j >= decoded_count)
       break;
     cross += (double)input[i * channels] * decoded[j * channels];
@@ -50,30 +56,38 @@ static int check_level(const level_case_t *test) {
   stream_t stream = {NULL, 0, 0};
   int channels = test->mode == SHINE_MONO ? 1 : 2;
   long count = 2L * test->samplerate, decoded_count = 0, capacity;
+  int delay = 0;
   int16_t *samples = malloc(count * channels * sizeof(int16_t));
   int16_t *decoded = NULL;
-  char name[64], command[256];
+  char name[96], command[256];
   FILE *file;
   double gain;
   int ok = 0;
 
-  snprintf(name, sizeof(name), "%d Hz %d kbps mode %d", test->samplerate,
-           test->bitrate, test->mode);
+  snprintf(name, sizeof(name), "%d Hz %d kbps mode %d quality %d step %d",
+           test->samplerate, test->bitrate, test->mode, test->quality,
+           (int)test->step);
 
   shine_set_config_mpeg_defaults(&config.mpeg);
   config.wave.samplerate = test->samplerate;
   config.wave.channels = channels;
   config.mpeg.bitrate = test->bitrate;
   config.mpeg.mode = test->mode;
+  config.mpeg.quality = test->quality;
 
   encoder = shine_initialise(&config);
+  /* The delay is in samples of the encoded stream, and the decoded stream
+   * is converted back to the input's rate. */
+  if (encoder)
+    delay = (int)(((long)shine_encoder_delay(encoder) + MP3_DECODER_DELAY) *
+                  test->samplerate / shine_samplerate(encoder));
   if (!samples || !encoder) {
     printf("FAIL %s: cannot initialise\n", name);
     goto end;
   }
 
-  /* A tone at about 1/40th of the samplerate, -6 dBFS. */
-  tone(samples, count, channels, 10000);
+  /* -6 dBFS. */
+  tone(samples, count, channels, test->step);
   encode_samples(encoder, channels, samples, count, &stream);
 
   file = fopen("level.mp3", "wb");
@@ -84,13 +98,14 @@ static int check_level(const level_case_t *test) {
   }
 
   snprintf(command, sizeof(command),
-           "ffmpeg -v error -i level.mp3 -f s16le -acodec pcm_s16le -");
+           "ffmpeg -v error -i level.mp3 -ar %d -f s16le -acodec pcm_s16le -",
+           test->samplerate);
   file = popen(command, "r");
   if (!file) {
     printf("FAIL %s: cannot run ffmpeg\n", name);
     goto end;
   }
-  capacity = count + 4 * DECODED_DELAY;
+  capacity = count + 4 * MAX_DECODED_DELAY;
   decoded = malloc(capacity * channels * sizeof(int16_t));
   if (decoded)
     decoded_count = fread(decoded, channels * sizeof(int16_t), capacity, file);
@@ -99,7 +114,7 @@ static int check_level(const level_case_t *test) {
     goto end;
   }
 
-  gain = fit_gain(samples, count, channels, decoded, decoded_count);
+  gain = fit_gain(samples, count, channels, decoded, decoded_count, delay);
   if (gain < 1 - TOLERANCE || gain > 1 + TOLERANCE) {
     printf("FAIL %s: decoded level is %.4f times the input\n", name, gain);
     goto end;
@@ -118,10 +133,30 @@ end:
 }
 
 int main(void) {
+  /* A tone at about 1/40th of the samplerate at quality 0; at quality 1,
+   * tones from 1% to 35% of the Nyquist frequency. */
   static const level_case_t cases[] = {
-      {44100, 128, SHINE_STEREO},      {48000, 320, SHINE_JOINT_STEREO},
-      {32000, 64, SHINE_MONO},         {22050, 64, SHINE_MONO},
-      {16000, 32, SHINE_DUAL_CHANNEL}, {8000, 16, SHINE_MONO},
+      {44100, 128, SHINE_STEREO, 0, 10000},
+      {48000, 320, SHINE_JOINT_STEREO, 0, 10000},
+      {32000, 64, SHINE_MONO, 0, 10000},
+      {22050, 64, SHINE_MONO, 0, 10000},
+      {16000, 32, SHINE_DUAL_CHANNEL, 0, 10000},
+      {8000, 16, SHINE_MONO, 0, 10000},
+      {44100, 128, SHINE_JOINT_STEREO, 1, 2059},
+      {44100, 128, SHINE_JOINT_STEREO, 1, 10294},
+      {44100, 128, SHINE_JOINT_STEREO, 1, 41175},
+      {44100, 128, SHINE_JOINT_STEREO, 1, 72057},
+      {22050, 64, SHINE_MONO, 1, 2059},
+      {22050, 64, SHINE_MONO, 1, 10294},
+      {22050, 64, SHINE_MONO, 1, 41175},
+      {22050, 64, SHINE_MONO, 1, 72057},
+      {8000, 16, SHINE_MONO, 1, 10294},
+      {8000, 16, SHINE_MONO, 1, 41175},
+      /* Converted to 24 and 32 kHz (doc/psy/resampling.md §1). */
+      {44100, 64, SHINE_JOINT_STEREO, 1, 2059},
+      {44100, 64, SHINE_JOINT_STEREO, 1, 10294},
+      {44100, 96, SHINE_JOINT_STEREO, 1, 10294},
+      {48000, 48, SHINE_MONO, 1, 10294},
   };
   const int count = sizeof(cases) / sizeof(*cases);
   int passed = 0;

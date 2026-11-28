@@ -10,6 +10,7 @@
 #include "bitstream.h"
 
 #include "fixed_point.h"
+#include "kernels.h"
 
 #define HAN_SIZE 512 /* for loop unrolling, require that HAN_SIZE%8==0 */
 #define SBLIMIT 32
@@ -24,6 +25,12 @@
 /* Largest quantizer step size: global_gain = step size + 210 +
  * MDCT_HEADROOM_STEPS has 8 bits. */
 #define MAX_STEPSIZE (45 - MDCT_HEADROOM_STEPS)
+
+/* Short blocks carry a further headroom of 4 (shine_mdct_window_short):
+ * their global_gain is 8 steps higher again. */
+#define SHORT_HEADROOM_STEPS 8
+
+enum { BLOCK_NORM = 0, BLOCK_START = 1, BLOCK_SHORT = 2, BLOCK_STOP = 3 };
 
 #ifndef MAX_CHANNELS
 #define MAX_CHANNELS 2
@@ -61,20 +68,49 @@ typedef struct {
   int original;  /* + */
 } priv_shine_mpeg_t;
 
+/* Bits of pairs in the tables of one class of big-value regions, one
+ * 16-bit field per table, and the number of escaped values. */
+typedef struct {
+  uint64_t codes[2];
+  uint32_t escapes;
+} shine_region_bits_t;
+
+/* The classes of big-value regions, numbered from 1. */
+#define SHINE_REGION_CLASSES 16
+
+/* Largest quantised value of a band whose lines are quantised by comparing
+ * them with thresholds. */
+#define QUANT_DIRECT_LEVELS 3
+
+/* Lines quantised together by quantize, according to their largest. */
+#define QUANT_RUN_LINES 32
+
 typedef struct {
   int32_t *xr;                 /* magnitudes of the spectral values */
   int32_t xrabs[GRANULE_SIZE]; /* xr absolute */
   int32_t xrmax;               /* maximum of xrabs array */
+  /* Maximum of each run of QUANT_RUN_LINES lines, without the model. */
+  int32_t run_peak[GRANULE_SIZE / QUANT_RUN_LINES];
+  /* For each step size up to 0, the smallest xrabs quantised to 1, 2...
+   * QUANT_DIRECT_LEVELS + 1. */
+  uint32_t quant_threshold[128][QUANT_DIRECT_LEVELS + 1];
 } l3loop_t;
 
+/* Samples before a granule that the analysis window of its first filter step
+ * covers. */
+#define SUBBAND_HISTORY (HAN_SIZE - 32)
+
 typedef struct {
-  int off[MAX_CHANNELS];
-  int32_t x[MAX_CHANNELS][HAN_SIZE];
+  /* The current granule then the history before it, newest sample first,
+   * in Q31. */
+  int32_t x[MAX_CHANNELS][GRANULE_SIZE + SUBBAND_HISTORY];
 } subband_t;
 
 /* Side information */
 typedef struct {
   unsigned part2_3_length;
+  unsigned block_type; /* BLOCK_NORM at quality 0 */
+  unsigned subblock_gain[3];
   unsigned big_values;
   unsigned count1;
   unsigned global_gain;
@@ -96,6 +132,7 @@ typedef struct {
 
 typedef struct {
   unsigned private_bits;
+  unsigned main_data_begin; /* bytes */
   int resvDrain;
   unsigned scfsi[MAX_CHANNELS][4];
   struct {
@@ -113,7 +150,9 @@ typedef struct {
 typedef struct shine_global_flags {
   priv_shine_wave_t wave;
   priv_shine_mpeg_t mpeg;
-  bitstream_t bs;
+  int quality;           /* 0 to SHINE_QUALITY_MAX */
+  bitstream_t bs;        /* the frame being written */
+  frame_stream_t stream; /* the frames written */
   shine_side_info_t side_info;
   int sideinfo_len;
   int mean_bits;
@@ -126,6 +165,15 @@ typedef struct shine_global_flags {
   int ResvMax;
   l3loop_t l3loop;
   subband_t subband;
+  shine_kernels_t kernels;
+  struct psy_model *psy; /* NULL at quality 0 */
+  /* doc/psy/resampling.md: NULL when the input is at the encoding rate,
+   * wave.samplerate. */
+  struct shine_resampler *resampler;
+  int input_samples;                /* per pass, at the input rate */
+  int16_t *resampled[MAX_CHANNELS]; /* converted samples not yet in a frame */
+  int resampled_count;
+  int resampled_capacity;
 } shine_global_config;
 
 #endif

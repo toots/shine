@@ -2,73 +2,66 @@
 
 #include "l3mdct.h"
 #include "l3subband.h"
+#include "psy.h"
 #include "tables.h"
 #include "types.h"
 
-/*
- * shine_mdct_sub:
- * ------------
- */
+/* Short coefficients in coded order: by scalefactor band, then window. */
+static void reorder_short(const int32_t lines[3][192], const int *sfb,
+                          int32_t *out) {
+  for (int band = 0; band < 13; band++) {
+    int start = sfb[band], width = sfb[band + 1] - start;
+
+    for (int window = 0; window < 3; window++)
+      for (int i = 0; i < width; i++)
+        out[3 * start + window * width + i] = lines[window][start + i];
+  }
+}
+
+/* The analysis filter inverts the odd samples of the odd subbands. */
+static void restore_inverted_samples(int32_t s[18][SBLIMIT]) {
+  for (int k = 1; k < 18; k += 2)
+    for (int band = 1; band < SBLIMIT; band += 2)
+      s[k][band] *= -1;
+}
+
+static void alias_reduction(int32_t lines[SBLIMIT][18]) {
+  for (int band = 1; band < SBLIMIT; band++)
+    for (int k = 0; k < 8; k++)
+      cmuls(lines[band][k], lines[band - 1][17 - k], lines[band][k],
+            lines[band - 1][17 - k], shine_mdct_alias_cs[k],
+            shine_mdct_alias_ca[k]);
+}
+
 void shine_mdct_sub(shine_global_config *config, int stride) {
-  /* note. we wish to access the array 'config->mdct_freq[2][2][576]' as
-   * [2][2][32][18]. (32*18=576),
-   */
-  int32_t (*mdct_enc)[18];
+  for (int ch = config->wave.channels; ch--;) {
+    for (int gr = 0; gr < config->mpeg.granules_per_frame; gr++) {
+      int32_t (*mdct_enc)[18] = (int32_t (*)[18])config->mdct_freq[ch][gr];
+      unsigned block_type = config->side_info.gr[gr].ch[ch].tt.block_type;
+      /* A short granule also gets a long MDCT, for the model. */
+      int32_t (*long_enc)[18] =
+          block_type == BLOCK_SHORT
+              ? (int32_t (*)[18])config->psy->analysis_long[ch][gr]
+              : mdct_enc;
+      /* The model analyses the short spectra of every granule
+       * (doc/psy/spectral-analysis.md §2). */
+      int32_t (*short_lines)[192] =
+          config->psy ? config->psy->short_lines[ch][gr] : NULL;
 
-  int ch, gr, band, j, k;
-  int32_t mdct_in[36];
-
-  for (ch = config->wave.channels; ch--;) {
-    for (gr = 0; gr < config->mpeg.granules_per_frame; gr++) {
-      /* set up pointer to the part of config->mdct_freq we're using */
-      mdct_enc = (int32_t (*)[18])config->mdct_freq[ch][gr];
-
-      /* polyphase filtering */
-      for (k = 0; k < 18; k += 2) {
-        shine_window_filter_subband(&config->buffer[ch],
-                                    &config->l3_sb_sample[ch][gr + 1][k][0], ch,
-                                    config, stride);
-        shine_window_filter_subband(&config->buffer[ch],
-                                    &config->l3_sb_sample[ch][gr + 1][k + 1][0],
-                                    ch, config, stride);
-        /* Compensate for inversion in the analysis filter
-         * (every odd index of band AND k)
-         */
-        for (band = 1; band < 32; band += 2)
-          config->l3_sb_sample[ch][gr + 1][k + 1][band] *= -1;
-      }
-
-      /* Perform imdct of 18 previous subband samples + 18 current subband
-       * samples */
-      for (band = 0; band < 32; band++) {
-        for (k = 18; k--;) {
-          mdct_in[k] = config->l3_sb_sample[ch][gr][k][band];
-          mdct_in[k + 18] = config->l3_sb_sample[ch][gr + 1][k][band];
-        }
-
-        /* Calculation of the MDCT
-         * In the case of long blocks ( block_type 0,1,3 ) there are
-         * 36 coefficients in the time domain and 18 in the frequency
-         * domain.
-         */
-        for (k = 18; k--;) {
-          /* With the headroom in shine_mdct_cosine, the sum of the absolute
-           * values of the terms is at most 0.705 * 2**31 for any input. */
-          int32_t sum = 0;
-
-          for (j = 0; j < 36; j++)
-            sum += mul(mdct_in[j], shine_mdct_cosine[k][j]);
-          mdct_enc[band][k] = sum;
-        }
-
-        /* Perform aliasing reduction butterfly */
-        if (band != 0) {
-          for (k = 0; k < 8; k++)
-            cmuls(mdct_enc[band][k], mdct_enc[band - 1][17 - k],
-                  mdct_enc[band][k], mdct_enc[band - 1][17 - k],
-                  shine_mdct_alias_cs[k], shine_mdct_alias_ca[k]);
-        }
-      }
+      shine_window_filter_subband(config, ch, stride,
+                                  config->l3_sb_sample[ch][gr + 1]);
+      restore_inverted_samples(config->l3_sb_sample[ch][gr + 1]);
+      config->kernels.mdct(
+          config->l3_sb_sample[ch][gr], config->l3_sb_sample[ch][gr + 1],
+          shine_mdct_window[block_type], long_enc, short_lines);
+      alias_reduction(long_enc);
+      if (config->psy)
+        shine_psy_lowpass(config->psy, (int32_t *)long_enc, short_lines);
+      if (block_type == BLOCK_SHORT)
+        reorder_short(
+            short_lines,
+            shine_scale_fact_band_index_short[config->mpeg.samplerate_index],
+            config->mdct_freq[ch][gr]);
     }
 
     /* Save latest granule's subband samples to be used in the next mdct call */

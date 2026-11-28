@@ -8,7 +8,14 @@ export declare enum StereoMode {
 export class Shine {
   static initialized: Promise<void>;
   static checkConfig(samplerate: number, bitrate: number): boolean;
-  constructor(args: { samplerate: number; bitrate: number; channels: number; stereoMode?: StereoMode });
+  /** quality: 0 (default) runs no psychoacoustic model, 1 runs it. */
+  constructor(args: {
+    samplerate: number;
+    bitrate: number;
+    channels: number;
+    stereoMode?: StereoMode;
+    quality?: number;
+  });
   encode(data: Data[]): Uint8Array;
   close(): Uint8Array;
 }

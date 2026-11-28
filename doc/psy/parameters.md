@@ -1,0 +1,139 @@
+# Parameters
+
+Every constant of the model, with its recommended value. **Essential** values
+define the model's structure: changing one changes what the model computes,
+not only how strongly. **Tuning** values set the strength of an effect. A
+tuning value may change with a metric report ([tests.md](tests.md) §4). The
+churn table in [known-complexity.md](known-complexity.md) is the evidence for
+which is which. A value with no stated derivation is tuning.
+
+## 1. Per-bitrate set
+
+The bitrate selects a row: the nearest table bitrate, with ties going to the
+higher one. All columns are **tuning**.
+
+| kbps | `MSFIX` | `ATTACK_RATIO` | `ATTACK_RATIO_SIDE` | `MASK_ADJUST` (dB), 1 channel | 2 channels, joint | 2 channels, no M/S | `ATH_LOWER` (dB) | `ATH_CURVE` | `PE_SPLIT_POWER` |
+|---|---|---|---|---|---|---|---|---|---|
+| 8 | 3.5 | 6.60 | 145 | 0 | 0 | 0 | −30 | 11 | 2.4 |
+| 16 | 3.5 | 6.60 | 145 | 0 | 0 | 0 | −25 | 11 | 2.4 |
+| 24 | 3.5 | 6.60 | 145 | 0 | 0 | 0 | −20 | 11 | 2.4 |
+| 32 | 3.5 | 6.60 | 145 | 6 | 3 | 3 | −15 | 11 | 2.4 |
+| 40 | 3.5 | 6.60 | 145 | 6 | 3 | 3 | −10 | 11 | 2.4 |
+| 48 | 3.5 | 6.60 | 145 | 5 | 3.5 | 6.5 | −10 | 11 | 2.4 |
+| 56 | 3.5 | 6.60 | 145 | 5 | 3 | 7.5 | −6 | 11 | 2.4 |
+| 64 | 1.8 | 6.60 | 145 | 4 | 3.5 | 4.25 | −2 | 11 | 2.4 |
+| 80 | 3.5 | 6.60 | 145 | 0.5 | 0.5 | 5 | 0 | 8 | 2.4 |
+| 96 | 1.50 | 6.60 | 145 | 0 | 0 | 4.5 | 1 | 5.5 | 1.8 |
+| 112 | 1.25 | 6.60 | 145 | 0 | 0 | 1.5 | 2 | 4.5 | 1.4 |
+| 128 | 1.25 | 6.40 | 140 | 0 | 0 | 0 | 3 | 4 | 1.4 |
+| 160 | 0.95 | 6.00 | 135 | −2 | −2 | −2 | 5 | 3.5 | 1 |
+| 192 | 1.49 | 5.60 | 125 | −4 | −4 | −4 | 7 | 3 | 1 |
+| 224 | 1.25 | 5.20 | 125 | −6 | −6 | −6 | 9 | 2 | 1 |
+| 256 | 0.97 | 5.20 | 125 | −8 | −8 | −8 | 10 | 1 | 1 |
+| 320 | 0.90 | 5.20 | 125 | −10 | −10 | −10 | 12 | 0 | 1 |
+
+`MASK_ADJUST` has a value for streams of one channel, one for joint
+stereo and one for two channels coded without M/S (the stereo and dual
+channel modes): at one bitrate, a mono stream has twice the bits per
+channel of a stereo one, and joint stereo codes two channels in fewer
+bits than two channels apart.
+
+A one-channel stream at a rate `fs` up to `MASK_ADJUST_LOW_RATE` = 24 kHz
+does not take `MASK_ADJUST` from the table but from its bits per sample,
+`b = bitrate / fs`, linearly between these points and constant outside
+them, **tuning**:
+
+| `b` | ≤ 1.5 | 2.0 | 2.2 | ≥ 2.6 |
+|---|---|---|---|---|
+| `MASK_ADJUST` (dB) | 6 | 3.5 | 1.2 | 0.75 |
+
+The table's column is tuned on 44.1 kHz inputs, whose stream rate follows
+the bitrate. A 16 or 22.05 kHz input keeps its rate at every bitrate: at
+48 kbps it has the bits per sample of a 44.1 kHz stream at 96 to 128 kbps,
+at 16 kbps those of one at 32 to 44, and the row of its bitrate fits
+neither. A 44.1 kHz mono input reaches these rates only at 32 kbps, where
+the rule gives the table's 6 dB.
+
+`PE_SPLIT_POWER` is bounded by [noise-allocation.md](noise-allocation.md)
+§3.1.
+
+Derived per stream:
+
+- `MASK_ADJUST_SHORT = 0.9·MASK_ADJUST` if `MASK_ADJUST > 0`, else
+  `1.1·MASK_ADJUST`.
+- `ATH_OFFSET = 10^(−ATH_LOWER/10)`.
+- `MINVAL_DEPTH = 5 · row_kbps / 320` dB, from the row's bitrate.
+
+The model MUST NOT scale the input samples. The output level of the encoder
+does not depend on the quality setting or the bitrate.
+
+The ATH values in this table (`ATH_LOWER`, `ATH_CURVE`) were set against a
+band ATH with no width factor, so they MUST be retuned together with the band
+ATH rule of [ath.md](ath.md) §2. The allocator offsets (`MASK_ADJUST`) MUST
+be retuned together with the allocator ([noise-allocation.md](noise-allocation.md)).
+
+## 2. Model constants
+
+| Name | Value | Kind | Where |
+|---|---|---|---|
+| `DELBARK` | 0.34 Bark | essential | partition width, [spectral-analysis.md](spectral-analysis.md) §3 |
+| `TONALITY_SCALE` | 15 | tuning | [masking.md](masking.md) §1 |
+| `TONALITY_SMOOTHING` | 2 granules | tuning | [spectral-analysis.md](spectral-analysis.md) §1.2 |
+| `tab`, `delta` | table | tuning | [conventions.md](conventions.md) |
+| `T` | table | tuning | [masking.md](masking.md) §2 |
+| `AVG_MASK_FACTOR` | 0.5 (−3 dB) | tuning | [masking.md](masking.md) §2 |
+| `PREECHO_RATIO_1`, `PREECHO_RATIO_2` | 2, 16 | tuning | [masking.md](masking.md) §3.1 |
+| `MINVAL_MIN_LINES` | 2 | essential | [masking.md](masking.md) §3.3 |
+| `MASKING_TILT` | −7.4 dB | tuning | [masking.md](masking.md) §3.4 |
+| short SNR | −8.25 → −4.5 dB over 13 → 24 Bark | tuning | [spectral-analysis.md](spectral-analysis.md) §4 |
+| long SNR | 0 dB | tuning | [spectral-analysis.md](spectral-analysis.md) §4 |
+| `ATH_FS_SPL` | 96 dB SPL | tuning | [ath.md](ath.md) §1 |
+| `ATH_ADAPT_RANGE` | 90.30873362 dB | essential | [ath.md](ath.md) §3 |
+| `ATH_ADAPT_GAIN` | −4.51571501 dB | tuning | [ath.md](ath.md) §3 |
+| `LOUDNESS_FS_NOISE` | 3.0 | essential | [ath.md](ath.md) §4.1 |
+| adaptive ATH | 0.03125, 31.98, 0.000625, 0.075, 0.925; initial 0.01, 1.0 | tuning | [ath.md](ath.md) §4.2 |
+| `MS_SIMILARITY` | 1.58 (2 dB) | tuning | [stereo.md](stereo.md) §2 |
+| PE coefficients and bases | tables; 1124.23/4, 1236.28/4 | tuning | [perceptual-entropy.md](perceptual-entropy.md) §2 |
+| `PE_RATIO_CAP` | 10^10 | tuning | [perceptual-entropy.md](perceptual-entropy.md) §2 |
+| PE smoothing | 19 taps; 670·5; initial 700 | tuning | [perceptual-entropy.md](perceptual-entropy.md) §3 |
+| attack filter taps | table | essential | [block-switching.md](block-switching.md) §1.1 |
+| `PEAK_FLOOR` | −90.3 dBFS | essential | [block-switching.md](block-switching.md) §1.2 |
+| `ATTACK_DECAY` | 10 (20 dB) | tuning | [block-switching.md](block-switching.md) §1.3 |
+| `PERIODIC_RATIO` | 1.7 | tuning | [block-switching.md](block-switching.md) §1.5 |
+| `PERIODIC_CEILING` | −7.8 dBFS | tuning | [block-switching.md](block-switching.md) §1.5 |
+| `PULSE_FRACTION` | 1/6 | tuning | [block-switching.md](block-switching.md) §1.6 |
+| `PREECHO_ATT0/1/2` | 0.8, 0.6, 0.3 | tuning | [block-switching.md](block-switching.md) §4 |
+| `PREECHO_BLEND` | 0.6 | tuning | [block-switching.md](block-switching.md) §4 |
+| band offsets | table | tuning | [allowed-distortion.md](allowed-distortion.md) §1 |
+| `TEMPORAL_SUSTAIN` | 0.01 s | tuning | [allowed-distortion.md](allowed-distortion.md) §3 |
+| `XMIN_FLOOR` | −200 dBFS | essential | [allowed-distortion.md](allowed-distortion.md) §2 |
+| `IX_MAX` | 8192 | essential | [noise-allocation.md](noise-allocation.md) §1 |
+| `QUANT_EXACT_MAX` | 64 | essential | [noise-allocation.md](noise-allocation.md) §1 |
+| `PART2_3_MAX` | 4095 | essential | [noise-allocation.md](noise-allocation.md) §3.1 |
+| `OUTER_ATTEMPTS` | 8 per granule, per quality level | tuning | [noise-allocation.md](noise-allocation.md) §4 |
+| `PREFLAG_SHARE` | 0.8 | tuning | [noise-allocation.md](noise-allocation.md) §5.1 |
+| `PREFLAG_LSF_KBPS` | 40 | tuning | [noise-allocation.md](noise-allocation.md) §5.1 |
+| `SHORT_START` | 1/2 | tuning | [noise-allocation.md](noise-allocation.md) §6.1 |
+| lowpass cutoffs, `LOWPASS_*`, `JOINT_WIDE_KBPS` | table | tuning | [bandwidth.md](bandwidth.md) |
+| `BUFFER_BITS` | 7680 | essential | [reservoir.md](reservoir.md) §2 |
+| `MAIN_DATA_BEGIN_MAX` | 511 (MPEG-1), 255 (MPEG-2, 2.5) | essential | [reservoir.md](reservoir.md) §2 |
+| `PE_STEADY` | 670 · 5 / (1 + 2 · Σ k) ≈ 739.4 | essential | [reservoir.md](reservoir.md) §3 |
+| `RESV_SPEND` | 1/2 | tuning | [reservoir.md](reservoir.md) §3 |
+| `DECISION_AGREEMENT` | 99% | conformance | [tests.md](tests.md) §3 |
+| `THRESHOLD_TOLERANCE` | 0.5 dB | conformance | [tests.md](tests.md) §3 |
+| `NUMERIC_AGREEMENT` | 99.9% | conformance | [tests.md](tests.md) §3 |
+| `SPREAD_EXACT_RANGE` | 120 dB | conformance | [fixed-point.md](fixed-point.md) §4 |
+| `SCORE_TOLERANCE` | 5 | conformance | [tests.md](tests.md) §4.2 |
+| `SCORE_MEAN_TOLERANCE` | 0.75 | conformance | [tests.md](tests.md) §4.2 |
+
+## 3. Configuration
+
+| Setting | Value | Where |
+|---|---|---|
+| channel mode, 2 channels | joint stereo | [stereo.md](stereo.md) |
+| short blocks | coupled across channels | [block-switching.md](block-switching.md) §2 |
+| adaptive ATH | on | [ath.md](ath.md) §4 |
+| temporal masking between short windows | on | [allowed-distortion.md](allowed-distortion.md) §3 |
+
+A parameter has one value per stream. No parameter depends on a setting of
+another encoding mode.

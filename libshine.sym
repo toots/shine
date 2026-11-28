@@ -10,3 +10,5 @@ shine_flush
 shine_initialise
 shine_set_config_mpeg_defaults
 shine_samples_per_pass
+shine_samplerate
+shine_initialise_at

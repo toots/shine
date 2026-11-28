@@ -34,6 +34,11 @@ enum shine_emphasis {
   SHINE_EMPHASIS_CCITT = 3  /* CCITT J.17 */
 };
 
+/* Highest quality level. Level 0 runs no psychoacoustic model and is the
+ * fastest; level 1 runs the masking model and chooses mid/side coding per
+ * frame in joint stereo. */
+#define SHINE_QUALITY_MAX 1
+
 /* The output MP3. */
 typedef struct {
   enum shine_mode mode; /* SHINE_MONO for one channel */
@@ -41,6 +46,7 @@ typedef struct {
   enum shine_emphasis emphasis;
   int copyright;
   int original;
+  int quality; /* 0 to SHINE_QUALITY_MAX, higher is slower; clamped */
 } shine_mpeg_t;
 
 typedef struct {
@@ -123,8 +129,14 @@ shine_t shine_initialise(const shine_config_t *config);
 /* Maximum possible value for the function below. */
 #define SHINE_MAX_SAMPLES 1152
 
-/* Returns audio samples expected in each frame. */
+/* Returns audio samples expected in each call to `shine_encode_buffer`. */
 int shine_samples_per_pass(shine_t s);
+
+/* Returns the samplerate of the encoded stream. Above quality 0 the encoder
+ * converts the input to a lower samplerate when the bitrate is too low for
+ * the input's: a call to `shine_encode_buffer` then returns the frames that
+ * its samples complete, none or several. */
+int shine_samplerate(shine_t s);
 
 /* Encode audio data. Source data must have `shine_samples_per_pass(s)` audio
  * samples per channels. Mono encoder only expect one channel.
@@ -132,7 +144,12 @@ int shine_samples_per_pass(shine_t s);
  * Returns a pointer to freshly encoded data while `written` contains the size
  * of available data. This pointer's memory is handled by the library and is
  * only valid until the next call to `shine_encode_buffer` or `shine_close` and
- * may be NULL if no data was written. The samples are not modified. */
+ * may be NULL if no data was written. The samples are not modified. Once the
+ * encoder has run out of memory, every call writes nothing.
+ *
+ * The data is a whole number of frames. Above quality 0 it is not always one:
+ * with the bit reservoir a frame is complete only once later frames have
+ * been encoded, so a call may return none, or several. */
 unsigned char *shine_encode_buffer(shine_t s, int16_t *const *data,
                                    int *written);
 
@@ -148,7 +165,7 @@ unsigned char *shine_encode_buffer_interleaved(shine_t s, const int16_t *data,
                                                int *written);
 
 /* Number of samples the encoded stream lags the input by, before any decoder
- * delay. */
+ * delay, at the samplerate of the encoded stream (`shine_samplerate`). */
 int shine_encoder_delay(shine_t s);
 
 /* Drain the encoder and return all remaining data. Encodes silence until the
@@ -158,6 +175,14 @@ int shine_encoder_delay(shine_t s);
  *
  * The returned pointer follows the same rules as `shine_encode_buffer`. */
 unsigned char *shine_flush(shine_t s, int *written);
+
+/* As `shine_initialise`, but encodes at `samplerate`, at most the input's
+ * (`config->wave.samplerate`), converting the input when lower. Above
+ * quality 0 `shine_initialise` lowers the rate at low bitrates per channel
+ * (doc/psy/resampling.md §1): pass the input's rate to keep it, for a
+ * stream whose rate is fixed. Returns NULL when either rate and the bitrate
+ * are not a valid pair, or the rate is above the input's. */
+shine_t shine_initialise_at(const shine_config_t *config, int samplerate);
 
 /* Close an encoder, freeing all associated memory. Encoder handler is not
  * valid after this call. */

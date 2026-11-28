@@ -1,12 +1,16 @@
 EXTRA_DIST = ChangeLog README.md README.old libshine.sym js tests/golden.txt \
-             tests/wasm.mjs tools/generate_tables.c \
-             tools/check-no-float.sh
+             tests/wasm.mjs tests/golden-sets.sh tools/generate_tables.c tools/generate_psy_tables.c \
+             tools/check-no-float.sh tools/quality-report.sh tools/compare_pcm.c \
+             tools/quality-gate.sh tools/quality-corpus.sh \
+             tools/cost-report.sh
 
 noinst_HEADERS = src/bin/main.h src/bin/wave.h \
                  src/lib/bitstream.h src/lib/huffman.h src/lib/l3bitstream.h \
                  src/lib/l3loop.h src/lib/l3mdct.h src/lib/l3subband.h \
                  src/lib/fixed_point.h src/lib/reservoir.h src/lib/tables.h \
-                 src/lib/types.h
+                 src/lib/types.h src/lib/psy.h src/lib/psy_tables.h \
+                 src/lib/resample.h src/lib/kernels.h \
+                 src/lib/kernels_body.h src/lib/kernels_lanes.h
 
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS  = -I m4
@@ -15,12 +19,17 @@ ACLOCAL_AMFLAGS  = -I m4
 AM_CFLAGS = -Wall -Wextra -funroll-loops -fsigned-char
 
 lib_LTLIBRARIES      = libshine.la
-libshine_la_SOURCES  = src/lib/bitstream.c src/lib/huffman.c \
+# Everything but the model, which tests/psy_model.c includes.
+KERNEL_SOURCES       = src/lib/kernels.c src/lib/kernels_arm.c \
+                       src/lib/kernels_x86.c
+CORE_SOURCES         = src/lib/bitstream.c src/lib/huffman.c $(KERNEL_SOURCES) \
                        src/lib/l3bitstream.c src/lib/l3loop.c src/lib/l3mdct.c \
-                       src/lib/l3subband.c src/lib/layer3.c src/lib/reservoir.c \
+                       src/lib/l3subband.c src/lib/layer3.c src/lib/resample.c \
+                       src/lib/reservoir.c \
                        src/lib/tables.c src/lib/precomputed_tables.c
+libshine_la_SOURCES  = $(CORE_SOURCES) src/lib/psy.c
 
-libshine_la_LDFLAGS  = -no-undefined -version-info 4:0:1 -export-symbols $(srcdir)/libshine.sym
+libshine_la_LDFLAGS  = -no-undefined -version-info 4:0:0 -export-symbols $(srcdir)/libshine.sym
 libshine_ladir       = ${prefix}/include/shine
 libshine_la_HEADERS  = src/lib/layer3.h
 
@@ -30,9 +39,12 @@ shineenc_LDADD   = libshine.la
 
 # One program per concern. A new test needs its program here and its
 # _SOURCES line below.
-TESTS          = tests/config tests/framing tests/flush tests/wave tests/cli \
-                 tests/golden tests/level
-check_PROGRAMS = $(TESTS)
+TEST_BINARIES  = tests/config tests/framing tests/flush tests/wave tests/cli \
+                 tests/golden tests/level tests/reservoir tests/psy_model \
+                 tests/resample tests/kernels
+check_PROGRAMS = $(TEST_BINARIES)
+# tests/golden under each kernel set.
+TESTS          = $(TEST_BINARIES) tests/golden-sets.sh
 TEST_HELPERS   = tests/helpers.c tests/helpers.h
 LDADD          = libshine.la
 AM_CPPFLAGS    = -I$(srcdir)/src/lib
@@ -44,6 +56,23 @@ tests_wave_SOURCES    = tests/wave.c $(TEST_HELPERS)
 tests_cli_SOURCES     = tests/cli.c $(TEST_HELPERS)
 tests_golden_SOURCES  = tests/golden.c $(TEST_HELPERS)
 tests_level_SOURCES   = tests/level.c $(TEST_HELPERS)
+tests_reservoir_SOURCES = tests/reservoir.c $(TEST_HELPERS)
+
+# Built from the library's sources, to reach the model's internals.
+tests_psy_model_SOURCES = tests/psy_model.c $(CORE_SOURCES)
+tests_psy_model_CFLAGS  = $(AM_CFLAGS)
+tests_psy_model_LDADD   = -lm
+
+# Built from the library's sources, to reach both kernel sets.
+tests_kernels_SOURCES = tests/kernels.c $(KERNEL_SOURCES) src/lib/tables.c \
+                        src/lib/precomputed_tables.c
+tests_kernels_CFLAGS  = $(AM_CFLAGS)
+tests_kernels_LDADD   = -lm
+
+# Built from the library's sources, to reach the converter.
+tests_resample_SOURCES = tests/resample.c $(TEST_HELPERS) $(libshine_la_SOURCES)
+tests_resample_CFLAGS  = $(AM_CFLAGS)
+tests_resample_LDADD   = -lm
 
 AM_TESTS_ENVIRONMENT = SHINEENC='$(abs_top_builddir)/shineenc'; export SHINEENC; \
                        SHINE_GOLDEN='$(abs_top_srcdir)/tests/golden.txt'; export SHINE_GOLDEN;
@@ -69,7 +98,8 @@ $(JS_DIST)/shine.wasm: $(WASM_SOURCES) $(noinst_HEADERS) src/lib/layer3.h
 	  sources="$$sources $(srcdir)/$$source"; done; \
 	exports=; for name in $(WASM_EXPORTS); do \
 	  exports="$$exports -Wl,--export=$$name"; done; \
-	$(WASM_CC) $(WASM_FLAGS) -O3 -I$(srcdir)/src/lib $$exports $$sources \
+	$(WASM_CC) $(WASM_FLAGS) -O3 -DSHINE_NO_ENVIRONMENT -I$(srcdir)/src/lib \
+	  $$exports $$sources \
 	  -lc -o $@
 
 # The module embedded as base64, so that the package is usable as is by
