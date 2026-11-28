@@ -17,11 +17,13 @@ THEMES = {
     "light": {
         "surface": "#ffffff", "ink": "#191919", "ink2": "#666666",
         "grid": "#e7e7e7", "axis": "#c2c2c2", "other": "#a8a8a8",
+        "fast": "#84b9f3",
         "series": ["#257de0", "#f47230", "#00b894", "#f2a600"],
     },
     "dark": {
         "surface": "#191919", "ink": "#efefef", "ink2": "#9c9c9c",
         "grid": "#303030", "axis": "#474747", "other": "#6b6b6b",
+        "fast": "#1757ac",
         "series": ["#338ced", "#e76624", "#00a888", "#d28e05"],
     },
 }
@@ -77,11 +79,8 @@ def bar(x, y, length, thickness, fill):
 
 def speed_chart(header, rows, theme):
     column = header.index(SPEED_COLUMN)
-    # The fast mode (level 0) is in the table, not the chart: its quality
-    # is not comparable.
     data = sorted(((plain(row[0]), float(row[column].rstrip("x")))
-                   for row in rows if not is_fast_mode(row[0])),
-                  key=lambda item: -item[1])
+                   for row in rows), key=lambda item: -item[1])
     width, left, right, top, row_height, thickness = 720, 250, 70, 92, 34, 22
     height = top + row_height * len(data) + 40
     scale = (width - left - right) / max(value for _, value in data)
@@ -90,10 +89,13 @@ def speed_chart(header, rows, theme):
     body += text(24, 56, "Apple M5, one thread, multiples of realtime: "
                  "longer is faster", theme["ink2"], 13)
     # Legend: identity is never colour alone.
-    body += bar(24, 68, 14, 10, theme["series"][0])
-    body += text(44, 77, "shine", theme["ink2"], 12)
-    body += bar(94, 68, 14, 10, theme["other"])
-    body += text(114, 77, "other encoders", theme["ink2"], 12)
+    x = 24
+    for fill, label in ((theme["series"][0], "shine"),
+                        (theme["fast"], "shine fast mode (level 0)"),
+                        (theme["other"], "other encoders")):
+        body += bar(x, 68, 14, 10, fill)
+        body += text(x + 20, 77, label, theme["ink2"], 12)
+        x += 36 + len(label) * 5.8
     longest = max(value for _, value in data)
     spacing = next(s for s in (100, 250, 500, 1000) if longest / s <= 5)
     for step in range(0, int(longest) + 1, spacing):
@@ -104,7 +106,8 @@ def speed_chart(header, rows, theme):
     for i, (label, value) in enumerate(data):
         y = top + i * row_height
         shine = label.startswith("shineenc") or label.startswith("WebAssembly")
-        fill = theme["series"][0] if shine else theme["other"]
+        fill = (theme["fast"] if is_fast_mode(label) else
+                theme["series"][0] if shine else theme["other"])
         body += text(left - 12, y + thickness / 2 + 5, label, theme["ink"], 13,
                      "end")
         body += bar(left, y, value * scale, thickness, fill)
@@ -122,8 +125,8 @@ def quality_chart(header, rows, theme):
     series = [(plain(row[0]) + (" (fast mode)" if is_fast_mode(row[0]) else ""),
                [float(row[i]) for i in columns])
               for name in QUALITY_SERIES for row in rows if row[0] == name]
-    # The fast mode is context, in the neutral grey of the speed chart.
-    colours = [theme["other"] if label.endswith("(fast mode)")
+    # The fast mode in a lighter step of shine's blue, as in the speed chart.
+    colours = [theme["fast"] if label.endswith("(fast mode)")
                else theme["series"][i] for i, (label, _) in enumerate(series)]
     width, height, left, right, top, bottom = 720, 440, 64, 170, 100, 56
     low, high = 30, 100

@@ -126,7 +126,7 @@ How fast is it?
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="doc/images/speed-dark.svg">
-  <img alt="Encoding speed at 44.1 kHz stereo 128 kbps: shineenc 425x, LAME -q 7 310x, FDK AAC-LC 240x, WebAssembly 225x, LAME default 154x realtime" src="doc/images/speed-light.svg">
+  <img alt="Encoding speed at 44.1 kHz stereo 128 kbps: shineenc fast mode (level 0) 1630x, WebAssembly fast mode 675x, shineenc 425x, LAME -q 7 310x, FDK AAC-LC 240x, WebAssembly 225x, LAME default 154x realtime" src="doc/images/speed-light.svg">
 </picture>
 
 On an Apple M5 (`arm64`, November 2026), encoding 3 minutes of music: median

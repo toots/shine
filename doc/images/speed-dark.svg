@@ -1,36 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="302" viewBox="0 0 720 302" role="img" aria-label="Encoding speed at 44.1 kHz stereo 128 kbps" font-family='system-ui, -apple-system, "Segoe UI", sans-serif'>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="370" viewBox="0 0 720 370" role="img" aria-label="Encoding speed at 44.1 kHz stereo 128 kbps" font-family='system-ui, -apple-system, "Segoe UI", sans-serif'>
 <title>Encoding speed at 44.1 kHz stereo 128 kbps</title>
-<rect width="720" height="302" rx="8" fill="#191919"/>
+<rect width="720" height="370" rx="8" fill="#191919"/>
 <text x="24.0" y="34.0" fill="#efefef" font-size="17" text-anchor="start" font-weight="600">Encoding speed at 44.1 kHz stereo 128 kbps</text>
 <text x="24.0" y="56.0" fill="#9c9c9c" font-size="13" text-anchor="start" font-weight="normal">Apple M5, one thread, multiples of realtime: longer is faster</text>
 <path d="M24.0,68.0 h10.0 a4,4 0 0 1 4,4 v2.0 a4,4 0 0 1 -4,4 h-10.0 z" fill="#338ced"/>
 <text x="44.0" y="77.0" fill="#9c9c9c" font-size="12" text-anchor="start" font-weight="normal">shine</text>
-<path d="M94.0,68.0 h10.0 a4,4 0 0 1 4,4 v2.0 a4,4 0 0 1 -4,4 h-10.0 z" fill="#6b6b6b"/>
-<text x="114.0" y="77.0" fill="#9c9c9c" font-size="12" text-anchor="start" font-weight="normal">other encoders</text>
-<line x1="250.0" y1="86" x2="250.0" y2="268" stroke="#303030"/>
-<text x="250.0" y="284.0" fill="#9c9c9c" font-size="11" text-anchor="middle" font-weight="normal">0x</text>
-<line x1="344.1" y1="86" x2="344.1" y2="268" stroke="#303030"/>
-<text x="344.1" y="284.0" fill="#9c9c9c" font-size="11" text-anchor="middle" font-weight="normal">100x</text>
-<line x1="438.2" y1="86" x2="438.2" y2="268" stroke="#303030"/>
-<text x="438.2" y="284.0" fill="#9c9c9c" font-size="11" text-anchor="middle" font-weight="normal">200x</text>
-<line x1="532.4" y1="86" x2="532.4" y2="268" stroke="#303030"/>
-<text x="532.4" y="284.0" fill="#9c9c9c" font-size="11" text-anchor="middle" font-weight="normal">300x</text>
-<line x1="626.5" y1="86" x2="626.5" y2="268" stroke="#303030"/>
-<text x="626.5" y="284.0" fill="#9c9c9c" font-size="11" text-anchor="middle" font-weight="normal">400x</text>
-<text x="238.0" y="108.0" fill="#efefef" font-size="13" text-anchor="end" font-weight="normal">shineenc -Q 1</text>
-<path d="M250.0,92.0 h396.0 a4,4 0 0 1 4,4 v14.0 a4,4 0 0 1 -4,4 h-396.0 z" fill="#338ced"/>
-<text x="658.0" y="108.0" fill="#efefef" font-size="13" text-anchor="start" font-weight="normal">425x</text>
-<text x="238.0" y="142.0" fill="#efefef" font-size="13" text-anchor="end" font-weight="normal">LAME 4.0 -q 7</text>
-<path d="M250.0,126.0 h287.8 a4,4 0 0 1 4,4 v14.0 a4,4 0 0 1 -4,4 h-287.8 z" fill="#6b6b6b"/>
-<text x="549.8" y="142.0" fill="#efefef" font-size="13" text-anchor="start" font-weight="normal">310x</text>
-<text x="238.0" y="176.0" fill="#efefef" font-size="13" text-anchor="end" font-weight="normal">FDK AAC 2.0, AAC-LC</text>
-<path d="M250.0,160.0 h221.9 a4,4 0 0 1 4,4 v14.0 a4,4 0 0 1 -4,4 h-221.9 z" fill="#6b6b6b"/>
-<text x="483.9" y="176.0" fill="#efefef" font-size="13" text-anchor="start" font-weight="normal">240x</text>
-<text x="238.0" y="210.0" fill="#efefef" font-size="13" text-anchor="end" font-weight="normal">WebAssembly, quality 1 (Node 26)</text>
-<path d="M250.0,194.0 h207.8 a4,4 0 0 1 4,4 v14.0 a4,4 0 0 1 -4,4 h-207.8 z" fill="#338ced"/>
-<text x="469.8" y="210.0" fill="#efefef" font-size="13" text-anchor="start" font-weight="normal">225x</text>
-<text x="238.0" y="244.0" fill="#efefef" font-size="13" text-anchor="end" font-weight="normal">LAME 4.0, default</text>
-<path d="M250.0,228.0 h140.9 a4,4 0 0 1 4,4 v14.0 a4,4 0 0 1 -4,4 h-140.9 z" fill="#6b6b6b"/>
-<text x="402.9" y="244.0" fill="#efefef" font-size="13" text-anchor="start" font-weight="normal">154x</text>
-<line x1="250" y1="86" x2="250" y2="268" stroke="#474747"/>
+<path d="M89.0,68.0 h10.0 a4,4 0 0 1 4,4 v2.0 a4,4 0 0 1 -4,4 h-10.0 z" fill="#1757ac"/>
+<text x="109.0" y="77.0" fill="#9c9c9c" font-size="12" text-anchor="start" font-weight="normal">shine fast mode (level 0)</text>
+<path d="M270.0,68.0 h10.0 a4,4 0 0 1 4,4 v2.0 a4,4 0 0 1 -4,4 h-10.0 z" fill="#6b6b6b"/>
+<text x="290.0" y="77.0" fill="#9c9c9c" font-size="12" text-anchor="start" font-weight="normal">other encoders</text>
+<line x1="250.0" y1="86" x2="250.0" y2="336" stroke="#303030"/>
+<text x="250.0" y="352.0" fill="#9c9c9c" font-size="11" text-anchor="middle" font-weight="normal">0x</text>
+<line x1="372.7" y1="86" x2="372.7" y2="336" stroke="#303030"/>
+<text x="372.7" y="352.0" fill="#9c9c9c" font-size="11" text-anchor="middle" font-weight="normal">500x</text>
+<line x1="495.4" y1="86" x2="495.4" y2="336" stroke="#303030"/>
+<text x="495.4" y="352.0" fill="#9c9c9c" font-size="11" text-anchor="middle" font-weight="normal">1000x</text>
+<line x1="618.1" y1="86" x2="618.1" y2="336" stroke="#303030"/>
+<text x="618.1" y="352.0" fill="#9c9c9c" font-size="11" text-anchor="middle" font-weight="normal">1500x</text>
+<text x="238.0" y="108.0" fill="#efefef" font-size="13" text-anchor="end" font-weight="normal">shineenc -Q 0</text>
+<path d="M250.0,92.0 h396.0 a4,4 0 0 1 4,4 v14.0 a4,4 0 0 1 -4,4 h-396.0 z" fill="#1757ac"/>
+<text x="658.0" y="108.0" fill="#efefef" font-size="13" text-anchor="start" font-weight="normal">1630x</text>
+<text x="238.0" y="142.0" fill="#efefef" font-size="13" text-anchor="end" font-weight="normal">WebAssembly, quality 0 (Node 26)</text>
+<path d="M250.0,126.0 h161.6 a4,4 0 0 1 4,4 v14.0 a4,4 0 0 1 -4,4 h-161.6 z" fill="#1757ac"/>
+<text x="423.6" y="142.0" fill="#efefef" font-size="13" text-anchor="start" font-weight="normal">675x</text>
+<text x="238.0" y="176.0" fill="#efefef" font-size="13" text-anchor="end" font-weight="normal">shineenc -Q 1</text>
+<path d="M250.0,160.0 h100.3 a4,4 0 0 1 4,4 v14.0 a4,4 0 0 1 -4,4 h-100.3 z" fill="#338ced"/>
+<text x="362.3" y="176.0" fill="#efefef" font-size="13" text-anchor="start" font-weight="normal">425x</text>
+<text x="238.0" y="210.0" fill="#efefef" font-size="13" text-anchor="end" font-weight="normal">LAME 4.0 -q 7</text>
+<path d="M250.0,194.0 h72.1 a4,4 0 0 1 4,4 v14.0 a4,4 0 0 1 -4,4 h-72.1 z" fill="#6b6b6b"/>
+<text x="334.1" y="210.0" fill="#efefef" font-size="13" text-anchor="start" font-weight="normal">310x</text>
+<text x="238.0" y="244.0" fill="#efefef" font-size="13" text-anchor="end" font-weight="normal">FDK AAC 2.0, AAC-LC</text>
+<path d="M250.0,228.0 h54.9 a4,4 0 0 1 4,4 v14.0 a4,4 0 0 1 -4,4 h-54.9 z" fill="#6b6b6b"/>
+<text x="316.9" y="244.0" fill="#efefef" font-size="13" text-anchor="start" font-weight="normal">240x</text>
+<text x="238.0" y="278.0" fill="#efefef" font-size="13" text-anchor="end" font-weight="normal">WebAssembly, quality 1 (Node 26)</text>
+<path d="M250.0,262.0 h51.2 a4,4 0 0 1 4,4 v14.0 a4,4 0 0 1 -4,4 h-51.2 z" fill="#338ced"/>
+<text x="313.2" y="278.0" fill="#efefef" font-size="13" text-anchor="start" font-weight="normal">225x</text>
+<text x="238.0" y="312.0" fill="#efefef" font-size="13" text-anchor="end" font-weight="normal">LAME 4.0, default</text>
+<path d="M250.0,296.0 h33.8 a4,4 0 0 1 4,4 v14.0 a4,4 0 0 1 -4,4 h-33.8 z" fill="#6b6b6b"/>
+<text x="295.8" y="312.0" fill="#efefef" font-size="13" text-anchor="start" font-weight="normal">154x</text>
+<line x1="250" y1="86" x2="250" y2="336" stroke="#474747"/>
 </svg>

@@ -12,8 +12,8 @@
 <line x1="282.0" y1="76" x2="298.0" y2="76" stroke="#00a888" stroke-width="2"/>
 <circle cx="290.0" cy="76" r="4" fill="#00a888"/>
 <text x="304.0" y="80.0" fill="#9c9c9c" font-size="12" text-anchor="start" font-weight="normal">FDK AAC 2.0, AAC-LC</text>
-<line x1="437.4" y1="76" x2="453.4" y2="76" stroke="#6b6b6b" stroke-width="2"/>
-<circle cx="445.4" cy="76" r="4" fill="#6b6b6b"/>
+<line x1="437.4" y1="76" x2="453.4" y2="76" stroke="#1757ac" stroke-width="2"/>
+<circle cx="445.4" cy="76" r="4" fill="#1757ac"/>
 <text x="459.4" y="80.0" fill="#9c9c9c" font-size="12" text-anchor="start" font-weight="normal">shineenc -Q 0 (fast mode)</text>
 <line x1="64" y1="384.0" x2="550" y2="384.0" stroke="#303030"/>
 <text x="54.0" y="388.0" fill="#9c9c9c" font-size="11" text-anchor="end" font-weight="normal">30</text>
@@ -36,11 +36,11 @@
 <text x="307.0" y="406.0" fill="#9c9c9c" font-size="11" text-anchor="middle" font-weight="normal">128 kbps</text>
 <text x="550.0" y="406.0" fill="#9c9c9c" font-size="11" text-anchor="middle" font-weight="normal">192 kbps</text>
 <line x1="64" y1="384" x2="550" y2="384" stroke="#474747"/>
-<polyline points="64.0,343.8 185.5,278.5 307.0,218.1 550.0,131.6" fill="none" stroke="#6b6b6b" stroke-width="2" stroke-linejoin="round"/>
-<circle cx="64.0" cy="343.8" r="4" fill="#6b6b6b" stroke="#191919" stroke-width="2"/>
-<circle cx="185.5" cy="278.5" r="4" fill="#6b6b6b" stroke="#191919" stroke-width="2"/>
-<circle cx="307.0" cy="218.1" r="4" fill="#6b6b6b" stroke="#191919" stroke-width="2"/>
-<circle cx="550.0" cy="131.6" r="4" fill="#6b6b6b" stroke="#191919" stroke-width="2"/>
+<polyline points="64.0,343.8 185.5,278.5 307.0,218.1 550.0,131.6" fill="none" stroke="#1757ac" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="64.0" cy="343.8" r="4" fill="#1757ac" stroke="#191919" stroke-width="2"/>
+<circle cx="185.5" cy="278.5" r="4" fill="#1757ac" stroke="#191919" stroke-width="2"/>
+<circle cx="307.0" cy="218.1" r="4" fill="#1757ac" stroke="#191919" stroke-width="2"/>
+<circle cx="550.0" cy="131.6" r="4" fill="#1757ac" stroke="#191919" stroke-width="2"/>
 <text x="562.0" y="152.0" fill="#efefef" font-size="12" text-anchor="start" font-weight="normal">shineenc -Q 0 (fast mode)</text>
 <polyline points="64.0,233.1 185.5,173.0 307.0,124.7 550.0,100.4" fill="none" stroke="#00a888" stroke-width="2" stroke-linejoin="round"/>
 <circle cx="64.0" cy="233.1" r="4" fill="#00a888" stroke="#191919" stroke-width="2"/>
