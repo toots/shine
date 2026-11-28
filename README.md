@@ -122,6 +122,11 @@ the native encoder, when `configure` found a WebAssembly toolchain: see
 How fast is it?
 ---------------
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="doc/images/speed-dark.svg">
+  <img alt="Encoding speed at 44.1 kHz stereo 128 kbps: shineenc level 0 1630x, WebAssembly level 0 675x, shineenc level 1 425x, LAME -q 7 310x, FDK AAC-LC 240x, WebAssembly level 1 225x, LAME default 154x realtime" src="doc/images/speed-light.svg">
+</picture>
+
 On an Apple M5 (`arm64`, November 2026), encoding 3 minutes of music: median
 CPU time of 7 runs, in multiples of realtime, one thread.
 
@@ -164,6 +169,11 @@ The WebAssembly build is measured through its JavaScript API: see
 
 How good is it?
 ---------------
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="doc/images/quality-dark.svg">
+  <img alt="Quality against bitrate at 44.1 kHz stereo, 64 to 192 kbps: level 1 above LAME at 64 kbps and level with it from 96, FDK AAC-LC highest up to 128 kbps, level 0 lowest" src="doc/images/quality-light.svg">
+</picture>
 
 The mean of an estimate of the MUSHRA listening-test score, from 0 to 100,
 over 53 music and speech items, with the 2f-model of PEAQ

@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="440" viewBox="0 0 720 440" role="img" aria-label="Quality against bitrate, 44.1 kHz stereo" font-family='system-ui, -apple-system, "Segoe UI", sans-serif'>
+<title>Quality against bitrate, 44.1 kHz stereo</title>
+<rect width="720" height="440" rx="8" fill="#191919"/>
+<text x="24.0" y="34.0" fill="#efefef" font-size="17" text-anchor="start" font-weight="600">Quality against bitrate, 44.1 kHz stereo</text>
+<text x="24.0" y="56.0" fill="#9c9c9c" font-size="13" text-anchor="start" font-weight="normal">Estimated listening-test score (PEAQ 2f model), mean of 53 items: higher is better</text>
+<line x1="24" y1="76" x2="40" y2="76" stroke="#338ced" stroke-width="2"/>
+<circle cx="32" cy="76" r="4" fill="#338ced"/>
+<text x="46.0" y="80.0" fill="#9c9c9c" font-size="12" text-anchor="start" font-weight="normal">shineenc -Q 1</text>
+<line x1="139.8" y1="76" x2="155.8" y2="76" stroke="#e76624" stroke-width="2"/>
+<circle cx="147.8" cy="76" r="4" fill="#e76624"/>
+<text x="161.8" y="80.0" fill="#9c9c9c" font-size="12" text-anchor="start" font-weight="normal">LAME 4.0, default</text>
+<line x1="282.0" y1="76" x2="298.0" y2="76" stroke="#00a888" stroke-width="2"/>
+<circle cx="290.0" cy="76" r="4" fill="#00a888"/>
+<text x="304.0" y="80.0" fill="#9c9c9c" font-size="12" text-anchor="start" font-weight="normal">FDK AAC 2.0, AAC-LC</text>
+<line x1="437.4" y1="76" x2="453.4" y2="76" stroke="#d28e05" stroke-width="2"/>
+<circle cx="445.4" cy="76" r="4" fill="#d28e05"/>
+<text x="459.4" y="80.0" fill="#9c9c9c" font-size="12" text-anchor="start" font-weight="normal">shineenc -Q 0</text>
+<line x1="64" y1="384.0" x2="550" y2="384.0" stroke="#303030"/>
+<text x="54.0" y="388.0" fill="#9c9c9c" font-size="11" text-anchor="end" font-weight="normal">30</text>
+<line x1="64" y1="343.4" x2="550" y2="343.4" stroke="#303030"/>
+<text x="54.0" y="347.4" fill="#9c9c9c" font-size="11" text-anchor="end" font-weight="normal">40</text>
+<line x1="64" y1="302.9" x2="550" y2="302.9" stroke="#303030"/>
+<text x="54.0" y="306.9" fill="#9c9c9c" font-size="11" text-anchor="end" font-weight="normal">50</text>
+<line x1="64" y1="262.3" x2="550" y2="262.3" stroke="#303030"/>
+<text x="54.0" y="266.3" fill="#9c9c9c" font-size="11" text-anchor="end" font-weight="normal">60</text>
+<line x1="64" y1="221.7" x2="550" y2="221.7" stroke="#303030"/>
+<text x="54.0" y="225.7" fill="#9c9c9c" font-size="11" text-anchor="end" font-weight="normal">70</text>
+<line x1="64" y1="181.1" x2="550" y2="181.1" stroke="#303030"/>
+<text x="54.0" y="185.1" fill="#9c9c9c" font-size="11" text-anchor="end" font-weight="normal">80</text>
+<line x1="64" y1="140.6" x2="550" y2="140.6" stroke="#303030"/>
+<text x="54.0" y="144.6" fill="#9c9c9c" font-size="11" text-anchor="end" font-weight="normal">90</text>
+<line x1="64" y1="100.0" x2="550" y2="100.0" stroke="#303030"/>
+<text x="54.0" y="104.0" fill="#9c9c9c" font-size="11" text-anchor="end" font-weight="normal">100</text>
+<text x="64.0" y="406.0" fill="#9c9c9c" font-size="11" text-anchor="middle" font-weight="normal">64 kbps</text>
+<text x="185.5" y="406.0" fill="#9c9c9c" font-size="11" text-anchor="middle" font-weight="normal">96 kbps</text>
+<text x="307.0" y="406.0" fill="#9c9c9c" font-size="11" text-anchor="middle" font-weight="normal">128 kbps</text>
+<text x="550.0" y="406.0" fill="#9c9c9c" font-size="11" text-anchor="middle" font-weight="normal">192 kbps</text>
+<line x1="64" y1="384" x2="550" y2="384" stroke="#474747"/>
+<polyline points="64.0,343.8 185.5,278.5 307.0,218.1 550.0,131.6" fill="none" stroke="#d28e05" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="64.0" cy="343.8" r="4" fill="#d28e05" stroke="#191919" stroke-width="2"/>
+<circle cx="185.5" cy="278.5" r="4" fill="#d28e05" stroke="#191919" stroke-width="2"/>
+<circle cx="307.0" cy="218.1" r="4" fill="#d28e05" stroke="#191919" stroke-width="2"/>
+<circle cx="550.0" cy="131.6" r="4" fill="#d28e05" stroke="#191919" stroke-width="2"/>
+<text x="562.0" y="152.0" fill="#efefef" font-size="12" text-anchor="start" font-weight="normal">shineenc -Q 0</text>
+<polyline points="64.0,233.1 185.5,173.0 307.0,124.7 550.0,100.4" fill="none" stroke="#00a888" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="64.0" cy="233.1" r="4" fill="#00a888" stroke="#191919" stroke-width="2"/>
+<circle cx="185.5" cy="173.0" r="4" fill="#00a888" stroke="#191919" stroke-width="2"/>
+<circle cx="307.0" cy="124.7" r="4" fill="#00a888" stroke="#191919" stroke-width="2"/>
+<circle cx="550.0" cy="100.4" r="4" fill="#00a888" stroke="#191919" stroke-width="2"/>
+<text x="562.0" y="136.0" fill="#efefef" font-size="12" text-anchor="start" font-weight="normal">FDK AAC 2.0, AAC-LC</text>
+<polyline points="64.0,276.1 185.5,191.3 307.0,139.8 550.0,100.4" fill="none" stroke="#e76624" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="64.0" cy="276.1" r="4" fill="#e76624" stroke="#191919" stroke-width="2"/>
+<circle cx="185.5" cy="191.3" r="4" fill="#e76624" stroke="#191919" stroke-width="2"/>
+<circle cx="307.0" cy="139.8" r="4" fill="#e76624" stroke="#191919" stroke-width="2"/>
+<circle cx="550.0" cy="100.4" r="4" fill="#e76624" stroke="#191919" stroke-width="2"/>
+<text x="562.0" y="120.0" fill="#efefef" font-size="12" text-anchor="start" font-weight="normal">LAME 4.0, default</text>
+<polyline points="64.0,259.4 185.5,188.9 307.0,140.2 550.0,100.0" fill="none" stroke="#338ced" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="64.0" cy="259.4" r="4" fill="#338ced" stroke="#191919" stroke-width="2"/>
+<circle cx="185.5" cy="188.9" r="4" fill="#338ced" stroke="#191919" stroke-width="2"/>
+<circle cx="307.0" cy="140.2" r="4" fill="#338ced" stroke="#191919" stroke-width="2"/>
+<circle cx="550.0" cy="100.0" r="4" fill="#338ced" stroke="#191919" stroke-width="2"/>
+<text x="562.0" y="104.0" fill="#efefef" font-size="12" text-anchor="start" font-weight="normal">shineenc -Q 1</text>
+</svg>
