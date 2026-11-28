@@ -119,6 +119,8 @@ static int shineenc(const char *name, const char *options, const wav_t *wav,
 static int expect_frames(const char *name, const stream_t *stream,
                          enum shine_mode mode) {
   shine_config_t config;
+  size_t info = info_frame_bytes(stream);
+  stream_t audio = {stream->data + info, stream->size - info, 0};
   int frames;
   /* Input frames, zero padded, plus the drain. */
   int expected =
@@ -129,7 +131,11 @@ static int expect_frames(const char *name, const stream_t *stream,
   config.wave.channels = mode == SHINE_MONO ? 1 : 2;
   config.mpeg.mode = mode;
 
-  frames = walk_frames(stream, &config, name);
+  if (!info) {
+    printf("FAIL %s: no Info frame\n", name);
+    return 0;
+  }
+  frames = walk_frames(&audio, &config, name);
   if (frames < 0)
     return 0;
   if (frames != expected) {

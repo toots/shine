@@ -19,6 +19,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#ifndef _WIN32
+#include <fcntl.h>
+#endif
 
 /* Required headers from libshine. */
 #include "layer3.h"
@@ -34,6 +37,7 @@ int quiet = 0;
 int _verbose = 0;
 int stereo = SHINE_JOINT_STEREO;
 int force_mono = 0;
+const char *info_format = NULL;
 
 int verbose() { return _verbose; }
 
@@ -71,6 +75,8 @@ static void print_usage() {
   printf(" -d            encode in dual-channel (stereo data only)\n");
   printf(" -Q <level>    set the quality level [0-%d], default 1\n",
          SHINE_QUALITY_MAX);
+  printf(" -T <name>     set the format name of the Info frame, default %s\n",
+         SHINE_INFO_FORMAT);
   printf(" -q            quiet mode\n");
   printf(" -v            verbose mode\n");
 }
@@ -116,6 +122,12 @@ static int parse_command(int argc, char **argv, shine_config_t *config) {
       if (++i == argc)
         return 0;
       config->mpeg.quality = atoi(argv[i]);
+      break;
+
+    case 'T':
+      if (++i == argc)
+        return 0;
+      info_format = argv[i];
       break;
 
     case 'c':
@@ -165,6 +177,19 @@ static void check_config(shine_config_t *config, shine_t s) {
   printf("Encoding \"%s\" to \"%s\"\n", infname, outfname);
 }
 
+/* Where the Info frame goes, if it can be rewritten there once the stream
+ * is complete: -1 for a pipe, or for a file opened for appending, where
+ * every write lands at the end. */
+static long info_frame_offset(FILE *file) {
+#if !defined(_WIN32) && defined(F_GETFL)
+  int flags = fcntl(fileno(file), F_GETFL);
+
+  if (flags < 0 || flags & O_APPEND)
+    return -1;
+#endif
+  return ftell(file);
+}
+
 int main(int argc, char **argv) {
   wave_t wave;
   time_t start_time, end_time;
@@ -173,7 +198,8 @@ int main(int argc, char **argv) {
   shine_t s;
   int written;
   unsigned char *data;
-  int samples_per_pass;
+  int samples_per_pass, samples_read;
+  long input_samples = 0, info_offset;
 
   time(&start_time);
 
@@ -230,8 +256,20 @@ int main(int argc, char **argv) {
 
   samples_per_pass = shine_samples_per_pass(s);
 
+  /* The Info frame is rewritten once the length is known: a pipe gets
+   * none. */
+  info_offset = info_frame_offset(outfile);
+  if (info_offset >= 0) {
+    data = shine_info_frame(s, info_format, 0, &written);
+    if (write_mp3(written, data) != written) {
+      fprintf(stderr, "shineenc: write error\n");
+      return 1;
+    }
+  }
+
   /* All the magic happens here */
-  while (wave_get(buffer, &wave, samples_per_pass)) {
+  while ((samples_read = wave_get(buffer, &wave, samples_per_pass)) > 0) {
+    input_samples += samples_read;
     if (wave.channels == 2 && config.wave.channels == 1)
       downmix_to_mono(buffer, samples_per_pass);
     data = shine_encode_buffer_interleaved(s, buffer, &written);
@@ -245,6 +283,15 @@ int main(int argc, char **argv) {
   data = shine_flush(s, &written);
   write_mp3(written, data);
 
+  if (info_offset >= 0) {
+    data = shine_info_frame(s, info_format, input_samples, &written);
+    if (fseek(outfile, info_offset, SEEK_SET) != 0 ||
+        write_mp3(written, data) != written) {
+      fprintf(stderr, "shineenc: cannot rewrite the Info frame\n");
+      return 1;
+    }
+  }
+
   /* Close encoder. */
   shine_close(s);
 
@@ -252,7 +299,10 @@ int main(int argc, char **argv) {
   wave_close(&wave);
 
   /* Close the MP3 file */
-  fclose(outfile);
+  if (fclose(outfile) != 0) {
+    fprintf(stderr, "shineenc: write error\n");
+    return 1;
+  }
 
   time(&end_time);
   end_time -= start_time;

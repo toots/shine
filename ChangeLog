@@ -11,6 +11,10 @@ New:
   (#26, #27)
 * `shine_flush()` drains the filterbank: streams no longer end 1057 samples
   short. `shine_encoder_delay()` gives the delay.
+* Gapless playback: `shine_info_frame()` returns an Info frame in the LAME
+  format (a Xing header with LAME's extension), the one FFmpeg, GStreamer
+  and Firefox read the encoder delay, length and end padding from. shineenc
+  writes it to files; `-T` sets another format name.
 * Faster: fast transforms for the filterbank and MDCT, with arm64 NEON and
   x86-64 AVX2 kernels chosen at run time, identical output
   (`SHINE_KERNELS=plain|neon|avx2` forces a set).

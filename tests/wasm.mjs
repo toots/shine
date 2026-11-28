@@ -49,6 +49,21 @@ const writeWav = (file, samplerate, data) => {
   fs.writeFileSync(file, wav);
 };
 
+// shineenc starts files with an Info frame, which the package does not write.
+const withoutInfoFrame = mp3 => {
+  const mpeg1 = ((mp3[1] >> 3) & 3) === 3;
+  const mono = mp3[3] >> 6 === 3;
+  const offset = 4 + (mpeg1 ? (mono ? 17 : 32) : mono ? 9 : 17);
+  if (mp3.subarray(offset, offset + 4).toString() !== "Info") return mp3;
+  const bitrates = mpeg1
+    ? [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320]
+    : [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160];
+  const version = (mp3[1] >> 3) & 3;
+  const rates = { 3: [44100, 48000, 32000], 2: [22050, 24000, 16000], 0: [11025, 12000, 8000] }[version];
+  const size = Math.floor(((mpeg1 ? 144 : 72) * bitrates[mp3[2] >> 4] * 1000) / rates[(mp3[2] >> 2) & 3]);
+  return mp3.subarray(size);
+};
+
 // Uneven chunks, to exercise the buffering across encoder passes.
 const encodeWithShine = (config, data) => {
   const shine = new Shine(config);
@@ -94,7 +109,7 @@ for (const { options, ...config } of cases) {
 
   writeWav(wav, config.samplerate, data);
   execFileSync(process.env.SHINEENC, ["-q", "-b", String(config.bitrate), ...options, wav, mp3]);
-  const native = fs.readFileSync(mp3);
+  const native = withoutInfoFrame(fs.readFileSync(mp3));
   const encoded = encodeWithShine(config, data);
 
   if (native.length > 0 && encoded.equals(native)) passed++;

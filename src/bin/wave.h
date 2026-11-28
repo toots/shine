@@ -15,6 +15,8 @@ typedef struct {
 
 unsigned char wave_open(const char *fname, wave_t *wave, shine_config_t *config,
                         int quiet);
+/* Reads one pass, zero padded. Returns the samples per channel read: 0 at
+ * the end of the data. */
 int wave_get(int16_t *buffer, wave_t *wave, int samp_per_frame);
 void wave_close(wave_t *wave);
 
