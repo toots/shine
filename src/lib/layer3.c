@@ -2,6 +2,7 @@
 
 #include "layer3.h"
 #include "bitstream.h"
+#include "info.h"
 #include "l3bitstream.h"
 #include "l3loop.h"
 #include "l3mdct.h"
@@ -167,6 +168,7 @@ shine_global_config *shine_initialise_at(const shine_config_t *pub_config,
   /* Copy public config. */
   config->wave.channels = pub_config->wave.channels;
   config->wave.samplerate = samplerate;
+  config->input_rate = pub_config->wave.samplerate;
   config->mpeg.mode = pub_config->mpeg.mode;
   config->mpeg.bitrate = pub_config->mpeg.bitrate;
   config->mpeg.emphasis = pub_config->mpeg.emphasis;
@@ -279,15 +281,30 @@ static void shine_encode_frame(shine_global_config *config, int stride) {
   shine_format_bitstream(config);
   shine_flush_bit_stream(&config->bs);
   /* A failure stops the stream: shine_stream_take returns nothing more. */
-  shine_stream_frame(&config->stream, config->bs.data, config->sideinfo_len / 8,
-                     config->bs.data_position - config->sideinfo_len / 8,
-                     config->mpeg.bits_per_frame / 8);
+  if (shine_stream_frame(&config->stream, config->bs.data,
+                         config->sideinfo_len / 8,
+                         config->bs.data_position - config->sideinfo_len / 8,
+                         config->mpeg.bits_per_frame / 8) >= 0) {
+    config->frames++;
+    config->bytes += config->mpeg.bits_per_frame / 8;
+  }
   config->bs.data_position = 0;
+}
+
+/* The frames completed, or all of them at the end of the stream. */
+static unsigned char *take_frames(shine_global_config *config, int end,
+                                  int *written) {
+  unsigned char *data = shine_stream_take(&config->stream, end, written);
+
+  config->music_crc = shine_info_crc(config->music_crc, data, *written);
+  config->flushed |= end;
+  return data;
 }
 
 static unsigned char *shine_take_data(shine_global_config *config,
                                       int *written) {
-  return shine_stream_take(&config->stream, 0, written);
+  config->passes++;
+  return take_frames(config, 0, written);
 }
 
 /* doc/psy/resampling.md §5: converts `count` samples per channel and
@@ -396,7 +413,7 @@ unsigned char *shine_flush(shine_global_config *config, int *written) {
 
   if (config->resampler) {
     flush_resampled(config, shine_encoder_delay(config) + MP3_DECODER_DELAY);
-    return shine_stream_take(&config->stream, 1, written);
+    return take_frames(config, 1, written);
   }
 
   for (int i = 0; i < frames; i++) {
@@ -406,7 +423,7 @@ unsigned char *shine_flush(shine_global_config *config, int *written) {
     shine_encode_frame(config, config->wave.channels);
   }
 
-  return shine_stream_take(&config->stream, 1, written);
+  return take_frames(config, 1, written);
 }
 
 void shine_close(shine_global_config *config) {

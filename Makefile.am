@@ -9,7 +9,7 @@ noinst_HEADERS = src/bin/main.h src/bin/wave.h \
                  src/lib/l3loop.h src/lib/l3mdct.h src/lib/l3subband.h \
                  src/lib/fixed_point.h src/lib/reservoir.h src/lib/tables.h \
                  src/lib/types.h src/lib/psy.h src/lib/psy_tables.h \
-                 src/lib/resample.h src/lib/kernels.h \
+                 src/lib/resample.h src/lib/kernels.h src/lib/info.h \
                  src/lib/kernels_body.h src/lib/kernels_lanes.h
 
 AUTOMAKE_OPTIONS = foreign
@@ -24,7 +24,8 @@ KERNEL_SOURCES       = src/lib/kernels.c src/lib/kernels_arm.c \
                        src/lib/kernels_x86.c
 CORE_SOURCES         = src/lib/bitstream.c src/lib/huffman.c $(KERNEL_SOURCES) \
                        src/lib/l3bitstream.c src/lib/l3loop.c src/lib/l3mdct.c \
-                       src/lib/l3subband.c src/lib/layer3.c src/lib/resample.c \
+                       src/lib/info.c src/lib/l3subband.c src/lib/layer3.c \
+                       src/lib/resample.c \
                        src/lib/reservoir.c \
                        src/lib/tables.c src/lib/precomputed_tables.c
 libshine_la_SOURCES  = $(CORE_SOURCES) src/lib/psy.c
@@ -41,7 +42,7 @@ shineenc_LDADD   = libshine.la
 # _SOURCES line below.
 TEST_BINARIES  = tests/config tests/framing tests/flush tests/wave tests/cli \
                  tests/golden tests/level tests/reservoir tests/psy_model \
-                 tests/resample tests/kernels
+                 tests/resample tests/kernels tests/info tests/gapless
 check_PROGRAMS = $(TEST_BINARIES)
 # tests/golden under each kernel set.
 TESTS          = $(TEST_BINARIES) tests/golden-sets.sh
@@ -57,6 +58,8 @@ tests_cli_SOURCES     = tests/cli.c $(TEST_HELPERS)
 tests_golden_SOURCES  = tests/golden.c $(TEST_HELPERS)
 tests_level_SOURCES   = tests/level.c $(TEST_HELPERS)
 tests_reservoir_SOURCES = tests/reservoir.c $(TEST_HELPERS)
+tests_info_SOURCES    = tests/info.c $(TEST_HELPERS)
+tests_gapless_SOURCES = tests/gapless.c $(TEST_HELPERS)
 
 # Built from the library's sources, to reach the model's internals.
 tests_psy_model_SOURCES = tests/psy_model.c $(CORE_SOURCES)
