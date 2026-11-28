@@ -42,14 +42,26 @@ int samples_per_pass = shine_samples_per_pass(s);
  * low bitrates. A call can then return no frame, or several. */
 int stream_samplerate = shine_samplerate(s);
 
+/* An Info frame first, for gapless playback: rewritten at the end. */
+long info_offset = tell(outfile);
+data = shine_info_frame(s, NULL, 0, &written);
+write(data, written);
+
 /* All the magic happens here */
-while (read(buffer, infile, samples_per_pass)) {
+while ((samples = read(buffer, infile, samples_per_pass))) {
+  input_samples += samples;
   data = shine_encode_buffer(s, buffer, &written);
   write(data, written);
 }
 
 /* Flush and write remaining data. */
 data = shine_flush(s, &written);
+write(data, written);
+
+/* The complete Info frame over the first one: the encoder delay, length and
+ * end padding. An output that cannot seek is better off without one. */
+seek(outfile, info_offset);
+data = shine_info_frame(s, NULL, input_samples, &written);
 write(data, written);
 
 /* Close encoder. */

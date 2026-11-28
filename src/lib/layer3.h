@@ -176,6 +176,29 @@ int shine_encoder_delay(shine_t s);
  * The returned pointer follows the same rules as `shine_encode_buffer`. */
 unsigned char *shine_flush(shine_t s, int *written);
 
+/* The format `shine_info_frame` names by default: FFmpeg, GStreamer and
+ * Firefox read the encoder delay and padding only from the LAME format. */
+#define SHINE_INFO_FORMAT "LAME"
+
+/* Returns an Info frame in the LAME format: a silent frame holding a Xing
+ * header and LAME's extension, from which decoders take the encoder delay
+ * and, once the stream is flushed, its frame count, length, seek table and
+ * end padding, for gapless playback. Write it before the first frame, then
+ * again over it after `shine_flush`: both calls return the same number of
+ * bytes. Before `shine_flush` it holds the encoder delay only, and decoders
+ * such as FFmpeg play it as a frame of silence: an output that cannot seek is
+ * better off without it.
+ *
+ * `format` is the name the extension starts with, at most 9 characters, or
+ * NULL for SHINE_INFO_FORMAT. `samples` is the input length per channel,
+ * without the zero padding of the last call to `shine_encode_buffer`, or 0 to
+ * count every sample passed.
+ *
+ * The returned pointer is valid until the next call to this function or
+ * `shine_close`. */
+unsigned char *shine_info_frame(shine_t s, const char *format, long samples,
+                                int *written);
+
 /* As `shine_initialise`, but encodes at `samplerate`, at most the input's
  * (`config->wave.samplerate`), converting the input when lower. Above
  * quality 0 `shine_initialise` lowers the rate at low bitrates per channel

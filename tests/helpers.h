@@ -41,6 +41,9 @@ void stream_free(stream_t *stream);
  * crashed). */
 int run_shineenc(const char *name, const char *arguments);
 
+/* The bytes of the Info frame `stream` starts with, 0 if none. */
+size_t info_frame_bytes(const stream_t *stream);
+
 /* Walks the frame headers of `stream`, checking that each one is where the
  * previous frame ends, matches `config`, and that the last frame ends with
  * the stream. Returns the number of frames, or -1 after printing why. */

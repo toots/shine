@@ -122,6 +122,28 @@ static int version_index(int version_bits) {
   }
 }
 
+size_t info_frame_bytes(const stream_t *stream) {
+  const unsigned char *header = stream->data;
+  int version, index, bitrate, side_info;
+
+  if (stream->size < 4 || header[0] != 0xff || (header[1] & 0xe0) != 0xe0)
+    return 0;
+  version = (header[1] >> 3) & 3;
+  index = version_index(version);
+  if (index < 0 || (header[2] >> 4) == 0 || (header[2] >> 4) == 15 ||
+      ((header[2] >> 2) & 3) == 3)
+    return 0;
+  side_info = version == SHINE_MPEG_I ? (header[3] >> 6 == SHINE_MONO ? 17 : 32)
+                                      : (header[3] >> 6 == SHINE_MONO ? 9 : 17);
+  if (stream->size < (size_t)4 + side_info + 4 ||
+      memcmp(header + 4 + side_info, "Info", 4))
+    return 0;
+  bitrate = bitrates[index == 2][header[2] >> 4];
+  return (version == SHINE_MPEG_I ? 144 : 72) * bitrate * 1000 /
+             samplerates[index][(header[2] >> 2) & 3] +
+         ((header[2] >> 1) & 1);
+}
+
 int walk_frames(const stream_t *stream, const shine_config_t *config,
                 const char *name) {
   size_t position = 0;

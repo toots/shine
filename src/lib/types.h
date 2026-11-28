@@ -174,6 +174,14 @@ typedef struct shine_global_flags {
   int16_t *resampled[MAX_CHANNELS]; /* converted samples not yet in a frame */
   int resampled_count;
   int resampled_capacity;
+  int input_rate; /* the input's samplerate */
+  /* The stream so far, for the Info frame. */
+  long passes;        /* calls to shine_encode_buffer* */
+  long frames;        /* frames encoded */
+  long bytes;         /* their bytes */
+  uint16_t music_crc; /* CRC of the bytes returned */
+  int flushed;
+  unsigned char info_frame[1441]; /* the longest frame: 320 kbps, 32 kHz */
 } shine_global_config;
 
 #endif

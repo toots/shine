@@ -199,12 +199,9 @@ int read_samples(int16_t *sample_buffer, int frame_size, wave_t *wave) {
     sample_buffer[i] =
         (int16_t)read_le16((const unsigned char *)sample_buffer + 2 * i);
 
-  if (samples_read < frame_size &&
-      samples_read > 0) { /* Pad sample with zero's */
+  if (samples_read < frame_size) /* Pad sample with zero's */
     memset(sample_buffer + samples_read, 0,
            (frame_size - samples_read) * sizeof(int16_t));
-    samples_read = frame_size;
-  }
 
   return samples_read;
 }
@@ -216,5 +213,8 @@ int read_samples(int16_t *sample_buffer, int frame_size, wave_t *wave) {
  * reads into the given buffer.
  */
 int wave_get(int16_t *buffer, wave_t *wave, int samp_per_pass) {
-  return read_samples(buffer, samp_per_pass * wave->channels, wave);
+  /* A sample of the first channel alone still counts. */
+  return (read_samples(buffer, samp_per_pass * wave->channels, wave) +
+          wave->channels - 1) /
+         wave->channels;
 }
