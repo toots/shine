@@ -73,7 +73,9 @@ static void print_usage() {
          "only)\n");
   printf(" -s            encode in plain stereo (stereo data only)\n");
   printf(" -d            encode in dual-channel (stereo data only)\n");
-  printf(" -Q <level>    set the quality level [0-%d], default 1\n",
+  printf(" -Q <level>    set the quality level [0-%d], default 1; 0 is a fast\n"
+         "               mode without the psychoacoustic model, at lower\n"
+         "               quality, for devices too slow for 1\n",
          SHINE_QUALITY_MAX);
   printf(" -T <name>     set the format name of the Info frame, default %s\n",
          SHINE_INFO_FORMAT);

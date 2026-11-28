@@ -5,11 +5,14 @@ Shine: fast fixed-point mp3 encoding
 fixed-point arithmetic. The library can thus be used to perform super fast mp3 encoding on architectures
 without a FPU, such as `armel`, etc.. It is also super fast on architectures with a FPU!
 
-It has two quality levels. Level 0 is the original encoder: no psychoacoustic
-model, and the fastest. Level 1, the default, adds a psychoacoustic model, noise shaping,
-short blocks, mid/side stereo, a lowpass and, at low bitrates, a lower
-samplerate. It is still faster than LAME at its default settings. The model
-is specified in [doc/psy](doc/psy/README.md).
+Its psychoacoustic model, noise shaping, short blocks, mid/side stereo, and
+lowpass and lower samplerate at low bitrates score level with LAME at its
+default settings, at about three times its speed. The model is specified in
+[doc/psy](doc/psy/README.md).
+
+For devices too slow for that, quality level 0 is the original encoder,
+without the model: two to four times faster, and well below in quality (see
+[How good is it?](#how-good-is-it)).
 
 How to use?
 -----------
@@ -26,7 +29,6 @@ config.wave.channels = 2;
 config.wave.samplerate = 44100;
 config.mpeg.mode = SHINE_JOINT_STEREO;
 config.mpeg.bitrate = 128;
-config.mpeg.quality = 0; /* the default, 1, runs the psychoacoustic model */
 
 /* See if samplerate and bitrate are valid */
 if (shine_check_config(config.wave.samplerate, config.mpeg.bitrate) < 0)
@@ -38,8 +40,8 @@ s = shine_initialise(&config);
 /* Number of samples (per channel) to feed the encoder with. */
 int samples_per_pass = shine_samples_per_pass(s);
 
-/* The samplerate of the stream: above quality 0, lower than the input's at
- * low bitrates. A call can then return no frame, or several. */
+/* The samplerate of the stream: lower than the input's at low bitrates. A
+ * call can then return no frame, or several. */
 int stream_samplerate = shine_samplerate(s);
 
 /* An Info frame first, for gapless playback: rewritten at the end. */
@@ -124,7 +126,7 @@ How fast is it?
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="doc/images/speed-dark.svg">
-  <img alt="Encoding speed at 44.1 kHz stereo 128 kbps: shineenc level 0 1630x, WebAssembly level 0 675x, shineenc level 1 425x, LAME -q 7 310x, FDK AAC-LC 240x, WebAssembly level 1 225x, LAME default 154x realtime" src="doc/images/speed-light.svg">
+  <img alt="Encoding speed at 44.1 kHz stereo 128 kbps: shineenc 425x, LAME -q 7 310x, FDK AAC-LC 240x, WebAssembly 225x, LAME default 154x realtime" src="doc/images/speed-light.svg">
 </picture>
 
 On an Apple M5 (`arm64`, November 2026), encoding 3 minutes of music: median
@@ -172,7 +174,7 @@ How good is it?
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="doc/images/quality-dark.svg">
-  <img alt="Quality against bitrate at 44.1 kHz stereo, 64 to 192 kbps: level 1 above LAME at 64 kbps and level with it from 96, FDK AAC-LC highest up to 128 kbps, level 0 lowest" src="doc/images/quality-light.svg">
+  <img alt="Quality against bitrate at 44.1 kHz stereo, 64 to 192 kbps: level 1 above LAME at 64 kbps and level with it from 96, FDK AAC-LC highest up to 128 kbps, the fast mode (level 0) lowest" src="doc/images/quality-light.svg">
 </picture>
 
 The mean of an estimate of the MUSHRA listening-test score, from 0 to 100,

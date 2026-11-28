@@ -44,6 +44,10 @@ def table_after(lines, heading):
     return rows[0], [row for row in rows[2:]]
 
 
+def is_fast_mode(label):
+    return "-Q 0" in label or "quality 0" in label
+
+
 def plain(label):
     return label.replace("`", "")
 
@@ -73,8 +77,11 @@ def bar(x, y, length, thickness, fill):
 
 def speed_chart(header, rows, theme):
     column = header.index(SPEED_COLUMN)
+    # The fast mode (level 0) is in the table, not the chart: its quality
+    # is not comparable.
     data = sorted(((plain(row[0]), float(row[column].rstrip("x")))
-                   for row in rows), key=lambda item: -item[1])
+                   for row in rows if not is_fast_mode(row[0])),
+                  key=lambda item: -item[1])
     width, left, right, top, row_height, thickness = 720, 250, 70, 92, 34, 22
     height = top + row_height * len(data) + 40
     scale = (width - left - right) / max(value for _, value in data)
@@ -87,7 +94,9 @@ def speed_chart(header, rows, theme):
     body += text(44, 77, "shine", theme["ink2"], 12)
     body += bar(94, 68, 14, 10, theme["other"])
     body += text(114, 77, "other encoders", theme["ink2"], 12)
-    for step in range(0, int(max(v for _, v in data)) + 1, 500):
+    longest = max(value for _, value in data)
+    spacing = next(s for s in (100, 250, 500, 1000) if longest / s <= 5)
+    for step in range(0, int(longest) + 1, spacing):
         x = left + step * scale
         body += (f'<line x1="{x:.1f}" y1="{top - 6}" x2="{x:.1f}" '
                  f'y2="{height - 34}" stroke="{theme["grid"]}"/>\n')
@@ -110,8 +119,12 @@ def quality_chart(header, rows, theme):
     columns = [i for i, name in enumerate(header)
                if any(name.endswith(f"{b} kbps") for b in QUALITY_BITRATES)
                and "mono" not in name]
-    series = [(plain(row[0]), [float(row[i]) for i in columns])
+    series = [(plain(row[0]) + (" (fast mode)" if is_fast_mode(row[0]) else ""),
+               [float(row[i]) for i in columns])
               for name in QUALITY_SERIES for row in rows if row[0] == name]
+    # The fast mode is context, in the neutral grey of the speed chart.
+    colours = [theme["other"] if label.endswith("(fast mode)")
+               else theme["series"][i] for i, (label, _) in enumerate(series)]
     width, height, left, right, top, bottom = 720, 440, 64, 170, 100, 56
     low, high = 30, 100
     x_of = lambda kbps: left + (kbps - QUALITY_BITRATES[0]) / (
@@ -125,9 +138,9 @@ def quality_chart(header, rows, theme):
     x = 24
     for i, (label, _) in enumerate(series):
         body += (f'<line x1="{x}" y1="76" x2="{x + 16}" y2="76" '
-                 f'stroke="{theme["series"][i]}" stroke-width="2"/>\n')
+                 f'stroke="{colours[i]}" stroke-width="2"/>\n')
         body += (f'<circle cx="{x + 8}" cy="76" r="4" '
-                 f'fill="{theme["series"][i]}"/>\n')
+                 f'fill="{colours[i]}"/>\n')
         body += text(x + 22, 80, label, theme["ink2"], 12)
         x += 30 + len(label) * 6.6
     for score in range(low, high + 1, 10):
@@ -149,7 +162,7 @@ def quality_chart(header, rows, theme):
         label_y[i] = last
     # The first series is drawn last, over lines it nearly coincides with.
     for i, (label, values) in reversed(list(enumerate(series))):
-        colour = theme["series"][i]
+        colour = colours[i]
         points = " ".join(f"{x_of(k):.1f},{y_of(v):.1f}"
                           for k, v in zip(QUALITY_BITRATES, values))
         body += (f'<polyline points="{points}" fill="none" stroke="{colour}" '
