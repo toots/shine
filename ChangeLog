@@ -1,88 +1,75 @@
 4.0.0 ()
 =====
-* A psychoacoustic model, specified in `doc/psy/`, behind a new quality
-  setting: `mpeg.quality`, 0 to `SHINE_QUALITY_MAX` (1), default 0;
-  `shineenc -Q`; `quality` in the JavaScript package. Quality 1 adds
-  masking thresholds, noise allocation by scalefactors, the bit reservoir,
-  short blocks, M/S per frame, a lowpass and resampling at low bitrates.
-  Quality 0 runs none of it.
-* At quality 1, `shine_encode_buffer()` returns whole frames, none or
-  several per call; `shine_encoder_delay()` is 784 samples; the stream may
-  be at a lower rate than the input at low bitrates: `shine_samplerate()`
-  gives it, and `shine_initialise_at()` fixes it.
-* The filter bank and MDCT run as fast transforms. Quality 0 output changes
-  by rounding. They are built on vectors for arm64 and, with three loops of
-  the quantiser and the model, for AVX2 on x86-64, chosen at run time, with
-  the same output. The environment variable `SHINE_KERNELS` forces a set:
-  `plain`, `neon` or `avx2`.
-* Fix the Huffman table choice: tables 1 to 12 were never used, and a
-  granule with no big values wrote the region addresses of the previous
-  granule.
-* Fix stuffing bits counted in a granule's `part2_3_length`, which
-  decoders read as coefficients: they are ancillary data.
-* Fix the quantizer rounding before its 3/4 power, which moved the boundary
-  between 1 and 2 from 1.86 to 1.5.
-* Fix band 18 of the 24 kHz long scalefactor band table (332, not 330).
-* Fix the end of region 0 in short granules at 8 kHz: 72 lines, not 36.
-* Fix the Huffman bits counted for a long granule whose big values end in
-  its first two scalefactor bands: its regions ran past them over the
-  count1 quadruples. At quality 0 the bits counted but not written were
-  padding inside `part2_3_length`; at quality 1 the step size search could
-  reject a step that fits.
-* shineenc: two channels are coded as joint stereo by default; `-s` asks for
-  plain stereo.
-* API: public names are prefixed, and config fields spelled out:
-  - `MONO`, `STEREO`, `JOINT_STEREO`, `DUAL_CHANNEL`: `SHINE_MONO`,
-    `SHINE_STEREO`, `SHINE_JOINT_STEREO`, `SHINE_DUAL_CHANNEL`
-    (`enum modes`: `enum shine_mode`).
-  - `NONE`, `MU50_15`, `CITT`: `SHINE_EMPHASIS_NONE`, `SHINE_EMPHASIS_50_15`,
-    `SHINE_EMPHASIS_CCITT` (`enum emph`: `enum shine_emphasis`).
-  - `MPEG_I`, `MPEG_II`, `MPEG_25`: `SHINE_MPEG_I`, `SHINE_MPEG_II`,
-    `SHINE_MPEG_25` (`enum mpeg_versions`: `enum shine_mpeg_version`).
-  - `shine_mpeg_t.bitr` and `.emph`: `.bitrate` and `.emphasis`.
-  - `PCM_MONO`, `PCM_STEREO` and `LAYER_III` are removed: `shine_wave_t.channels`
-    is an int, 1 or 2.
-  - `shine_initialise()` takes a const config, `shine_encode_buffer()` samples
-    as `int16_t *const *` and `shine_encode_buffer_interleaved()` as
-    `const int16_t *`: the samples are not modified.
-  - `layer3.h` can be included from C++.
-* `shine_initialise()` returns NULL unless `wave.channels` is 1 or 2 and
-  `mpeg.mode` is `SHINE_MONO` exactly when it is 1. More channels overflowed
-  the encoder's state, and a mismatched mode gave invalid streams.
-* Remove the ARM and MIPS assembly multiplies: current compilers generate
-  the same instructions from C. Output on those architectures now matches
-  every other.
-* Fix wave header reading on big endian machines (#34)
-* Fix invalid streams at 8, 16 and 32 kHz for bitrates whose frame size is
-  a whole number of bytes (wrong padding bit).
-* Fix invalid streams for high bitrate mono (e.g. 320 kbps at 44.1 kHz):
-  stuffing bits beyond the granule limit were never written.
-* Fix `shine_flush()` dropping the last bytes of the stream.
-* `shine_flush()` now encodes the samples still in the filterbank, so the
-  stream no longer ends 1057 samples short.
-* Add `shine_encoder_delay()`.
-* Fix the output being 1 dB too loud (a gain of 9/8), which clipped full scale
-  input on decoding, and give the MDCT headroom instead of saturating full
-  scale input in phase across subbands, such as square waves.
-* Fix two typos in the 16 kHz scale factor band table.
-* Fix out-of-bounds reads in the quantizer at low bitrates, which quantized
-  every coefficient to zero.
-* The library uses no floating point and no libm anymore. Its tables are
+New:
+* A psychoacoustic model (`doc/psy/`) behind a quality setting:
+  `mpeg.quality`, 0 to `SHINE_QUALITY_MAX` (1), default 0; `shineenc -Q`;
+  `quality` in the JavaScript package. Quality 1 adds masking thresholds,
+  noise allocation, the bit reservoir, short blocks, M/S per frame, and a
+  lowpass and resampling at low bitrates (`shine_samplerate()`,
+  `shine_initialise_at()`). At quality 1 a call returns zero or more whole
+  frames, and the encoder delay is 784 samples. Quality 0 runs none of it.
+  (#26, #27)
+* `shine_flush()` drains the filterbank: streams no longer end 1057 samples
+  short. `shine_encoder_delay()` gives the delay.
+* Faster: fast transforms for the filterbank and MDCT, with arm64 NEON and
+  x86-64 AVX2 kernels chosen at run time, identical output
+  (`SHINE_KERNELS=plain|neon|avx2` forces a set).
+* The library uses no floating point and no libm. Its tables are
   precomputed and shared between encoders, about 50 KB less per encoder.
-* shineenc: fix skipping WAV chunks on big endian machines.
-* shineenc: stop at the end of the WAV data chunk instead of encoding the
-  chunks after it as audio.
-* shineenc: downmix stereo input with `-m` instead of encoding interleaved
-  samples as mono.
-* The JavaScript package is built to WebAssembly with clang instead of
-  Emscripten (`make wasm`), and is now an ES module.
-* Remove the Android ndk-build files: cross-compile with the NDK's clang
-  through `configure --host` like for any other target.
-* JavaScript: `close()` encodes the samples still buffered instead of dropping
-  them, and `stereoMode: StereoMode.STEREO` no longer means joint stereo.
-* shineenc: fix crashes on command lines made only of options.
-* shineenc: reject WAV files with no channels, and accept those with a zero
-  byte rate instead of dividing by it.
+
+Breaking changes (API and ABI):
+* Public names are prefixed and config fields spelled out:
+  - `MONO`, `STEREO`, `JOINT_STEREO`, `DUAL_CHANNEL` (`enum modes`):
+    `SHINE_MONO`, `SHINE_STEREO`, `SHINE_JOINT_STEREO`,
+    `SHINE_DUAL_CHANNEL` (`enum shine_mode`).
+  - `NONE`, `MU50_15`, `CITT` (`enum emph`): `SHINE_EMPHASIS_NONE`,
+    `SHINE_EMPHASIS_50_15`, `SHINE_EMPHASIS_CCITT` (`enum shine_emphasis`).
+  - `MPEG_I`, `MPEG_II`, `MPEG_25` (`enum mpeg_versions`): `SHINE_MPEG_I`,
+    `SHINE_MPEG_II`, `SHINE_MPEG_25` (`enum shine_mpeg_version`).
+  - `shine_mpeg_t.bitr` and `.emph`: `.bitrate` and `.emphasis`.
+  - `PCM_MONO`, `PCM_STEREO` and `LAYER_III` are removed:
+    `shine_wave_t.channels` is an int, 1 or 2.
+* `shine_mpeg_t` has a `quality` field.
+* Input is const: `shine_initialise()` takes a const config,
+  `shine_encode_buffer()` samples as `int16_t *const *`,
+  `shine_encode_buffer_interleaved()` as `const int16_t *`.
+* `shine_initialise()` returns NULL unless `wave.channels` is 1 or 2 and
+  `mpeg.mode` is `SHINE_MONO` exactly when it is 1.
+* `layer3.h` can be included from C++.
+
+Fixed:
+* Invalid streams: the padding bit at 8, 16 and 32 kHz (#39), stuffing bits
+  at high bitrate mono, stuffing counted as coefficients in
+  `part2_3_length`, and Huffman bits miscounted when big values end in the
+  first two scalefactor bands.
+* `shine_flush()` dropping the last bytes of the stream (#37).
+* Output 1 dB too loud (a gain of 9/8), and distortion on full scale input:
+  the MDCT has headroom instead of saturating (#24).
+* Scalefactor band tables at 16 kHz (two typos) and 24 kHz (band 18), and
+  the end of region 0 in short granules at 8 kHz.
+* Huffman tables 1 to 12 never chosen, and region addresses carried over
+  from the previous granule.
+* Quantizer rounding before the 3/4 power, and out-of-bounds reads at low
+  bitrates that quantized every coefficient to zero.
+* Architectures with assembly multiplies (ARM, MIPS) now produce the same
+  output as every other; the assembly is removed.
+
+shineenc:
+* Two channels are coded as joint stereo by default; `-s` asks for plain
+  stereo. `-m` downmixes stereo input.
+* WAV reading: big endian machines (#34), the end of the data chunk,
+  files with no channels or a zero byte rate.
+* Fix crashes on command lines made only of options.
+
+JavaScript:
+* Built to WebAssembly with clang (`make wasm`) instead of Emscripten, as
+  an ES module (#36).
+* `close()` encodes the samples still buffered, `StereoMode.STEREO` means
+  plain stereo, and `encode()` rejects channels of different lengths.
+
+Build:
+* The Android ndk-build files are removed: use `configure --host` with the
+  NDK's clang.
 
 3.1.1 (2017-07-28)
 =====
