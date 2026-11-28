@@ -76,9 +76,9 @@ attempts, band tilt).
 ## Speed
 
 - [ ] GCC 13 builds run 24% slower than clang 18 builds at quality 0 on
-      x86-64, and 7% slower at quality 1. At `-O2` GCC's cost model leaves
-      loops scalar that clang vectorises; `-fvect-cost-model=dynamic`
-      vectorises them.
+      x86-64, and 7% slower at quality 1 from 128 kbps; level at 64 and
+      96 kbps. `-fvect-cost-model=dynamic` gains only 2% there: where the
+      rest goes is not known.
 
 ## Release
 
